@@ -1,0 +1,52 @@
+# 基础全局设置
+mainSections = ["post"]
+rssFullContent = true
+favicon = "/favicon.png"
+
+# --- 多语言核心配置 ---
+defaultContentLanguage = "zh-cn"
+hasCJKLanguage = true
+
+[languages]
+    [languages.zh-cn]
+        languageName = "中文"
+        title = "望的博客"
+        weight = 1
+
+    [languages.en]
+        languageName = "English"
+        title = "Unknown's Blog"
+        weight = 2
+
+[sidebar]
+    emoji = ""
+    subtitle = "偏我去时花满楼，偏我来时不逢春。"
+[sidebar.avatar]
+    enabled = true
+    local = true
+    src = "img/avatar.png"
+
+[article]
+    readingTime = true
+
+[colorScheme]
+    toggle = true
+    default = "auto"
+
+[[widgets.homepage]]
+    type = "search"
+
+[[widgets.homepage]]
+    type = "archives"
+    [widgets.homepage.params]
+        limit = 5
+
+[[widgets.homepage]]
+    type = "links"
+    [widgets.homepage.params]
+        title = "友情链接" # 英文版可以写成 "Links"
+
+        [[widgets.homepage.params.items]]
+            name = "Google"
+            url = "https://google.com"
+            desc = "常用的搜索引擎"
