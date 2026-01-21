@@ -53,3 +53,4 @@
     weight = 3
     [social.params]
         icon = "mail"
+        newTab = false
