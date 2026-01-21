@@ -95,6 +95,18 @@ html {
     100% { transform: scale(1); opacity: 1; }
 }
 
+/* 只让中间内容区滚动，两侧栏固定 */
+body, html {
+    height: 100vh;
+    overflow: hidden !important;
+}
+
+.main-container {
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
 /* 主内容区进入动画 */
 .main-container {
     animation: fadeInUp 0.6s var(--ease-out) forwards;
@@ -123,6 +135,16 @@ html {
     &:hover {
         color: var(--accent-color);
     }
+}
+
+/* 禁用左侧栏滚动条和滚动行为（全分辨率） */
+.left-sidebar {
+    overflow: hidden !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
+.left-sidebar::-webkit-scrollbar {
+    display: none !important;
 }
 
 /* ===== 主菜单动画 ===== */
@@ -413,7 +435,8 @@ ol.menu-social li a {
 
 /* ===== 右侧小部件 ===== */
 .right-sidebar .widget {
-    /* 整体不上移，只有内部选项上移 */
+    /* 右侧栏小部件通用样式，可在此自定义 */
+    margin-bottom: 20px;
 }
 
 /* 归档年份整体跳动 */
