@@ -385,11 +385,29 @@ ol.menu-social li a {
 
 /* ===== 文章详情页 ===== */
 .article-page .main-article {
-    animation: fadeInUp var(--anim-slow) var(--ease-out) backwards;
+    animation: fadeInUp 0.5s var(--ease-out) forwards;
     
-    /* 文章标题动画同步 */
+    /* 文章标题 */
     .article-title {
-        animation: fadeInUp var(--anim-slow) var(--ease-out) backwards;
+        animation: fadeInUp 0.6s var(--ease-out) 0.1s backwards;
+    }
+    
+    /* 分类标签动画 */
+    .article-category a,
+    .article-tags a {
+        transition: transform var(--anim-fast) var(--ease-bounce),
+                    background-color var(--anim-fast) var(--ease-smooth),
+                    box-shadow var(--anim-fast) var(--ease-smooth);
+        
+        &:hover {
+            transform: translateY(-3px) scale(1.05);
+            background-color: var(--accent-color-darker);
+            box-shadow: 0 5px 15px rgba(52, 73, 94, 0.3);
+        }
+        
+        &:active {
+            transform: translateY(-1px) scale(1);
+        }
     }
 }
 
