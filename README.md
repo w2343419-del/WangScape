@@ -1,5 +1,5 @@
 <palign="right">
-  <a href="README.en.md"><b>🇬🇧 English Version</b></a>
+  <a href="README.en.md" style="font-size:1.1em;font-weight:bold;text-decoration:none;">🇬🇧 English Version</a>
 </p>
 
 # Hugo 博客项目
