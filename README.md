@@ -4,7 +4,7 @@
 
 # Hugo 博客项目
 
-<palign="center">
+<p align="center">
   <img src="https://gohugo.io/images/hugo-logo-wide.svg" alt="Hugo Logo" width="300" />
 </p>
 
