@@ -1,0 +1,23 @@
+# --- 社交链接 ---
+[[social]]
+identifier = "github"
+name = "GitHub"
+url = "https://github.com/w2343419-del"
+weight = 1
+[social.params]
+icon = "brand-github"
+
+[[social]]
+identifier = "twitter"
+name = "Twitter"
+url = "https://x.com/jdLSs0bK8671794"
+weight = 2
+[social.params]
+icon = "brand-twitter"
+
+[[social]]
+identifier = "email"
+name = "E-mail"
+url = "mailto:w2343419@gmail.com"
+weight = 3
+[social.params]
