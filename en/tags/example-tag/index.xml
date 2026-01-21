@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>Example Tag on Wang&#39;s Blog</title>
+        <link>//localhost:1313/en/tags/example-tag/</link>
+        <description>Recent content in Example Tag on Wang&#39;s Blog</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>en</language>
+        <lastBuildDate>Wed, 21 Jan 2026 00:00:00 +0000</lastBuildDate><atom:link href="//localhost:1313/en/tags/example-tag/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>Hello, World</title>
+        <link>//localhost:1313/en/p/hello-world/</link>
+        <pubDate>Wed, 21 Jan 2026 00:00:00 +0000</pubDate>
+        
+        <guid>//localhost:1313/en/p/hello-world/</guid>
+        <description>&lt;p&gt;Welcome to my blog! This is the first post.&lt;/p&gt;
+&lt;p&gt;You can edit or delete this post, and then start writing!&lt;/p&gt;
+</description>
+        </item>
+        
+    </channel>
+</rss>
