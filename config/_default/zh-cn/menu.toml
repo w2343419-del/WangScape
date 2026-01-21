@@ -49,8 +49,7 @@
 [[social]]
     identifier = "email"
     name = "邮箱"
-    url = "mailto:w2343419@gmail.com"
+    url = "https://mail.google.com/mail/?view=cm&fs=1&to=w2343419@gmail.com"
     weight = 3
     [social.params]
         icon = "mail"
-        newTab = false
