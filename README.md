@@ -55,6 +55,27 @@ hugo
 - 如何添加自定义样式？
   > 在 `assets/scss/custom.scss` 中编写自定义 CSS。
 
+## ⚡️ 快速生成新文章/模板
+
+你可以使用 Hugo 命令一键生成新文章或页面模板：
+
+- 生成新文章：
+  ```bash
+  hugo new zh-cn/post/你的文章名/index.md
+  ```
+  或英文：
+  ```bash
+  hugo new en/post/your-article/index.md
+  ```
+  这样会自动在对应目录下创建带有基础 front matter 的 Markdown 文件。
+
+- 生成新页面（如归档、链接页等）：
+  ```bash
+  hugo new zh-cn/page/archives/index.md
+  ```
+
+> 生成后可直接编辑内容，支持自定义分类、标签、摘要等。
+
 ## 🤝 贡献方式
 
 欢迎提交 Issue 或 PR 改进本博客！
@@ -69,3 +90,30 @@ MIT License
 ---
 
 > 本项目由 [Hugo](https://gohugo.io/) 强力驱动，主题 [Stack](https://github.com/CaiJimmy/hugo-theme-stack) 设计自 Jimmy Cai。
+
+## 🐞 调试与开发
+
+- 本地实时预览（推荐开发/调试时使用） ：
+  ```bash
+  hugo server -D
+  ```
+  - 自动监听文件变更，实时刷新浏览器。
+  - `-D` 参数会显示草稿（draft）文章。
+  - 默认访问地址：`http://localhost:1313`
+
+- 检查配置与内容错误：
+  - Hugo 启动时如遇报错，请检查 `config/` 配置文件和内容 front matter 格式。
+  - 可用 VS Code 或其他编辑器配合 Markdown/Linter 插件辅助检查。
+
+- 常见调试技巧：
+  - 逐步注释/还原配置项，定位问题。
+  - 使用 `hugo --verbose` 查看详细日志。
+  - 清理缓存/输出目录：
+    ```bash
+    hugo --cleanDestinationDir
+    ```
+    或手动删除 `public/` 目录后重新生成。
+
+- 主题/布局调试：
+  - 修改 `layouts/` 或 `theme/` 下的模板文件后，刷新页面即可看到效果。
+  - 可用浏览器开发者工具（F12）检查样式和 DOM 结构。
