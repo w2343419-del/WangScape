@@ -401,12 +401,22 @@ func updateFrontmatter(relPath, title, categories string) error {
 func handleCommand(cmd string) (map[string]interface{}, error) {
 	switch cmd {
 	case "preview":
+		// 先构建一次，确保所有内容都是最新的
+		buildCmd := exec.Command("hugo")
+		buildCmd.Dir = hugoPath
+		if err := buildCmd.Run(); err != nil {
+			return map[string]interface{}{"message": fmt.Sprintf("Build failed: %v", err)}, err
+		}
+		
+		// 启动预览服务器
 		go func() {
-			exec.Command("hugo", "server", "--disableFastRender", "--bind", "127.0.0.1").
-				Dir = hugoPath
+			cmd := exec.Command("hugo", "server", "--disableFastRender", "--bind", "127.0.0.1", "--navigateToChanged")
+			cmd.Dir = hugoPath
+			cmd.Run()
 		}()
+		time.Sleep(2 * time.Second) // 等待服务器启动
 		return map[string]interface{}{
-			"message": "Server launching...",
+			"message": "Server launched",
 			"url":     "http://localhost:1313/WangScape/",
 		}, nil
 
