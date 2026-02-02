@@ -64,19 +64,22 @@
 
     <!-- 左侧栏底部控制按钮 -->
     <div class="sidebar-footer-controls">
+        {{- $hasTranslation := false -}}
         {{- $currentLanguageCode := .Language.Lang -}}
-        {{ if ( compare.Gt .Site.Home.AllTranslations.Len 1 ) }}
-        <div id="lang-switch">
+        {{- range .Translations -}}
+        {{- if ne .Language.Lang $currentLanguageCode -}}
+        {{- $hasTranslation = true -}}
+        <a href="{{ .Permalink }}" id="lang-switch" class="lang-switch-btn" title="切换至 {{ .Language.LanguageName }}">
             {{ partial "helper/icon" "language" }}
-            {{ range .Site.Home.AllTranslations }}
-            {{ if ne .Language.Lang $currentLanguageCode }}
-            <a href="{{ .Permalink }}" class="lang-link">
-                {{ T "selectLanguage" }}
-            </a>
-            {{ end }}
-            {{ end }}
-        </div>
-        {{ end }}
+            <span>{{ .Language.LanguageName }}</span>
+        </a>
+        {{- end -}}
+        {{- end -}}
+        
+        {{- if not $hasTranslation -}}
+        <!-- 占位元素，保持容器高度 -->
+        <div style="height: 45px; min-height: 45px; max-height: 45px; flex-shrink: 0;"></div>
+        {{- end -}}
 
         {{ if (default false .Site.Params.colorScheme.toggle) }}
         <div id="dark-mode-toggle">

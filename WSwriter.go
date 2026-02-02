@@ -410,15 +410,20 @@ func handleCommand(cmd string) (map[string]interface{}, error) {
 		
 		time.Sleep(500 * time.Millisecond)
 		
-		// 先构建一次，确保所有内容都是最新的
-		buildCmd := exec.Command("hugo", "--minify")
+		// 先构建一次（包括草稿），确保所有内容都是最新的
+		buildCmd := exec.Command("hugo", "--buildDrafts", "--minify")
 		buildCmd.Dir = hugoPath
-		if err := buildCmd.Run(); err != nil {
-			return map[string]interface{}{"message": fmt.Sprintf("Build failed: %v", err)}, err
+		buildOutput, err := buildCmd.CombinedOutput()
+		if err != nil {
+			return map[string]interface{}{"message": fmt.Sprintf("Build failed: %s", string(buildOutput))}, err
 		}
 		
-		// 启动预览服务器（后台运行）
-		serverCmd := exec.Command("hugo", "server", "--bind", "127.0.0.1", "--disableFastRender", "--navigateToChanged")
+		// 启动预览服务器（后台运行，包括草稿）
+		serverCmd := exec.Command("hugo", "server", 
+			"--bind", "127.0.0.1",
+			"--buildDrafts",           // 显示草稿文章
+			"--disableFastRender",     // 完整渲染，不使用快速渲染
+			"--navigateToChanged")     // 保存文件时自动导航
 		serverCmd.Dir = hugoPath
 		
 		go func() {
@@ -433,7 +438,7 @@ func handleCommand(cmd string) (map[string]interface{}, error) {
 		openBrowser("http://localhost:1313/WangScape/")
 		
 		return map[string]interface{}{
-			"message": "✅ 预览服务器已启动，浏览器正在打开...",
+			"message": "✅ 预览服务器已启动（包括草稿），浏览器正在打开...",
 			"url":     "http://localhost:1313/WangScape/",
 		}, nil
 
@@ -441,31 +446,50 @@ func handleCommand(cmd string) (map[string]interface{}, error) {
 		// 1. 先编译网站
 		buildCmd := exec.Command("hugo", "--minify")
 		buildCmd.Dir = hugoPath
-		if err := buildCmd.Run(); err != nil {
-			return map[string]interface{}{"message": fmt.Sprintf("Build failed: %v", err)}, err
+		buildOutput, err := buildCmd.CombinedOutput()
+		if err != nil {
+			return map[string]interface{}{"message": fmt.Sprintf("❌ Hugo 构建失败:\n%s\n\n请检查文章格式是否正确。", string(buildOutput))}, err
 		}
 		
-		// 2. Git 添加所有更改
+		// 2. 检查是否有变更
+		statusCmd := exec.Command("git", "status", "--porcelain")
+		statusCmd.Dir = hugoPath
+		statusOutput, _ := statusCmd.Output()
+		if len(strings.TrimSpace(string(statusOutput))) == 0 {
+			return map[string]interface{}{"message": "ℹ️  没有任何文件变更，无需提交", "url": ""}, nil
+		}
+		
+		// 3. Git 添加所有更改
 		cmd := exec.Command("git", "add", ".")
 		cmd.Dir = hugoPath
 		if err := cmd.Run(); err != nil {
-			return map[string]interface{}{"message": fmt.Sprintf("Git add failed: %v", err)}, err
+			return map[string]interface{}{"message": fmt.Sprintf("❌ Git add 失败: %v", err)}, err
 		}
 
-		// 3. 提交更改
+		// 4. 提交更改
 		timestamp := time.Now().Format("2006-01-02 15:04:05")
 		cmd = exec.Command("git", "commit", "-m", fmt.Sprintf("Web Update: %s", timestamp))
 		cmd.Dir = hugoPath
-		cmd.Run() // 忽略错误（可能没有变更）
-
-		// 4. 推送到远程
-		cmd = exec.Command("git", "push")
-		cmd.Dir = hugoPath
-		if err := cmd.Run(); err != nil {
-			return map[string]interface{}{"message": fmt.Sprintf("Git push failed: %v. 已构建但未推送。", err)}, err
+		commitOutput, commitErr := cmd.CombinedOutput()
+		if commitErr != nil && !strings.Contains(string(commitOutput), "nothing to commit") {
+			return map[string]interface{}{"message": fmt.Sprintf("❌ Git commit 失败: %s", string(commitOutput))}, commitErr
 		}
 
-		return map[string]interface{}{"message": "✅ 构建完成并成功推送到 GitHub！"}, nil
+		// 5. 推送到远程
+		cmd = exec.Command("git", "push")
+		cmd.Dir = hugoPath
+		pushOutput, pushErr := cmd.CombinedOutput()
+		if pushErr != nil {
+			errorMsg := string(pushOutput)
+			if strings.Contains(errorMsg, "Permission denied") || strings.Contains(errorMsg, "authentication") {
+				return map[string]interface{}{"message": "❌ 认证失败！\n\n请检查:\n1. SSH 密钥是否已配置\n2. GitHub 是否有访问权限\n3. 远程仓库地址是否正确", "url": ""}, pushErr
+			} else if strings.Contains(errorMsg, "Connection refused") {
+				return map[string]interface{}{"message": "❌ 网络连接失败！\n\n请检查:\n1. 网络是否正常\n2. 是否能访问 GitHub", "url": ""}, pushErr
+			}
+			return map[string]interface{}{"message": fmt.Sprintf("❌ Git push 失败:\n%s", errorMsg), "url": ""}, pushErr
+		}
+
+		return map[string]interface{}{"message": "✅ 构建成功！\n✅ 已提交文件\n✅ 已推送到 GitHub\n\n🎉 网站即将更新...", "url": ""}, nil
 
 	default:
 		return map[string]interface{}{"message": "Unknown command"}, nil
@@ -576,6 +600,89 @@ func handleCommandAPI(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: result})
 }
 
+// handleSyncTranslate translates markdown content and syncs to English version
+func handleSyncTranslate(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		ZhPath  string `json:"zhPath"`
+		EnPath  string `json:"enPath"`
+		Content string `json:"content"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+		return
+	}
+
+	// 检查英文版本是否存在
+	enFullPath := filepath.Join(hugoPath, data.EnPath)
+	if _, err := os.Stat(enFullPath); err != nil {
+		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "English version not found"})
+		return
+	}
+
+	// 解析 frontmatter 和内容
+	parts := strings.Split(data.Content, "---")
+	if len(parts) < 3 {
+		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid markdown format"})
+		return
+	}
+
+	// 获取中文版本的 frontmatter
+	zhFrontmatter := parts[1]
+	zhBody := strings.Join(parts[2:], "---")
+
+	// 翻译内容正文（保留代码块和特殊标记不翻译）
+	translatedBody := translateMarkdownContent(zhBody, "zh", "en")
+
+	// 生成英文版本的 frontmatter（替换标题）
+	enFrontmatter := zhFrontmatter
+	titleMatch := regexp.MustCompile(`title:\s*"?([^"\n]+)"?`).FindStringSubmatch(zhFrontmatter)
+	if len(titleMatch) > 1 {
+		zhTitle := titleMatch[1]
+		enTitle := translateText(zhTitle, "zh", "en")
+		enFrontmatter = regexp.MustCompile(`title:\s*"?[^"\n]+"?`).ReplaceAllString(zhFrontmatter, fmt.Sprintf(`title: "%s"`, enTitle))
+	}
+
+	// 组装英文版本
+	enContent := "---" + enFrontmatter + "---" + translatedBody
+
+	// 保存英文版本
+	if err := ioutil.WriteFile(enFullPath, []byte(enContent), 0644); err != nil {
+		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: fmt.Sprintf("Failed to save: %v", err)})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Content translated and synced"})
+}
+
+// translateMarkdownContent translates markdown body while preserving code blocks
+func translateMarkdownContent(content, sourceLang, targetLang string) string {
+	// 临时替换代码块
+	codeBlocks := []string{}
+	codeRegex := regexp.MustCompile("```[\\s\\S]*?```")
+	content = codeRegex.ReplaceAllStringFunc(content, func(match string) string {
+		codeBlocks = append(codeBlocks, match)
+		return fmt.Sprintf("__CODE_BLOCK_%d__", len(codeBlocks)-1)
+	})
+
+	// 分段翻译（避免超过 API 限制）
+	paragraphs := strings.Split(content, "\n\n")
+	for i, para := range paragraphs {
+		if len(strings.TrimSpace(para)) > 0 && !strings.HasPrefix(para, "#") {
+			paragraphs[i] = translateText(para, sourceLang, targetLang)
+		}
+	}
+	content = strings.Join(paragraphs, "\n\n")
+
+	// 恢复代码块
+	for i, block := range codeBlocks {
+		placeholder := fmt.Sprintf("__CODE_BLOCK_%d__", i)
+		content = strings.ReplaceAll(content, placeholder, block)
+	}
+
+	return content
+}
+
 func respondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
@@ -602,6 +709,7 @@ func main() {
 	http.HandleFunc("/api/save_content", handleSaveContent)
 	http.HandleFunc("/api/delete_post", handleDeletePost)
 	http.HandleFunc("/api/create_sync", handleCreateSync)
+	http.HandleFunc("/api/sync_translate", handleSyncTranslate)
 	http.HandleFunc("/api/command", handleCommandAPI)
 
 	// Start server
@@ -948,8 +1056,8 @@ var htmlTemplate = `<!DOCTYPE html>
     <div id="editor-view" class="view-section">
         <div class="word-topbar">
             <div style="display:flex; align-items:center; gap:15px;">
-                <button class="word-back-btn" onclick="switchView('dashboard')">← 返回仪表盘</button>
-                <strong style="font-size:16px;">WangScape Writer</strong>
+                <button class="word-back-btn" onclick="switchView('dashboard')">← 返回主面板</button>
+                <strong style="font-size:16px;">WangScape 写作器</strong>
             </div>
             <div>
                 <span id="current-doc-name" style="opacity:0.8; margin-right:20px; font-size:13px;"></span>
@@ -957,11 +1065,11 @@ var htmlTemplate = `<!DOCTYPE html>
             </div>
         </div>
         <div class="word-ribbon">
-            <button class="word-rib-btn" onclick="saveDocument()"><span>💾 Save</span></button>
-            <button class="word-rib-btn" onclick="runCommand('deploy')"><span>🚀 Publish</span></button>
-            <button class="word-rib-btn" onclick="runCommand('preview')"><span>👁 Preview Site</span></button>
-            <button class="word-rib-btn" onclick="insertCodeBlock()"><span>💻 Code Block</span></button>
-            <button class="word-rib-btn" onclick="insertImage()"><span>🖼 Image</span></button>
+            <button class="word-rib-btn" onclick="saveDocument()"><span>💾 保存</span></button>
+            <button class="word-rib-btn" onclick="runCommand('deploy')"><span>🚀 发布</span></button>
+            <button class="word-rib-btn" onclick="runCommand('preview')"><span>👁 预览</span></button>
+            <button class="word-rib-btn" onclick="insertCodeBlock()"><span>💻 代码块</span></button>
+            <button class="word-rib-btn" onclick="insertImage()"><span>🖼 图片</span></button>
         </div>
         <div class="word-workspace">
             <div class="word-canvas">
@@ -976,15 +1084,15 @@ var htmlTemplate = `<!DOCTYPE html>
 
     <div class="modal-overlay" id="create-modal">
         <div class="modal-card">
-            <h2 style="margin-top:0">创作新篇章</h2>
-            <label>文章标题 (中文)</label>
+            <h2 style="margin-top:0">创建新文章</h2>
+            <label>中文标题</label>
             <input type="text" id="postTitle" placeholder="例如：冬日随笔">
-            <label>分类 (Categories)</label>
+            <label>分类（英文）</label>
             <input type="text" id="postCat" placeholder="Life, Code">
-            <p style="font-size:12px; color:var(--dash-text-dim)">* 系统将自动生成双语版本 (zh-cn/en)。</p>
+            <p style="font-size:12px; color:var(--dash-text-dim)">* 系统将自动翻译为英文并创建双语版本。</p>
             <div style="text-align:right">
                 <button class="btn-cancel" onclick="closeCreateModal()">取消</button>
-                <button class="btn-confirm" onclick="createPost()">立即创建</button>
+                <button class="btn-confirm" onclick="createPost()">创建</button>
             </div>
         </div>
     </div>
@@ -1011,31 +1119,81 @@ var htmlTemplate = `<!DOCTYPE html>
                 list.innerHTML = '<div style="padding:40px; text-align:center; color:#555;">暂无文章</div>';
                 return;
             }
-            list.innerHTML = postsData.map(p => {
-                // 转义路径中的反斜杠用于 JavaScript
-                const escapedPath = p.path.replace(/\\/g, '\\\\');
-                return '<div class="dash-post-item">' +
-                    '<div onclick="openEditor(\'' + escapedPath + '\', \'' + p.title.replace(/'/g, "\\'") + '\', \'' + p.date + '\')" style="flex:1; cursor:pointer; display:flex; flex-direction:column; gap:4px;">' +
+            
+            // 按路径分组（中英文版本）
+            const grouped = {};
+            postsData.forEach(p => {
+                // 提取基础名称（去掉 zh-cn 或 en 前缀）
+                const baseName = p.path.replace(/content\/(zh-cn|en)\/post\//, '');
+                if (!grouped[baseName]) {
+                    grouped[baseName] = { zh: null, en: null };
+                }
+                if (p.lang === 'zh-cn' || p.lang === 'zh') {
+                    grouped[baseName].zh = p;
+                } else if (p.lang === 'en') {
+                    grouped[baseName].en = p;
+                }
+            });
+            
+            list.innerHTML = Object.entries(grouped).map(([baseName, versions]) => {
+                const primaryVersion = versions.zh || versions.en;
+                if (!primaryVersion) return '';
+                
+                const escapedPath = primaryVersion.path.replace(/\\/g, '\\\\');
+                let html = '<div class="dash-post-item">' +
+                    '<div onclick="openEditor(\'' + escapedPath + '\', \'' + primaryVersion.title.replace(/'/g, "\\'") + '\', \'' + primaryVersion.date + '\')" style="flex:1; cursor:pointer; display:flex; flex-direction:column; gap:4px;">' +
                     '<div style="display:flex; align-items:center; gap:10px;">' +
-                    '<div class="dpi-title">' + p.title + '</div>' +
-                    '<span style="font-size:10px; padding:2px 6px; border-radius:4px; background:' + p.status_color + '20; color:' + p.status_color + ';">' +
-                    p.status +
-                    '</span>' +
+                    '<div class="dpi-title">' + primaryVersion.title + '</div>' +
+                    '<span style="font-size:10px; padding:2px 6px; border-radius:4px; background:' + primaryVersion.status_color + '20; color:' + primaryVersion.status_color + ';">' +
+                    primaryVersion.status +
+                    '</span>';
+                
+                // 显示版本标签
+                if (versions.zh && versions.en) {
+                    html += '<span style="font-size:9px; padding:2px 4px; background:#4a90e2; color:#fff; border-radius:3px;">中英双版</span>';
+                } else if (versions.zh) {
+                    html += '<span style="font-size:9px; padding:2px 4px; background:#ff7f50; color:#fff; border-radius:3px;">中文版</span>';
+                } else if (versions.en) {
+                    html += '<span style="font-size:9px; padding:2px 4px; background:#50c878; color:#fff; border-radius:3px;">英文版</span>';
+                }
+                
+                html += '</div>' +
+                    '<div class="dpi-meta">' + primaryVersion.date + ' · ' + primaryVersion.path + '</div>' +
                     '</div>' +
-                    '<div class="dpi-meta">' + p.date + ' · ' + p.lang.toUpperCase() + ' · ' + p.path + '</div>' +
-                    '</div>' +
-                    '<div style="display:flex; gap:15px; align-items:center;">' +
-                    '<button onclick="deleteDocument(\'' + escapedPath + '\')" style="background:rgba(255,50,50,0.1); border:1px solid rgba(255,50,50,0.2); color:#ff5555; width:32px; height:32px; border-radius:8px; cursor:pointer;">🗑</button>' +
-                    '<button onclick="openEditor(\'' + escapedPath + '\', \'' + p.title.replace(/'/g, "\\'") + '\', \'' + p.date + '\')" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; width:32px; height:32px; border-radius:8px; cursor:pointer;">✎</button>' +
-                    '</div>' +
-                    '</div>';
+                    '<div style="display:flex; gap:8px; align-items:center;">';
+                
+                // 显示切换按钮
+                if (versions.zh && versions.en) {
+                    const zhPath = versions.zh.path.replace(/\\/g, '\\\\');
+                    const enPath = versions.en.path.replace(/\\/g, '\\\\');
+                    const zhTitle = versions.zh.title.replace(/'/g, "\\'");
+                    const enTitle = versions.en.title.replace(/'/g, "\\'");
+                    
+                    html += '<button onclick="openEditor(\'' + zhPath + '\', \'' + zhTitle + '\', \'' + versions.zh.date + '\')" style="background:rgba(255,165,0,0.1); border:1px solid rgba(255,165,0,0.3); color:#ffa500; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">编辑中文</button>' +
+                            '<button onclick="openEditor(\'' + enPath + '\', \'' + enTitle + '\', \'' + versions.en.date + '\')" style="background:rgba(80,200,120,0.1); border:1px solid rgba(80,200,120,0.3); color:#50c878; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">编辑英文</button>';
+                }
+                
+                html += '<button onclick="deleteDocument(\'' + escapedPath + '\')" style="background:rgba(255,50,50,0.1); border:1px solid rgba(255,50,50,0.2); color:#ff5555; width:32px; height:32px; border-radius:8px; cursor:pointer;">🗑</button>' +
+                        '<button onclick="openEditor(\'' + escapedPath + '\', \'' + primaryVersion.title.replace(/'/g, "\\'") + '\', \'' + primaryVersion.date + '\')" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; width:32px; height:32px; border-radius:8px; cursor:pointer;">✎</button>' +
+                        '</div>' +
+                        '</div>';
+                
+                return html;
             }).join('');
         }
 
         async function openEditor(path, title, date) {
             currentDocPath = path;
             switchView('editor');
-            document.getElementById('current-doc-name').textContent = title;
+            
+            // 检测当前编辑的语言版本
+            const isZhCN = path.includes('zh-cn');
+            const lang = isZhCN ? '中文版' : '英文版';
+            const langColor = isZhCN ? '#ffa500' : '#50c878';
+            
+            document.getElementById('current-doc-name').textContent = title + ' (' + lang + ')';
+            document.getElementById('current-doc-name').style.color = langColor;
+            
             const paper = document.getElementById('paper-content');
             paper.innerHTML = '<div style="text-align:center; margin-top:50px; color:#888;">加载中...</div>';
 
@@ -1043,10 +1201,10 @@ var htmlTemplate = `<!DOCTYPE html>
                 const res = await fetch('/api/get_content?path=' + encodeURIComponent(path));
                 const data = await res.json();
                 paper.innerHTML = '<div class="wp-title">' + title + '</div>' +
-                    '<div style="font-size:12px; color:#999; margin-bottom:20px;">Date: ' + date + '</div>' +
+                    '<div style="font-size:12px; color:#999; margin-bottom:20px;">版本: ' + lang + ' · 日期: ' + date + '</div>' +
                     '<textarea id="editor-textarea" spellcheck="false">' + data.content + '</textarea>';
             } catch(e) {
-                paper.innerHTML = '<div style="color:red">Error: ' + e + '</div>';
+                paper.innerHTML = '<div style="color:red">错误: ' + e + '</div>';
             }
         }
 
@@ -1066,17 +1224,43 @@ var htmlTemplate = `<!DOCTYPE html>
                 if(data.success) {
                     statusEl.textContent = "✅ 已保存 " + new Date().toLocaleTimeString();
                     statusEl.style.color = "#00ff88";
+                    
+                    // 如果是中文版本，自动同步翻译到英文版本
+                    if(currentDocPath.includes('zh-cn')) {
+                        statusEl.textContent = "⏳ 正在翻译英文版本...";
+                        const enPath = currentDocPath.replace(/zh-cn/g, 'en');
+                        
+                        // 调用翻译同步接口
+                        const syncRes = await fetch('/api/sync_translate', {
+                            method: 'POST',
+                            body: JSON.stringify({ 
+                                zhPath: currentDocPath, 
+                                enPath: enPath,
+                                content: content 
+                            })
+                        });
+                        const syncData = await syncRes.json();
+                        if(syncData.success) {
+                            statusEl.textContent = "✅ 已保存并同步翻译 " + new Date().toLocaleTimeString();
+                        } else {
+                            statusEl.textContent = "✅ 已保存（翻译失败，请手动同步）";
+                        }
+                    }
+                    
                     setTimeout(() => statusEl.textContent = "", 3000);
                     fetchPosts();
+                    return true;
                 } else {
                     statusEl.textContent = "❌ 保存失败";
                     statusEl.style.color = "#ff5555";
                     alert("保存失败: " + data.message);
+                    return false;
                 }
             } catch(e) {
                 statusEl.textContent = "❌ 网络错误";
                 statusEl.style.color = "#ff5555";
                 alert("网络错误: " + e);
+                return false;
             }
         }
 
@@ -1123,7 +1307,7 @@ var htmlTemplate = `<!DOCTYPE html>
                     document.getElementById('postTitle').value = '';
                     document.getElementById('postCat').value = '';
                     await fetchPosts();
-                    alert('✅ 双语文章创建成功！\n中文版: ' + (data.data?.zh_path || '已创建') + '\n英文版: ' + (data.data?.en_path || '已创建'));
+                    alert('✅ 双语文章创建成功！\n中文版: ' + (data.data?.zh_path || '已创建') + '\n英文版: ' + (data.data?.en_path || '已创建') + '\n\n💡 提示：英文版标题已自动翻译');
                 } else {
                     alert('❌ 创建失败: ' + data.message);
                 }
@@ -1186,25 +1370,33 @@ var htmlTemplate = `<!DOCTYPE html>
             // 对于预览命令，先自动保存当前编辑内容
             if(cmd === 'preview' && currentDocPath) {
                 console.log('Preview: Auto-saving current document...');
-                await saveDocument();
+                const saveOk = await saveDocument();
+                if(!saveOk) {
+                    alert('⚠️  预览前保存失败，请检查');
+                    return;
+                }
                 // 等待保存完成
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 1500));
             }
             
-            const res = await fetch('/api/command?name=' + cmd);
-            const data = await res.json();
-            
-            // 对于预览命令，直接打开本地浏览器
-            if(cmd === 'preview') {
-                alert(data.message || '预览已启动，请在浏览器中打开: http://localhost:1313/WangScape/');
-                // 给浏览器打开的时间
-                setTimeout(() => {
-                    window.open('http://localhost:1313/WangScape/', '_blank');
-                }, 500);
-            } else if(data.data && data.data.url) {
-                window.open(data.data.url, '_blank');
-            } else {
-                alert('系统: ' + (data.message || data.data?.message || '命令已执行'));
+            try {
+                const res = await fetch('/api/command?name=' + cmd);
+                const data = await res.json();
+                
+                // 对于预览命令，直接打开本地浏览器
+                if(cmd === 'preview') {
+                    alert(data.message || '✅ 预览已启动！\n\n包括所有草稿文章和最新修改\n浏览器即将打开...');
+                    // 给浏览器打开的时间
+                    setTimeout(() => {
+                        window.open('http://localhost:1313/WangScape/', '_blank');
+                    }, 800);
+                } else if(data.data && data.data.url) {
+                    window.open(data.data.url, '_blank');
+                } else {
+                    alert('系统: ' + (data.message || data.data?.message || '命令已执行'));
+                }
+            } catch(e) {
+                alert('❌ 命令执行失败: ' + e);
             }
         }
 

@@ -310,16 +310,18 @@ body {
 .sidebar-footer-controls {
     flex-shrink: 0 !important;
     margin-top: auto !important;
-    padding: 10px 0 !important;
+    padding: 5px 0 !important;
     border: none !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 5px !important;
     align-items: stretch !important;
+    justify-content: flex-start !important;
     height: 95px !important;
     min-height: 95px !important;
     max-height: 95px !important;
     overflow: hidden !important;
+    box-sizing: border-box !important;
 }
 
 #dark-mode-toggle,
@@ -338,9 +340,45 @@ body {
     border: none !important;
     border-left: none !important;
     border-right: none !important;
-    height: 40px !important;
-    min-height: 40px !important;
-    max-height: 40px !important;
+    height: 45px !important;
+    min-height: 45px !important;
+    max-height: 45px !important;
+}
+// 语言切换按钮 - 简化版本
+.lang-switch-btn {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    color: var(--body-text-color) !important;
+    cursor: pointer !important;
+    padding: 6px 12px !important;
+    margin: 0 !important;
+    position: relative !important;
+    font-size: 13px !important;
+    flex-shrink: 0 !important;
+    border-radius: 6px !important;
+    border: none !important;
+    height: 45px !important;
+    min-height: 45px !important;
+    max-height: 45px !important;
+    text-decoration: none !important;
+    transition: all var(--anim-normal) var(--ease-smooth) !important;
+}
+
+.lang-switch-btn:hover {
+    background-color: var(--card-background-selected) !important;
+    color: var(--accent-color) !important;
+    transform: translateX(6px);
+}
+
+.lang-switch-btn svg {
+    width: 20px !important;
+    height: 20px !important;
+    transition: transform 0.3s ease !important;
+}
+
+.lang-switch-btn:hover svg {
+    transform: rotate(180deg) !important;
 }
 
 #dark-mode-toggle::before,
