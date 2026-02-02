@@ -417,18 +417,23 @@ func handleCommand(cmd string) (map[string]interface{}, error) {
 			return map[string]interface{}{"message": fmt.Sprintf("Build failed: %v", err)}, err
 		}
 		
-		// 启动预览服务器
-		serverCmd := exec.Command("hugo", "server", "--bind", "127.0.0.1", "--navigateToChanged", "--disableFastRender")
+		// 启动预览服务器（后台运行）
+		serverCmd := exec.Command("hugo", "server", "--bind", "127.0.0.1", "--disableFastRender", "--navigateToChanged")
 		serverCmd.Dir = hugoPath
 		
 		go func() {
-			serverCmd.Run()
+			// 让 hugo 服务器在后台持续运行
+			serverCmd.Start()
 		}()
 		
-		time.Sleep(2 * time.Second)
+		// 等待服务器启动
+		time.Sleep(3 * time.Second)
+		
+		// 在主线程打开浏览器
+		openBrowser("http://localhost:1313/WangScape/")
 		
 		return map[string]interface{}{
-			"message": "Preview server started! Opening browser...",
+			"message": "✅ 预览服务器已启动，浏览器正在打开...",
 			"url":     "http://localhost:1313/WangScape/",
 		}, nil
 
@@ -1178,9 +1183,25 @@ var htmlTemplate = `<!DOCTYPE html>
         }
 
         async function runCommand(cmd) {
+            // 对于预览命令，先自动保存当前编辑内容
+            if(cmd === 'preview' && currentDocPath) {
+                console.log('Preview: Auto-saving current document...');
+                await saveDocument();
+                // 等待保存完成
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
             const res = await fetch('/api/command?name=' + cmd);
             const data = await res.json();
-            if(data.data && data.data.url) {
+            
+            // 对于预览命令，直接打开本地浏览器
+            if(cmd === 'preview') {
+                alert(data.message || '预览已启动，请在浏览器中打开: http://localhost:1313/WangScape/');
+                // 给浏览器打开的时间
+                setTimeout(() => {
+                    window.open('http://localhost:1313/WangScape/', '_blank');
+                }, 500);
+            } else if(data.data && data.data.url) {
                 window.open(data.data.url, '_blank');
             } else {
                 alert('系统: ' + (data.message || data.data?.message || '命令已执行'));
