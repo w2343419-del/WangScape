@@ -920,6 +920,8 @@ var htmlTemplate = `<!DOCTYPE html>
             <button class="word-rib-btn" onclick="saveDocument()"><span>💾 Save</span></button>
             <button class="word-rib-btn" onclick="runCommand('deploy')"><span>🚀 Publish</span></button>
             <button class="word-rib-btn" onclick="runCommand('preview')"><span>👁 Preview Site</span></button>
+            <button class="word-rib-btn" onclick="insertCodeBlock()"><span>💻 Code Block</span></button>
+            <button class="word-rib-btn" onclick="insertImage()"><span>🖼 Image</span></button>
         </div>
         <div class="word-workspace">
             <div class="word-canvas">
@@ -1079,6 +1081,55 @@ var htmlTemplate = `<!DOCTYPE html>
             } catch(e) {
                 alert('错误: ' + e);
             }
+        }
+
+        function insertCodeBlock() {
+            const textarea = document.getElementById('editor-textarea');
+            if(!textarea) return;
+
+            const language = prompt('请输入代码语言 (如: javascript, python, go, bash 等):', 'javascript');
+            if(language === null) return;
+
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selectedText = textarea.value.substring(start, end);
+            
+            const codeBlock = '\x60\x60\x60' + language + '\\n' + (selectedText || '// 在这里输入代码\\n') + '\\n\x60\x60\x60\\n';
+            
+            textarea.value = textarea.value.substring(0, start) + codeBlock + textarea.value.substring(end);
+            
+            const newCursorPos = start + language.length + 4;
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+            textarea.focus();
+        }
+
+        function insertImage() {
+            const textarea = document.getElementById('editor-textarea');
+            if(!textarea) return;
+
+            const imageUrl = prompt('请输入图片 URL 或路径\\n(例如: /img/photo.jpg 或 https://example.com/image.png):', '');
+            if(!imageUrl) return;
+
+            const altText = prompt('请输入图片描述 (可选):', '图片');
+            const width = prompt('图片宽度 (如: 500px, 80%, 留空为原始大小):', '');
+            const align = prompt('对齐方式\\n输入: left (左对齐), center (居中), right (右对齐)\\n留空为默认', 'center');
+            
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            
+            let imageHtml = '<div style="text-align: ' + (align || 'center') + ';">\\n';
+            imageHtml += '  <img src="' + imageUrl + '" alt="' + (altText || '图片') + '"';
+            if(width) {
+                imageHtml += ' style="width: ' + width + '; height: auto;"';
+            }
+            imageHtml += '>\\n';
+            imageHtml += '</div>\\n\\n';
+            
+            textarea.value = textarea.value.substring(0, start) + imageHtml + textarea.value.substring(end);
+            
+            const newCursorPos = start + imageHtml.length;
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+            textarea.focus();
         }
 
         async function runCommand(cmd) {

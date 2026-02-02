@@ -10,34 +10,43 @@
 <script defer src="https://unknown-qzthzzic4-w2343419-dels-projects.vercel.app/script.js"
     data-website-id="aee9b0a3-00c8-4037-8b99-e6bb4c336cb9"></script>
 
-<!-- Umami 阅读量显示 -->
+<!-- 阅读量统计 (本地存储) -->
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const umamiInstance = "https://unknown-qzthzzic4-w2343419-dels-projects.vercel.app";
-        const websiteId = "aee9b0a3-00c8-4037-8b99-e6bb4c336cb9";
         const viewsElement = document.querySelector('[data-umami-page-pv] .umami-value');
-
+        
         if (viewsElement) {
-            // 使用 Umami 的公共 API 获取当前页面的 PV
-            // 注意：这取决于 Umami 是否允许公共访问统计数据，
-            // 或者是否配置了公开共享链接。
             const currentPath = window.location.pathname;
-            const startAt = new Date(2020, 0, 1).getTime(); // 从很早以前开始统计
-            const endAt = Date.now();
-
-            const apiUrl = `${umamiInstance}/api/websites/${websiteId}/stats?startAt=${startAt}&endAt=${endAt}&url=${encodeURIComponent(currentPath)}`;
-
-            // 尝试从 localStorage 缓存中读取或直接发送请求
-            // 由于 Umami API 权限限制，这里通常需要公开共享令牌
-            // 如果没有公开令牌，这里可能返回 0 或 401
-            fetch(apiUrl)
-                .then(res => res.json())
-                .then(data => {
-                    if (data && data.pageviews) {
-                        viewsElement.innerText = data.pageviews.value;
-                    }
-                })
-                .catch(err => console.error('Umami views fetch error:', err));
+            const storageKey = 'page_views';
+            
+            // 获取所有页面的浏览记录
+            let allViews = {};
+            try {
+                const stored = localStorage.getItem(storageKey);
+                if (stored) {
+                    allViews = JSON.parse(stored);
+                }
+            } catch (e) {
+                console.error('读取浏览记录失败:', e);
+            }
+            
+            // 如果当前页面没有记录，初始化为 0
+            if (!allViews[currentPath]) {
+                allViews[currentPath] = 0;
+            }
+            
+            // 增加阅读量
+            allViews[currentPath]++;
+            
+            // 保存到 localStorage
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(allViews));
+            } catch (e) {
+                console.error('保存浏览记录失败:', e);
+            }
+            
+            // 显示阅读量
+            viewsElement.innerText = allViews[currentPath];
         }
     });
 </script>
