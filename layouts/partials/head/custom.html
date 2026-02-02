@@ -10,44 +10,49 @@
 <script defer src="https://unknown-qzthzzic4-w2343419-dels-projects.vercel.app/script.js"
     data-website-id="aee9b0a3-00c8-4037-8b99-e6bb4c336cb9"></script>
 
-<!-- 阅读量统计 (本地存储) -->
+<!-- Umami 统计脚本 -->
+<script async src="https://unknown-qzthzzic4-w2343419-dels-projects.vercel.app/script.js" 
+        data-website-id="aee9b0a3-00c8-4037-8b99-e6bb4c336cb9"></script>
+
+<!-- 阅读量显示和统计 -->
 <script>
+    // 获取或更新页面阅读量
+    function getPageViews(path) {
+        const storageKey = 'page_views_' + path.replace(/\//g, '_');
+        return parseInt(localStorage.getItem(storageKey) || '0');
+    }
+    
+    function incrementPageViews(path) {
+        const storageKey = 'page_views_' + path.replace(/\//g, '_');
+        let views = getPageViews(path);
+        views++;
+        localStorage.setItem(storageKey, views.toString());
+        return views;
+    }
+    
     document.addEventListener('DOMContentLoaded', function () {
-        const viewsElement = document.querySelector('[data-umami-page-pv] .umami-value');
+        const currentPath = window.location.pathname;
         
-        if (viewsElement) {
-            const currentPath = window.location.pathname;
-            const storageKey = 'page_views';
-            
-            // 获取所有页面的浏览记录
-            let allViews = {};
-            try {
-                const stored = localStorage.getItem(storageKey);
-                if (stored) {
-                    allViews = JSON.parse(stored);
-                }
-            } catch (e) {
-                console.error('读取浏览记录失败:', e);
-            }
-            
-            // 如果当前页面没有记录，初始化为 0
-            if (!allViews[currentPath]) {
-                allViews[currentPath] = 0;
-            }
-            
-            // 增加阅读量
-            allViews[currentPath]++;
-            
-            // 保存到 localStorage
-            try {
-                localStorage.setItem(storageKey, JSON.stringify(allViews));
-            } catch (e) {
-                console.error('保存浏览记录失败:', e);
-            }
-            
-            // 显示阅读量
-            viewsElement.innerText = allViews[currentPath];
+        // 处理文章详情页的阅读量
+        const detailViewsElement = document.querySelector('[data-umami-page-pv] .umami-value');
+        if (detailViewsElement) {
+            // 文章详情页：增加阅读量
+            const views = incrementPageViews(currentPath);
+            detailViewsElement.innerText = views;
         }
+        
+        // 处理首页文章列表的阅读量显示
+        document.querySelectorAll('.article-list article').forEach(function (article) {
+            const link = article.querySelector('header a[href]');
+            const viewsElement = article.querySelector('[data-umami-page-pv] .umami-value');
+            
+            if (link && viewsElement) {
+                // 获取文章的路径
+                const articlePath = new URL(link.href).pathname;
+                // 显示该文章的阅读量（不增加）
+                viewsElement.innerText = getPageViews(articlePath);
+            }
+        });
     });
 </script>
 
