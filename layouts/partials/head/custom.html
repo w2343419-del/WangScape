@@ -1,60 +1,9 @@
-<!-- 冻结整个侧边栏布局，防止初始化时任何地方的跳动 -->
-<style id="freeze-sidebar">
-    /* 冻结整个侧边栏 */
-    .sidebar.left {
-        width: 260px !important;
-        min-width: 260px !important;
-        max-width: 260px !important;
-        height: 100% !important;
-        overflow: hidden !important;
-        contain: strict !important;
-    }
-    
-    /* 冻结所有可能改变尺寸的元素 */
-    .sidebar-bottom-controls {
-        height: 92px !important;
-        min-height: 92px !important;
-        max-height: 92px !important;
-        overflow: hidden !important;
-    }
-    
-    #dark-mode-toggle,
-    #lang-switch {
-        height: 40px !important;
-        min-height: 40px !important;
-        max-height: 40px !important;
-        overflow: hidden !important;
-        line-height: 40px !important;
-    }
-    
-    .site-avatar {
-        width: 150px !important;
-        height: 150px !important;
-        min-width: 150px !important;
-        min-height: 150px !important;
-    }
-    
-    #main-menu {
-        height: calc(100vh - 360px) !important;
-        max-height: calc(100vh - 360px) !important;
-        overflow: hidden !important;
-    }
-</style>
-
+<!-- 简单初始化脚本，无需冻结 -->
 <script>
-    // 初始化完成后移除冻结样式，恢复动态布局
-    window.addEventListener('onColorSchemeChange', () => {
-        const style = document.getElementById('freeze-sidebar');
-        if (style) {
-            setTimeout(() => style.remove(), 100);
-        }
-    }, { once: true });
-    
-    // 超时安全：3秒后无论如何都移除
-    setTimeout(() => {
-        const style = document.getElementById('freeze-sidebar');
-        if (style) style.remove();
-    }, 3000);
+    // 页面加载完成后的初始化逻辑
+    window.addEventListener('load', () => {
+        // 页面完全加载
+    });
 </script>
 
 <!-- Umami 统计 -->
