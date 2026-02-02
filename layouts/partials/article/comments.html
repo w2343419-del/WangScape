@@ -1,0 +1,373 @@
+{{ if (.Params.comments | default true) }}
+<div class="article-comments">
+    <h3>💬 评论</h3>
+    
+    <!-- 评论列表 -->
+    <div id="comments-list" class="comments-container">
+        <div style="text-align: center; color: #999; padding: 40px;">
+            加载评论中...
+        </div>
+    </div>
+
+    <!-- 评论表单 -->
+    <div class="comment-form-wrapper">
+        <h4>发表评论</h4>
+        <div id="replying-to" style="display:none; margin-bottom:10px; font-size:13px; color:#666;">
+            正在回复：<span id="replying-to-name"></span>
+            <button type="button" class="comment-reply-cancel" onclick="cancelReply()">取消回复</button>
+        </div>
+        <form id="comment-form" onsubmit="submitComment(event)">
+            <input type="hidden" id="comment-parent-id" name="parent_id" />
+            <div class="form-group">
+                <label for="comment-name">姓名 *</label>
+                <input type="text" id="comment-name" name="name" placeholder="您的姓名" required />
+            </div>
+            <div class="form-group">
+                <label for="comment-email">邮箱 *</label>
+                <input type="email" id="comment-email" name="email" placeholder="your@email.com" required />
+            </div>
+            <div class="form-group">
+                <label for="comment-content">评论 *</label>
+                <textarea id="comment-content" name="content" placeholder="请输入您的评论..." required rows="4"></textarea>
+            </div>
+            <button type="submit" class="btn-submit">发表评论</button>
+            <span id="comment-status" style="margin-left: 15px; color: #999;"></span>
+        </form>
+    </div>
+</div>
+
+<style>
+.article-comments {
+    margin-top: 60px;
+    padding-top: 40px;
+    border-top: 2px solid #f0f0f0;
+}
+
+.article-comments h3 {
+    margin: 0 0 30px 0;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.comments-container {
+    margin-bottom: 40px;
+}
+
+.comment-item {
+    padding: 20px;
+    margin-bottom: 15px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    border-left: 3px solid #2b579a;
+}
+
+.comment-children {
+    margin-left: 30px;
+    padding-left: 15px;
+    border-left: 2px dashed #e0e0e0;
+}
+
+.comment-reply-btn {
+    background: transparent;
+    border: none;
+    color: #2b579a;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0;
+}
+
+.comment-reply-btn:hover {
+    text-decoration: underline;
+}
+
+.comment-reply-cancel {
+    margin-left: 10px;
+    background: transparent;
+    border: none;
+    color: #f44336;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.comment-item.pending {
+    background: #fffbf0;
+    border-left-color: #ff9800;
+}
+
+.comment-author {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.comment-meta {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.comment-status {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-left: 10px;
+    font-weight: 600;
+}
+
+.comment-status.approved {
+    background: #c8e6c9;
+    color: #2e7d32;
+}
+
+.comment-status.pending {
+    background: #ffe0b2;
+    color: #e65100;
+}
+
+.comment-content {
+    color: #555;
+    line-height: 1.6;
+    word-break: break-word;
+}
+
+.comment-form-wrapper {
+    background: #f5f5f5;
+    padding: 30px;
+    border-radius: 8px;
+    margin-top: 40px;
+}
+
+.comment-form-wrapper h4 {
+    margin: 0 0 20px 0;
+    font-size: 16px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    font-size: 14px;
+    color: #333;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #2b579a;
+    box-shadow: 0 0 0 2px rgba(43, 87, 154, 0.1);
+}
+
+.btn-submit {
+    background: #2b579a;
+    color: white;
+    padding: 10px 24px;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s;
+}
+
+.btn-submit:hover {
+    background: #1e4073;
+}
+
+.btn-submit:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+#comment-status {
+    display: inline-block;
+}
+
+@media (max-width: 768px) {
+    .article-comments {
+        margin-top: 40px;
+        padding-top: 30px;
+    }
+
+    .comment-form-wrapper {
+        padding: 20px;
+    }
+}
+</style>
+
+<script>
+    const currentPostPath = '{{ .File.Path }}';
+    
+    async function loadComments() {
+        try {
+            const res = await fetch('/api/comments?path=' + encodeURIComponent(currentPostPath));
+            const data = await res.json();
+            
+            let html = '';
+            if (data.data && data.data.length > 0) {
+                const tree = buildCommentTree(data.data);
+                tree.forEach(comment => {
+                    html += renderCommentItem(comment);
+                });
+            } else {
+                html = '<div style="text-align: center; color: #999; padding: 40px;">暂无评论，快来抢沙发吧！</div>';
+            }
+            
+            document.getElementById('comments-list').innerHTML = html;
+        } catch (e) {
+            document.getElementById('comments-list').innerHTML = '<div style="color: red; padding: 20px;">加载评论失败</div>';
+            console.error('加载评论出错:', e);
+        }
+    }
+
+    async function submitComment(event) {
+        event.preventDefault();
+        
+        const name = document.getElementById('comment-name').value.trim();
+        const email = document.getElementById('comment-email').value.trim();
+        const content = document.getElementById('comment-content').value.trim();
+        const parentId = document.getElementById('comment-parent-id').value;
+        const statusEl = document.getElementById('comment-status');
+        const submitBtn = event.target.querySelector('.btn-submit');
+        
+        if (!name || !email || !content) {
+            statusEl.textContent = '⚠️ 请填写所有字段';
+            statusEl.style.color = '#f44336';
+            return;
+        }
+
+        submitBtn.disabled = true;
+        statusEl.textContent = '⏳ 提交中...';
+        statusEl.style.color = '#ff9800';
+
+        try {
+            const res = await fetch('/api/add_comment', {
+                method: 'POST',
+                body: JSON.stringify({
+                    post_path: currentPostPath,
+                    author: name,
+                    email: email,
+                    content: content,
+                    parent_id: parentId || ''
+                })
+            });
+            
+            const data = await res.json();
+            if (data.success) {
+                statusEl.textContent = '✅ 评论已提交，等待审核';
+                statusEl.style.color = '#4CAF50';
+                document.getElementById('comment-form').reset();
+                cancelReply();
+                
+                // 重新加载评论列表
+                setTimeout(() => {
+                    loadComments();
+                    statusEl.textContent = '';
+                }, 2000);
+            } else {
+                statusEl.textContent = '❌ ' + (data.message || '提交失败');
+                statusEl.style.color = '#f44336';
+            }
+        } catch (e) {
+            statusEl.textContent = '❌ 网络错误: ' + e;
+            statusEl.style.color = '#f44336';
+            console.error('提交评论出错:', e);
+        } finally {
+            submitBtn.disabled = false;
+        }
+    }
+
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    function buildCommentTree(comments) {
+        const map = {};
+        const roots = [];
+        comments.forEach(c => {
+            c.children = [];
+            map[c.id] = c;
+        });
+        comments.forEach(c => {
+            if (c.parent_id && map[c.parent_id]) {
+                map[c.parent_id].children.push(c);
+            } else {
+                roots.push(c);
+            }
+        });
+        return roots;
+    }
+
+    function renderCommentItem(comment) {
+        const safeAuthor = (comment.author || '').replace(/'/g, "\\'");
+        let html = `
+            <div class="comment-item">
+                <div class="comment-author">
+                    ${escapeHtml(comment.author)}
+                    <span class="comment-status approved">✓ 已批准</span>
+                </div>
+                <div class="comment-meta">
+                    ${comment.timestamp}
+                </div>
+                <div class="comment-content">
+                    ${escapeHtml(comment.content).replace(/\n/g, '<br>')}
+                </div>
+                <button class="comment-reply-btn" onclick="startReply('${comment.id}', '${safeAuthor}')">回复</button>
+            </div>
+        `;
+        if (comment.children && comment.children.length > 0) {
+            html += '<div class="comment-children">';
+            comment.children.forEach(child => {
+                html += renderCommentItem(child);
+            });
+            html += '</div>';
+        }
+        return html;
+    }
+
+    function startReply(commentId, author) {
+        document.getElementById('comment-parent-id').value = commentId;
+        document.getElementById('replying-to-name').textContent = author;
+        document.getElementById('replying-to').style.display = 'block';
+        document.getElementById('comment-content').focus();
+    }
+
+    function cancelReply() {
+        document.getElementById('comment-parent-id').value = '';
+        document.getElementById('replying-to').style.display = 'none';
+        document.getElementById('replying-to-name').textContent = '';
+    }
+
+    // 页面加载时获取评论
+    document.addEventListener('DOMContentLoaded', function() {
+        loadComments();
+    });
+
+    // 如果页面已加载，直接加载评论
+    if (document.readyState === 'interactive' || document.readyState === 'complete') {
+        loadComments();
+    }
+</script>
+{{ end }}

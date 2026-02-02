@@ -1,19 +1,23 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"regexp"
-	"runtime"
-	"sort"
-	"strings"
-	"time"
+    "bytes"
+    "encoding/csv"
+    "encoding/json"
+    "fmt"
+    "io/ioutil"
+    "net/http"
+    "net/smtp"
+    "net/url"
+    "os"
+    "os/exec"
+    "path/filepath"
+    "regexp"
+    "runtime"
+    "sort"
+    "strconv"
+    "strings"
+    "time"
 )
 
 const (
@@ -31,6 +35,7 @@ type Post struct {
 	Date        string `json:"date"`
 	Status      string `json:"status"`
 	StatusColor string `json:"status_color"`
+	Pinned      bool   `json:"pinned"`
 }
 
 // Frontmatter represents post metadata
@@ -39,6 +44,7 @@ type Frontmatter struct {
 	Draft      bool
 	Date       string
 	Categories []string
+	Pinned     bool
 }
 
 // APIResponse is a generic API response
@@ -47,6 +53,181 @@ type APIResponse struct {
 	Message string      `json:"message,omitempty"`
 	Content string      `json:"content,omitempty"`
 	Data    interface{} `json:"data,omitempty"`
+}
+
+// Comment represents a blog comment
+type Comment struct {
+	ID        string `json:"id"`
+	Author    string `json:"author"`
+	Email     string `json:"email"`
+	Content   string `json:"content"`
+	Timestamp string `json:"timestamp"`
+	Approved  bool   `json:"approved"`
+	PostPath  string `json:"post_path"`
+	IPAddress string `json:"ip_address"`
+	UserAgent string `json:"user_agent"`
+    ParentID  string `json:"parent_id,omitempty"`
+}
+
+// CommentSettings represents comment notification and blacklist settings
+type CommentSettings struct {
+    SMTPEnabled     bool     `json:"smtp_enabled"`
+    SMTPHost        string   `json:"smtp_host"`
+    SMTPPort        int      `json:"smtp_port"`
+    SMTPUser        string   `json:"smtp_user"`
+    SMTPPass        string   `json:"smtp_pass"`
+    SMTPFrom        string   `json:"smtp_from"`
+    SMTPTo          []string `json:"smtp_to"`
+    NotifyOnPending bool     `json:"notify_on_pending"`
+    BlacklistIPs    []string `json:"blacklist_ips"`
+    BlacklistWords  []string `json:"blacklist_keywords"`
+}
+
+// CommentsFile represents the comments data file structure
+type CommentsFile struct {
+	Comments []Comment `json:"comments"`
+}
+
+func getCommentSettingsPath() string {
+    return filepath.Join(hugoPath, "config", "comment_settings.json")
+}
+
+func loadCommentSettings() CommentSettings {
+    path := getCommentSettingsPath()
+    settings := CommentSettings{
+        SMTPEnabled:     false,
+        SMTPPort:        587,
+        NotifyOnPending: true,
+        BlacklistIPs:    []string{},
+        BlacklistWords:  []string{},
+    }
+
+    if _, err := os.Stat(path); os.IsNotExist(err) {
+        return settings
+    }
+
+    content, err := ioutil.ReadFile(path)
+    if err != nil {
+        return settings
+    }
+
+    if err := json.Unmarshal(content, &settings); err != nil {
+        return settings
+    }
+
+    return settings
+}
+
+func saveCommentSettings(settings CommentSettings) error {
+    path := getCommentSettingsPath()
+    data, err := json.MarshalIndent(settings, "", "  ")
+    if err != nil {
+        return err
+    }
+    return ioutil.WriteFile(path, data, 0644)
+}
+
+func isCommentBlacklisted(settings CommentSettings, ip, author, email, content string) bool {
+    ip = strings.TrimSpace(strings.ToLower(ip))
+    text := strings.ToLower(strings.Join([]string{author, email, content}, " "))
+
+    for _, b := range settings.BlacklistIPs {
+        if strings.TrimSpace(strings.ToLower(b)) != "" && ip != "" && strings.Contains(ip, strings.TrimSpace(strings.ToLower(b))) {
+            return true
+        }
+    }
+
+    for _, w := range settings.BlacklistWords {
+        keyword := strings.TrimSpace(strings.ToLower(w))
+        if keyword != "" && strings.Contains(text, keyword) {
+            return true
+        }
+    }
+
+    return false
+}
+
+func sendCommentNotification(settings CommentSettings, comment Comment, postTitle string) error {
+    if !settings.SMTPEnabled || !settings.NotifyOnPending {
+        return nil
+    }
+
+    from := settings.SMTPFrom
+    if from == "" {
+        from = settings.SMTPUser
+    }
+    if from == "" || len(settings.SMTPTo) == 0 || settings.SMTPHost == "" || settings.SMTPPort == 0 {
+        return nil
+    }
+
+    subject := fmt.Sprintf("新评论待审核 - %s", postTitle)
+    body := fmt.Sprintf(
+        "文章: %s\n作者: %s\n邮箱: %s\n时间: %s\nIP: %s\nUA: %s\n\n内容:\n%s\n",
+        postTitle,
+        comment.Author,
+        comment.Email,
+        comment.Timestamp,
+        comment.IPAddress,
+        comment.UserAgent,
+        comment.Content,
+    )
+
+    msg := bytes.NewBuffer(nil)
+    msg.WriteString("From: " + from + "\r\n")
+    msg.WriteString("To: " + strings.Join(settings.SMTPTo, ",") + "\r\n")
+    msg.WriteString("Subject: " + subject + "\r\n")
+    msg.WriteString("MIME-Version: 1.0\r\n")
+    msg.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
+    msg.WriteString("\r\n")
+    msg.WriteString(body)
+
+    addr := settings.SMTPHost + ":" + strconv.Itoa(settings.SMTPPort)
+    auth := smtp.PlainAuth("", settings.SMTPUser, settings.SMTPPass, settings.SMTPHost)
+    return smtp.SendMail(addr, auth, from, settings.SMTPTo, msg.Bytes())
+}
+
+type CommentWithPost struct {
+    Comment
+    PostTitle string `json:"post_title"`
+}
+
+func collectAllComments() ([]CommentWithPost, error) {
+    var results []CommentWithPost
+    contentRoot := filepath.Join(hugoPath, "content")
+    if _, err := os.Stat(contentRoot); err != nil {
+        return results, nil
+    }
+
+    err := filepath.Walk(contentRoot, func(path string, info os.FileInfo, err error) error {
+        if err != nil || !info.IsDir() {
+            return nil
+        }
+        commentsPath := filepath.Join(path, "comments.json")
+        if _, err := os.Stat(commentsPath); err == nil {
+            indexPath := filepath.Join(path, "index.md")
+            comments, err := getComments(indexPath)
+            if err != nil {
+                return nil
+            }
+            content, err := ioutil.ReadFile(indexPath)
+            if err != nil {
+                return nil
+            }
+            fm := parseFrontmatter(string(content))
+            for _, c := range comments {
+                relPath, _ := filepath.Rel(hugoPath, indexPath)
+                c.PostPath = relPath
+                results = append(results, CommentWithPost{Comment: c, PostTitle: fm.Title})
+            }
+        }
+        return nil
+    })
+
+    if err != nil {
+        return results, err
+    }
+
+    return results, nil
 }
 
 func init() {
@@ -209,6 +390,10 @@ func parseFrontmatter(content string) Frontmatter {
 			fm.Draft = true
 		}
 
+		if strings.HasPrefix(line, "pinned:") && strings.Contains(strings.ToLower(line), "true") {
+			fm.Pinned = true
+		}
+
 		if strings.HasPrefix(line, "date:") {
 			dateStr := strings.TrimSpace(strings.TrimPrefix(line, "date:"))
 			dateStr = strings.Trim(dateStr, `"`)
@@ -315,13 +500,17 @@ func getPosts() []Post {
 			Date:        dateStr,
 			Status:      status,
 			StatusColor: color,
+			Pinned:      fm.Pinned,
 		})
 
 		return nil
 	})
 
-	// Sort by date descending, limit to 50
+	// Sort by pinned first, then by date descending, limit to 50
 	sort.Slice(posts, func(i, j int) bool {
+		if posts[i].Pinned != posts[j].Pinned {
+			return posts[i].Pinned // pinned posts come first
+		}
 		return posts[i].Date > posts[j].Date
 	})
 
@@ -330,6 +519,49 @@ func getPosts() []Post {
 	}
 
 	return posts
+}
+
+// getCommentStats returns comment statistics for a post
+func getCommentStats(postPath string) map[string]int {
+	stats := map[string]int{
+		"total":   0,
+		"pending": 0,
+	}
+
+	comments, err := getComments(postPath)
+	if err != nil {
+		return stats
+	}
+
+	stats["total"] = len(comments)
+	for _, c := range comments {
+		if !c.Approved {
+			stats["pending"]++
+		}
+	}
+
+	return stats
+}
+
+// getAllCommentsStats returns statistics for all posts
+func getAllCommentsStats() map[string]interface{} {
+	totalPending := 0
+	totalComments := 0
+	postStats := make(map[string]map[string]int)
+
+	posts := getPosts()
+	for _, post := range posts {
+		stats := getCommentStats(post.Path)
+		postStats[post.Path] = stats
+		totalComments += stats["total"]
+		totalPending += stats["pending"]
+	}
+
+	return map[string]interface{}{
+		"total_comments": totalComments,
+		"total_pending":  totalPending,
+		"post_stats":     postStats,
+	}
 }
 
 // createSyncPost creates bilingual post
@@ -366,6 +598,113 @@ func sanitizeFilename(title string) string {
 	s := strings.ToLower(title)
 	s = reg.ReplaceAllString(s, "-")
 	return strings.Trim(s, "-")
+}
+
+// getCommentsPath returns the path to comments file for a post
+func getCommentsPath(postPath string) string {
+	// postPath format: content/zh-cn/post/example/index.md
+	// comments file: content/zh-cn/post/example/comments.json
+	dir := filepath.Dir(postPath)
+	return filepath.Join(dir, "comments.json")
+}
+
+// getComments reads comments for a post
+func getComments(postPath string) ([]Comment, error) {
+	commentsPath := getCommentsPath(postPath)
+	fullPath := filepath.Join(hugoPath, commentsPath)
+	
+	// If file doesn't exist, return empty list
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		return []Comment{}, nil
+	}
+	
+	content, err := ioutil.ReadFile(fullPath)
+	if err != nil {
+		return nil, err
+	}
+	
+	var cf CommentsFile
+	if err := json.Unmarshal(content, &cf); err != nil {
+		return nil, err
+	}
+	
+	return cf.Comments, nil
+}
+
+// saveComments saves comments to file
+func saveComments(postPath string, comments []Comment) error {
+	commentsPath := getCommentsPath(postPath)
+	fullPath := filepath.Join(hugoPath, commentsPath)
+	
+	cf := CommentsFile{Comments: comments}
+	data, err := json.MarshalIndent(cf, "", "  ")
+	if err != nil {
+		return err
+	}
+	
+	return ioutil.WriteFile(fullPath, data, 0644)
+}
+
+// addComment adds a new comment to a post
+func addComment(postPath, author, email, content, ipAddress, userAgent, parentID string) (Comment, error) {
+	comments, err := getComments(postPath)
+	if err != nil {
+        return Comment{}, err
+	}
+	
+	// Generate unique ID
+	id := fmt.Sprintf("%d-%d", time.Now().Unix(), len(comments))
+	
+	// Create new comment (not approved by default)
+    comment := Comment{
+		ID:        id,
+		Author:    author,
+		Email:     email,
+		Content:   content,
+		Timestamp: time.Now().Format("2006-01-02 15:04:05"),
+		Approved:  false,
+		PostPath:  postPath,
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+        ParentID:  parentID,
+	}
+	
+	comments = append(comments, comment)
+    return comment, saveComments(postPath, comments)
+}
+
+// approveComment approves a comment
+func approveComment(postPath, commentID string) error {
+	comments, err := getComments(postPath)
+	if err != nil {
+		return err
+	}
+	
+	for i := range comments {
+		if comments[i].ID == commentID {
+			comments[i].Approved = true
+			break
+		}
+	}
+	
+	return saveComments(postPath, comments)
+}
+
+// deleteComment deletes a comment
+func deleteComment(postPath, commentID string) error {
+	comments, err := getComments(postPath)
+	if err != nil {
+		return err
+	}
+	
+	var filtered []Comment
+	for _, c := range comments {
+		if c.ID != commentID {
+			filtered = append(filtered, c)
+		}
+	}
+	
+	return saveComments(postPath, filtered)
 }
 
 // updateFrontmatter updates post metadata
@@ -564,6 +903,266 @@ func handleDeletePost(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Deleted"})
 }
 
+func handleGetComments(w http.ResponseWriter, r *http.Request) {
+	postPath := r.URL.Query().Get("path")
+	if postPath == "" {
+		http.Error(w, "Missing path", http.StatusBadRequest)
+		return
+	}
+
+	comments, err := getComments(postPath)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
+		return
+	}
+
+	// Return only approved comments for public view
+	var approved []Comment
+	for _, c := range comments {
+		if c.Approved {
+			approved = append(approved, c)
+		}
+	}
+
+	respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: approved})
+}
+
+func handleAddComment(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		PostPath string `json:"post_path"`
+		Author   string `json:"author"`
+		Email    string `json:"email"`
+		Content  string `json:"content"`
+        ParentID string `json:"parent_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+		return
+	}
+
+	// Get IP address
+	ipAddress := r.Header.Get("X-Forwarded-For")
+	if ipAddress == "" {
+		ipAddress = r.Header.Get("X-Real-IP")
+	}
+	if ipAddress == "" {
+		ipAddress = r.RemoteAddr
+	}
+
+	// Get User-Agent
+	userAgent := r.Header.Get("User-Agent")
+
+    settings := loadCommentSettings()
+    if isCommentBlacklisted(settings, ipAddress, data.Author, data.Email, data.Content) {
+        respondJSON(w, http.StatusOK, APIResponse{Success: false, Message: "评论被拦截"})
+        return
+    }
+
+    comment, err := addComment(data.PostPath, data.Author, data.Email, data.Content, ipAddress, userAgent, data.ParentID)
+    if err != nil {
+		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
+		return
+	}
+
+    // 发送邮件通知（不阻塞主流程）
+    go func() {
+        postTitle := ""
+        fullPath := filepath.Join(hugoPath, data.PostPath)
+        if content, err := ioutil.ReadFile(fullPath); err == nil {
+            fm := parseFrontmatter(string(content))
+            postTitle = fm.Title
+        }
+        _ = sendCommentNotification(settings, comment, postTitle)
+    }()
+
+	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "评论已提交，等待审核"})
+}
+
+func handleApproveComment(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		PostPath  string `json:"post_path"`
+		CommentID string `json:"comment_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+		return
+	}
+
+	if err := approveComment(data.PostPath, data.CommentID); err != nil {
+		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "评论已批准"})
+}
+
+func handleDeleteComment(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		PostPath  string `json:"post_path"`
+		CommentID string `json:"comment_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+		return
+	}
+
+	if err := deleteComment(data.PostPath, data.CommentID); err != nil {
+		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "评论已删除"})
+}
+
+func handleGetAllComments(w http.ResponseWriter, r *http.Request) {
+	postPath := r.URL.Query().Get("path")
+	if postPath == "" {
+		http.Error(w, "Missing path", http.StatusBadRequest)
+		return
+	}
+
+	comments, err := getComments(postPath)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
+		return
+	}
+
+	// Return all comments (for admin view)
+	respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: comments})
+}
+
+func handleCommentStats(w http.ResponseWriter, r *http.Request) {
+	stats := getAllCommentsStats()
+	respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: stats})
+}
+
+func handleGetPendingComments(w http.ResponseWriter, r *http.Request) {
+	var pendingComments []CommentWithPost
+
+	// 遍历所有文章，收集未审核评论
+	contentRoot := filepath.Join(hugoPath, "content")
+	filepath.Walk(contentRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil || !info.IsDir() {
+			return nil
+		}
+
+		// 查找 comments.json 文件
+		commentsPath := filepath.Join(path, "comments.json")
+		if _, err := os.Stat(commentsPath); err == nil {
+			comments, err := getComments(filepath.Join(path, "index.md"))
+			if err == nil {
+				// 获取文章标题
+				indexPath := filepath.Join(path, "index.md")
+				content, err := ioutil.ReadFile(indexPath)
+				if err == nil {
+					fm := parseFrontmatter(string(content))
+					for _, c := range comments {
+						if !c.Approved {
+							relPath, _ := filepath.Rel(hugoPath, indexPath)
+							c.PostPath = relPath
+							pendingComments = append(pendingComments, CommentWithPost{
+								Comment:   c,
+								PostTitle: fm.Title,
+							})
+						}
+					}
+				}
+			}
+		}
+		return nil
+	})
+
+	// 按时间倒序排序
+	sort.Slice(pendingComments, func(i, j int) bool {
+		return pendingComments[i].Timestamp > pendingComments[j].Timestamp
+	})
+
+	respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: pendingComments})
+}
+
+func handleGetCommentSettings(w http.ResponseWriter, r *http.Request) {
+    settings := loadCommentSettings()
+    respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: settings})
+}
+
+func handleSaveCommentSettings(w http.ResponseWriter, r *http.Request) {
+    var settings CommentSettings
+    if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+        return
+    }
+
+    if err := saveCommentSettings(settings); err != nil {
+        respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
+        return
+    }
+
+    respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Saved"})
+}
+
+func handleBulkComments(w http.ResponseWriter, r *http.Request) {
+    var data struct {
+        Action string `json:"action"`
+        Items  []struct {
+            PostPath  string `json:"post_path"`
+            CommentID string `json:"comment_id"`
+        } `json:"items"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+        return
+    }
+
+    if data.Action != "approve" && data.Action != "delete" {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid action"})
+        return
+    }
+
+    for _, item := range data.Items {
+        if data.Action == "approve" {
+            _ = approveComment(item.PostPath, item.CommentID)
+        } else {
+            _ = deleteComment(item.PostPath, item.CommentID)
+        }
+    }
+
+    respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "OK"})
+}
+
+func handleExportComments(w http.ResponseWriter, r *http.Request) {
+    comments, err := collectAllComments()
+    if err != nil {
+        respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
+        return
+    }
+
+    w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+    w.Header().Set("Content-Disposition", "attachment; filename=comments.csv")
+
+    writer := csv.NewWriter(w)
+    _ = writer.Write([]string{"post_path", "post_title", "id", "author", "email", "content", "timestamp", "approved", "ip_address", "user_agent", "parent_id"})
+    for _, c := range comments {
+        _ = writer.Write([]string{
+            c.PostPath,
+            c.PostTitle,
+            c.ID,
+            c.Author,
+            c.Email,
+            c.Content,
+            c.Timestamp,
+            strconv.FormatBool(c.Approved),
+            c.IPAddress,
+            c.UserAgent,
+            c.ParentID,
+        })
+    }
+    writer.Flush()
+}
+
 func handleCreateSync(w http.ResponseWriter, r *http.Request) {
 	var data struct {
 		Title      string `json:"title"`
@@ -711,6 +1310,17 @@ func main() {
 	http.HandleFunc("/api/create_sync", handleCreateSync)
 	http.HandleFunc("/api/sync_translate", handleSyncTranslate)
 	http.HandleFunc("/api/command", handleCommandAPI)
+	http.HandleFunc("/api/comments", handleGetComments)
+	http.HandleFunc("/api/add_comment", handleAddComment)
+	http.HandleFunc("/api/approve_comment", handleApproveComment)
+	http.HandleFunc("/api/delete_comment", handleDeleteComment)
+	http.HandleFunc("/api/all_comments", handleGetAllComments)
+	http.HandleFunc("/api/comment_stats", handleCommentStats)
+	http.HandleFunc("/api/pending_comments", handleGetPendingComments)
+    http.HandleFunc("/api/comment_settings", handleGetCommentSettings)
+    http.HandleFunc("/api/save_comment_settings", handleSaveCommentSettings)
+    http.HandleFunc("/api/bulk_comments", handleBulkComments)
+    http.HandleFunc("/api/export_comments", handleExportComments)
 
 	// Start server
 	fmt.Printf("WangScape Writer Online: http://127.0.0.1:%d\n", PORT)
@@ -913,20 +1523,32 @@ var htmlTemplate = `<!DOCTYPE html>
         .word-rib-btn {
             border: 1px solid transparent;
             background: transparent;
-            padding: 6px 12px;
-            border-radius: 3px;
+            padding: 8px 14px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 4px;
-            color: #333;
+            gap: 5px;
+            color: #555;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .word-rib-btn span:first-child {
+            font-size: 18px;
         }
 
         .word-rib-btn:hover {
-            background: #f0f0f0;
-            border-color: #d0d0d0;
+            background: #e8f4ff;
+            border-color: #4a90e2;
+            color: #4a90e2;
+            transform: translateY(-1px);
+        }
+        
+        .word-rib-btn:active {
+            transform: translateY(0);
         }
 
         .word-workspace {
@@ -937,22 +1559,201 @@ var htmlTemplate = `<!DOCTYPE html>
 
         .word-canvas {
             flex: 1;
-            background: #f3f3f3;
-            padding: 40px;
+            background: #e8eaed;
+            padding: 30px;
             overflow-y: auto;
             display: flex;
             justify-content: center;
+            gap: 25px;
+            align-items: flex-start;
+            max-width: 100%;
         }
 
         .word-paper {
             width: 800px;
-            min-height: 1000px;
+            max-width: 800px;
+            flex-shrink: 0;
+            min-height: calc(100vh - 200px);
             background: white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
             padding: 60px 80px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
+            border-radius: 4px;
+            position: relative;
+        }
+        
+        .word-paper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 80px;
+            width: 2px;
+            height: 100%;
+            background: #ffeaea;
+            opacity: 0.3;
+        }
+
+        .meta-panel {
+            width: 360px;
+            min-width: 360px;
+            max-width: 360px;
+            flex-shrink: 0;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 25px;
+            box-sizing: border-box;
+            border-radius: 4px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+            position: sticky;
+            top: 30px;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+        
+        .meta-panel:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        #comments-panel {
+            width: 360px !important;
+            min-width: 360px !important;
+            max-width: 360px !important;
+            flex-shrink: 0 !important;
+            background: white !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+            padding: 25px !important;
+            box-sizing: border-box !important;
+            border-radius: 4px !important;
+            max-height: calc(100vh - 200px) !important;
+            overflow-y: auto !important;
+            position: sticky !important;
+            top: 30px !important;
+            border: 1px solid #ffa726 !important;
+            border-left: 4px solid #ffa726 !important;
+            transition: all 0.3s ease !important;
+        }
+
+        #comments-panel.show {
+            display: block !important;
+        }
+
+        #comments-panel.hide {
+            display: none !important;
+        }
+
+        .meta-panel h3 {
+            margin: 0 0 20px 0;
+            font-size: 16px;
+            color: #333;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+
+        .meta-section {
+            margin-bottom: 25px;
+        }
+
+        .meta-section label {
+            display: block;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .meta-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+            font-family: var(--font-main);
+        }
+
+        .meta-input:focus {
+            outline: none;
+            border-color: var(--word-blue);
+        }
+
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+            min-height: 34px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+
+        .tag-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--word-blue);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .tag-remove {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .tag-remove:hover {
+            opacity: 1;
+        }
+
+        .tag-input-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tag-input-row input {
+            flex: 1;
+        }
+
+        .tag-input-row button {
+            padding: 8px 16px;
+            background: var(--word-blue);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .tag-input-row button:hover {
+            opacity: 0.9;
+        }
+
+        .meta-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .meta-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .meta-checkbox label {
+            margin: 0;
+            cursor: pointer;
         }
 
         .wp-title {
@@ -1022,15 +1823,161 @@ var htmlTemplate = `<!DOCTYPE html>
 
         #editor-textarea {
             width: 100%;
-            height: 800px;
+            height: 100%;
+            min-height: 600px;
             border: none;
             resize: none;
             outline: none;
-            font-family: 'Inter', monospace;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             font-size: 15px;
-            line-height: 1.6;
-            color: #333;
+            line-height: 1.8;
+            color: #2c3e50;
             padding: 0;
+            tab-size: 4;
+        }
+        
+        #editor-textarea::selection {
+            background: rgba(74, 144, 226, 0.3);
+        }
+        
+        .pending-comment-card {
+            background: var(--dash-sidebar);
+            border: 1px solid var(--dash-border);
+            border-left: 4px solid #ff9800;
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s ease;
+        }
+        
+        .pending-comment-card:hover {
+            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.2);
+            border-left-color: #ff5722;
+        }
+        
+        .comment-post-title {
+            font-size: 14px;
+            color: #4a90e2;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .comment-meta {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: var(--dash-text-dim);
+        }
+        
+        .comment-author {
+            font-weight: 600;
+            color: var(--dash-text);
+        }
+        
+        .comment-content {
+            color: var(--dash-text);
+            line-height: 1.6;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: rgba(255, 152, 0, 0.05);
+            border-radius: 8px;
+            word-break: break-word;
+        }
+        
+        .comment-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-approve {
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .btn-approve:hover {
+            background: #45a049;
+            transform: translateY(-1px);
+        }
+        
+        .btn-delete {
+            padding: 8px 16px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .btn-delete:hover {
+            background: #da190b;
+            transform: translateY(-1px);
+        }
+        
+        .comment-tech-info {
+            font-size: 11px;
+            color: #999;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .pending-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .pending-toolbar label {
+            font-size: 13px;
+            color: var(--dash-text);
+        }
+
+        .settings-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+        }
+
+        .settings-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--dash-text);
+            margin: 10px 0;
+        }
+
+        .settings-row {
+            margin-bottom: 10px;
+        }
+
+        .settings-row input,
+        .settings-row textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(0, 0, 0, 0.2);
+            color: #fff;
+            font-size: 12px;
+            box-sizing: border-box;
+        }
+
+        .settings-row textarea {
+            min-height: 60px;
+            resize: vertical;
         }
     </style>
 </head>
@@ -1041,7 +1988,17 @@ var htmlTemplate = `<!DOCTYPE html>
             <button class="dash-btn primary" onclick="openCreateModal()">+ 新建文章 (双语同步)</button>
             <button class="dash-btn" onclick="runCommand('preview')">🌍 启动实时预览</button>
             <button class="dash-btn" onclick="runCommand('deploy')">🚀 一键提交推送</button>
+            <button class="dash-btn" onclick="switchView('pending-comments')">💬 未审核评论</button>
             <button class="dash-btn" onclick="location.reload()">🔄 刷新列表</button>
+            
+            <div id="comment-stats-box" style="background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.3); border-radius: 12px; padding: 15px; margin-top: 20px; display: none;">
+                <div style="font-size: 13px; color: #ff9800; font-weight: 600; margin-bottom: 8px;">💬 评论统计</div>
+                <div style="font-size: 12px; color: var(--dash-text); line-height: 1.8;">
+                    <div>待审核: <span id="pending-count" style="color: #ff9800; font-weight: 700;">0</span></div>
+                    <div>总评论: <span id="total-count" style="color: var(--dash-text);">0</span></div>
+                </div>
+            </div>
+            
             <div style="margin-top:auto; font-size:12px; color:var(--dash-text-dim);">
                 <span>系统状态: 在线</span><br>
                 v3.0 Go Edition
@@ -1053,23 +2010,113 @@ var htmlTemplate = `<!DOCTYPE html>
         </div>
     </div>
 
+    <div id="pending-comments-view" class="view-section">
+        <div class="dash-sidebar">
+            <div class="dash-logo">未审核评论</div>
+            <button class="dash-btn" onclick="switchView('dashboard')">← 返回主面板</button>
+            <button class="dash-btn" onclick="loadPendingComments()">🔄 刷新</button>
+            <button class="dash-btn" onclick="exportCommentsCsv()">📥 导出CSV</button>
+
+            <div class="settings-panel">
+                <div class="settings-title">🔔 邮件通知</div>
+                <div class="settings-row">
+                    <label><input type="checkbox" id="smtp-enabled" /> 启用SMTP</label>
+                </div>
+                <div class="settings-row">
+                    <input type="text" id="smtp-host" placeholder="SMTP Host" />
+                </div>
+                <div class="settings-row">
+                    <input type="number" id="smtp-port" placeholder="SMTP Port" />
+                </div>
+                <div class="settings-row">
+                    <input type="text" id="smtp-user" placeholder="SMTP 用户名" />
+                </div>
+                <div class="settings-row">
+                    <input type="password" id="smtp-pass" placeholder="SMTP 密码" />
+                </div>
+                <div class="settings-row">
+                    <input type="text" id="smtp-from" placeholder="发件人地址" />
+                </div>
+                <div class="settings-row">
+                    <input type="text" id="smtp-to" placeholder="收件人(逗号分隔)" />
+                </div>
+                <div class="settings-row">
+                    <label><input type="checkbox" id="notify-pending" /> 新评论提醒</label>
+                </div>
+
+                <div class="settings-title">⛔ 黑名单</div>
+                <div class="settings-row">
+                    <textarea id="blacklist-ips" placeholder="IP列表，一行一个"></textarea>
+                </div>
+                <div class="settings-row">
+                    <textarea id="blacklist-words" placeholder="关键词列表，一行一个"></textarea>
+                </div>
+
+                <button class="dash-btn" onclick="saveCommentSettings()">💾 保存设置</button>
+            </div>
+            
+            <div style="margin-top:auto; font-size:12px; color:var(--dash-text-dim);">
+                <span id="pending-total-count">加载中...</span>
+            </div>
+        </div>
+        <div class="dash-main">
+            <h1 class="dash-header">待审核评论列表</h1>
+            <div class="pending-toolbar">
+                <label><input type="checkbox" id="pending-select-all" onchange="toggleSelectAllPending()" /> 全选</label>
+                <button class="btn-approve" onclick="bulkApprovePending()">✅ 批量批准</button>
+                <button class="btn-delete" onclick="bulkDeletePending()">🗑 批量删除</button>
+            </div>
+            <div id="pending-comments-list" style="display:flex; flex-direction:column; gap:20px;"></div>
+        </div>
+    </div>
+
     <div id="editor-view" class="view-section">
         <div class="word-topbar">
             <div style="display:flex; align-items:center; gap:15px;">
                 <button class="word-back-btn" onclick="switchView('dashboard')">← 返回主面板</button>
                 <strong style="font-size:16px;">WangScape 写作器</strong>
+                <span id="current-doc-name" style="opacity:0.9; font-size:14px; font-weight:500;"></span>
             </div>
-            <div>
-                <span id="current-doc-name" style="opacity:0.8; margin-right:20px; font-size:13px;"></span>
-                <span id="save-status" style="font-size:12px; margin-right:15px; color:#ddd;"></span>
+            <div style="display:flex; align-items:center; gap:20px;">
+                <span id="word-count" style="font-size:13px; color:rgba(255,255,255,0.9);">字数: 0</span>
+                <span id="save-status" style="font-size:13px; color:rgba(255,255,255,0.8);"></span>
             </div>
         </div>
         <div class="word-ribbon">
-            <button class="word-rib-btn" onclick="saveDocument()"><span>💾 保存</span></button>
-            <button class="word-rib-btn" onclick="runCommand('deploy')"><span>🚀 发布</span></button>
-            <button class="word-rib-btn" onclick="runCommand('preview')"><span>👁 预览</span></button>
-            <button class="word-rib-btn" onclick="insertCodeBlock()"><span>💻 代码块</span></button>
-            <button class="word-rib-btn" onclick="insertImage()"><span>🖼 图片</span></button>
+            <button class="word-rib-btn" onclick="saveDocument()" title="保存文档 (Ctrl+S)">
+                <span>💾</span>
+                <span>保存</span>
+            </button>
+            <button class="word-rib-btn" onclick="toggleMetadataPanel()" title="编辑文章信息">
+                <span>📋</span>
+                <span>元数据</span>
+            </button>
+            <button class="word-rib-btn" onclick="switchCommentView()" title="管理评论">
+                <span>💬</span>
+                <span>评论</span>
+            </button>
+            <div style="width:1px; height:30px; background:#e0e0e0; margin:0 5px;"></div>
+            <button class="word-rib-btn" onclick="insertCodeBlock()" title="插入代码块">
+                <span>💻</span>
+                <span>代码</span>
+            </button>
+            <button class="word-rib-btn" onclick="insertImage()" title="插入图片">
+                <span>🖼</span>
+                <span>图片</span>
+            </button>
+            <button class="word-rib-btn" onclick="insertTable()" title="插入表格">
+                <span>📊</span>
+                <span>表格</span>
+            </button>
+            <div style="width:1px; height:30px; background:#e0e0e0; margin:0 5px;"></div>
+            <button class="word-rib-btn" onclick="runCommand('preview')" title="实时预览">
+                <span>👁</span>
+                <span>预览</span>
+            </button>
+            <button class="word-rib-btn" onclick="runCommand('deploy')" title="发布到网站">
+                <span>🚀</span>
+                <span>发布</span>
+            </button>
         </div>
         <div class="word-workspace">
             <div class="word-canvas">
@@ -1077,6 +2124,82 @@ var htmlTemplate = `<!DOCTYPE html>
                     <div style="text-align:center; color:#999; margin-top:100px;">
                         请选择左侧文章进行编辑
                     </div>
+                </div>
+                <div class="meta-panel" id="meta-panel" style="display:none;">
+                    <h3>📋 文章信息</h3>
+                    
+                    <div class="meta-section">
+                        <label>标题 (Title)</label>
+                        <input type="text" class="meta-input" id="title-input" placeholder="文章标题" />
+                    </div>
+
+                    <div class="meta-section">
+                        <label>日期 (Date)</label>
+                        <input type="datetime-local" class="meta-input" id="date-input" />
+                    </div>
+
+                    <div class="meta-section">
+                        <label>分类 (Categories)</label>
+                        <div class="tag-container" id="categories-container"></div>
+                        <div class="tag-input-row">
+                            <input type="text" id="category-input" placeholder="添加分类..." onkeypress="if(event.key==='Enter'){addCategory();event.preventDefault();}" />
+                            <button onclick="addCategory()">添加</button>
+                        </div>
+                    </div>
+
+                    <div class="meta-section">
+                        <label>标签 (Tags)</label>
+                        <div class="tag-container" id="tags-container"></div>
+                        <div class="tag-input-row">
+                            <input type="text" id="tag-input" placeholder="添加标签..." onkeypress="if(event.key==='Enter'){addTag();event.preventDefault();}" />
+                            <button onclick="addTag()">添加</button>
+                        </div>
+                    </div>
+
+                    <div class="meta-section">
+                        <label>描述 (Description)</label>
+                        <textarea class="meta-input" id="description-input" rows="3" placeholder="文章简介..." style="resize: vertical; min-height: 60px;"></textarea>
+                    </div>
+
+                    <div class="meta-section">
+                        <label>封面图片 URL (Image)</label>
+                        <input type="text" class="meta-input" id="image-input" placeholder="/img/cover.jpg" />
+                    </div>
+
+                    <div class="meta-section">
+                        <label>许可证 (License)</label>
+                        <input type="text" class="meta-input" id="license-input" placeholder="CC BY-SA 4.0" />
+                    </div>
+
+                    <div class="meta-section">
+                        <div class="meta-checkbox">
+                            <input type="checkbox" id="draft-checkbox" />
+                            <label for="draft-checkbox">📝 草稿状态</label>
+                        </div>
+                        <div class="meta-checkbox">
+                            <input type="checkbox" id="math-checkbox" />
+                            <label for="math-checkbox">📐 启用数学公式</label>
+                        </div>
+                        <div class="meta-checkbox">
+                            <input type="checkbox" id="comments-checkbox" />
+                            <label for="comments-checkbox">💬 允许评论</label>
+                        </div>
+                        <div class="meta-checkbox">
+                            <input type="checkbox" id="hidden-checkbox" />
+                            <label for="hidden-checkbox">🔒 隐藏文章</label>
+                        </div>
+                        <div class="meta-checkbox">
+                            <input type="checkbox" id="pinned-checkbox" />
+                            <label for="pinned-checkbox">📌 置顶文章</label>
+                        </div>
+                    </div>
+
+                    <button class="dash-btn primary" style="width:100%; margin-top:10px;" onclick="applyMetadata()">💾 应用更改</button>
+                </div>
+
+                <div id="comments-panel" class="meta-panel hide">
+                    <h3>💬 评论管理</h3>
+                    <div id="comments-list" style="max-height: 500px; overflow-y: auto;"></div>
                 </div>
             </div>
         </div>
@@ -1100,11 +2223,48 @@ var htmlTemplate = `<!DOCTYPE html>
     <script>
         let postsData = [];
         let currentDocPath = '';
+        let commentStatsData = null;
 
         function switchView(view) {
             document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active'));
             document.getElementById(view + '-view').classList.add('active');
-            if (view === 'dashboard') fetchPosts();
+            if (view === 'dashboard') {
+                fetchPosts();
+                fetchCommentStats();
+            } else if (view === 'pending-comments') {
+                loadPendingComments();
+                loadCommentSettings();
+            }
+        }
+
+        async function fetchCommentStats() {
+            try {
+                const res = await fetch('/api/comment_stats');
+                const data = await res.json();
+                if (data.success && data.data) {
+                    commentStatsData = data.data;
+                    updateCommentStatsDisplay();
+                    renderDashboardList();
+                }
+            } catch(e) {
+                console.error('获取评论统计失败:', e);
+            }
+        }
+
+        function updateCommentStatsDisplay() {
+            if (!commentStatsData) return;
+            
+            const statsBox = document.getElementById('comment-stats-box');
+            const pendingCount = document.getElementById('pending-count');
+            const totalCount = document.getElementById('total-count');
+            
+            if (commentStatsData.total_pending > 0 || commentStatsData.total_comments > 0) {
+                statsBox.style.display = 'block';
+                pendingCount.textContent = commentStatsData.total_pending;
+                totalCount.textContent = commentStatsData.total_comments;
+            } else {
+                statsBox.style.display = 'none';
+            }
         }
 
         async function fetchPosts() {
@@ -1157,6 +2317,21 @@ var htmlTemplate = `<!DOCTYPE html>
                     html += '<span style="font-size:9px; padding:2px 4px; background:#50c878; color:#fff; border-radius:3px;">英文版</span>';
                 }
                 
+                // 显示置顶标识
+                if (primaryVersion.pinned) {
+                    html += '<span style="font-size:9px; padding:2px 4px; background:#ff4444; color:#fff; border-radius:3px; margin-left:4px;">📌 置顶</span>';
+                }
+                
+                // 显示评论统计
+                if (commentStatsData && commentStatsData.post_stats) {
+                    const stats = commentStatsData.post_stats[primaryVersion.path];
+                    if (stats && stats.total > 0) {
+                        const pendingBadge = stats.pending > 0 ? 
+                            '<span style="font-size:9px; padding:2px 4px; background:#ff9800; color:#fff; border-radius:3px; margin-left:4px;">' + stats.pending + ' 待审</span>' : '';
+                        html += '<span style="font-size:9px; padding:2px 4px; background:#9e9e9e; color:#fff; border-radius:3px; margin-left:4px;">💬 ' + stats.total + '</span>' + pendingBadge;
+                    }
+                }
+                
                 html += '</div>' +
                     '<div class="dpi-meta">' + primaryVersion.date + ' · ' + primaryVersion.path + '</div>' +
                     '</div>' +
@@ -1195,17 +2370,322 @@ var htmlTemplate = `<!DOCTYPE html>
             document.getElementById('current-doc-name').style.color = langColor;
             
             const paper = document.getElementById('paper-content');
+            const metaPanel = document.getElementById('meta-panel');
             paper.innerHTML = '<div style="text-align:center; margin-top:50px; color:#888;">加载中...</div>';
 
             try {
                 const res = await fetch('/api/get_content?path=' + encodeURIComponent(path));
                 const data = await res.json();
+                
+                // 解析frontmatter
+                parseFrontmatter(data.content);
+                
                 paper.innerHTML = '<div class="wp-title">' + title + '</div>' +
                     '<div style="font-size:12px; color:#999; margin-bottom:20px;">版本: ' + lang + ' · 日期: ' + date + '</div>' +
                     '<textarea id="editor-textarea" spellcheck="false">' + data.content + '</textarea>';
+                
+                // 添加输入监听器
+                const textarea = document.getElementById('editor-textarea');
+                textarea.addEventListener('input', updateWordCount);
+                textarea.addEventListener('input', function() {
+                    document.getElementById('save-status').textContent = '⚠️ 未保存';
+                    document.getElementById('save-status').style.color = 'rgba(255, 200, 100, 0.9)';
+                });
+                
+                // 初始化字数统计
+                updateWordCount();
+                
+                // 显示元数据面板
+                metaPanel.style.display = 'block';
             } catch(e) {
                 paper.innerHTML = '<div style="color:red">错误: ' + e + '</div>';
             }
+        }
+
+        let currentMetadata = {
+            title: '',
+            date: '',
+            categories: [],
+            tags: [],
+            description: '',
+            image: '',
+            license: '',
+            draft: false,
+            math: false,
+            comments: true,
+            hidden: false,
+            pinned: false
+        };
+
+        function parseFrontmatter(content) {
+            // 提取frontmatter
+            const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+            if (!fmMatch) {
+                currentMetadata = { title: '', date: '', categories: [], tags: [], description: '', image: '', license: '', draft: false, math: false, comments: true, hidden: false, pinned: false };
+                renderMetadata();
+                return;
+            }
+
+            const fmContent = fmMatch[1];
+            
+            // 解析title
+            const titleMatch = fmContent.match(/title:\s*["']?([^"'\n]+)["']?/);
+            currentMetadata.title = titleMatch ? titleMatch[1].trim() : '';
+
+            // 解析date
+            const dateMatch = fmContent.match(/date:\s*([\w\-:+]+)/);
+            if (dateMatch) {
+                // 转换为datetime-local格式 (YYYY-MM-DDTHH:MM)
+                const dateStr = dateMatch[1].replace(/([\d-]+)T([\d:]+).*/, '$1T$2');
+                currentMetadata.date = dateStr.substring(0, 16);
+            } else {
+                currentMetadata.date = '';
+            }
+            
+            // 解析categories
+            const catMatch = fmContent.match(/categories:\s*\n((?:\s*-\s*.+\n)+)/);
+            if (catMatch) {
+                currentMetadata.categories = catMatch[1].split('\n')
+                    .filter(l => l.trim().startsWith('-'))
+                    .map(l => l.replace(/^\s*-\s*/, '').trim());
+            } else {
+                const catSingleMatch = fmContent.match(/categories:\s*\[([^\]]+)\]/);
+                if (catSingleMatch) {
+                    currentMetadata.categories = catSingleMatch[1].split(',').map(c => c.trim());
+                } else {
+                    currentMetadata.categories = [];
+                }
+            }
+
+            // 解析tags
+            const tagMatch = fmContent.match(/tags:\s*\n((?:\s*-\s*.+\n)+)/);
+            if (tagMatch) {
+                currentMetadata.tags = tagMatch[1].split('\n')
+                    .filter(l => l.trim().startsWith('-'))
+                    .map(l => l.replace(/^\s*-\s*/, '').trim());
+            } else {
+                const tagSingleMatch = fmContent.match(/tags:\s*\[([^\]]+)\]/);
+                if (tagSingleMatch) {
+                    currentMetadata.tags = tagSingleMatch[1].split(',').map(t => t.trim());
+                } else {
+                    currentMetadata.tags = [];
+                }
+            }
+
+            // 解析description
+            const descMatch = fmContent.match(/description:\s*["']?([^"'\n]+)["']?/);
+            currentMetadata.description = descMatch ? descMatch[1].trim() : '';
+
+            // 解析image
+            const imgMatch = fmContent.match(/image:\s*["']?([^"'\n]+)["']?/);
+            currentMetadata.image = imgMatch ? imgMatch[1].trim() : '';
+
+            // 解析license
+            const licenseMatch = fmContent.match(/license:\s*["']?([^"'\n]+)["']?/);
+            currentMetadata.license = licenseMatch ? licenseMatch[1].trim() : '';
+
+            // 解析draft
+            const draftMatch = fmContent.match(/draft:\s*(true|false)/);
+            currentMetadata.draft = draftMatch ? draftMatch[1] === 'true' : false;
+
+            // 解析math
+            const mathMatch = fmContent.match(/math:\s*(true|false)/);
+            currentMetadata.math = mathMatch ? mathMatch[1] === 'true' : false;
+
+            // 解析comments
+            const commentsMatch = fmContent.match(/comments:\s*(true|false)/);
+            currentMetadata.comments = commentsMatch ? commentsMatch[1] === 'true' : true;
+
+            // 解析hidden
+            const hiddenMatch = fmContent.match(/hidden:\s*(true|false)/);
+            currentMetadata.hidden = hiddenMatch ? hiddenMatch[1] === 'true' : false;
+
+            // 解析pinned
+            const pinnedMatch = fmContent.match(/pinned:\s*(true|false)/);
+            currentMetadata.pinned = pinnedMatch ? pinnedMatch[1] === 'true' : false;
+
+            renderMetadata();
+        }
+
+        function renderMetadata() {
+            // 渲染title和date
+            document.getElementById('title-input').value = currentMetadata.title;
+            document.getElementById('date-input').value = currentMetadata.date;
+
+            // 渲染分类
+            const catContainer = document.getElementById('categories-container');
+            catContainer.innerHTML = currentMetadata.categories.map(cat =>
+                '<span class="tag-item">' + cat + '<span class="tag-remove" onclick="removeCategory(\'' + cat + '\')">&times;</span></span>'
+            ).join('');
+
+            // 渲染标签
+            const tagContainer = document.getElementById('tags-container');
+            tagContainer.innerHTML = currentMetadata.tags.map(tag =>
+                '<span class="tag-item">' + tag + '<span class="tag-remove" onclick="removeTag(\'' + tag + '\')">&times;</span></span>'
+            ).join('');
+
+            // 渲染其他字段
+            document.getElementById('description-input').value = currentMetadata.description;
+            document.getElementById('image-input').value = currentMetadata.image;
+            document.getElementById('license-input').value = currentMetadata.license;
+            document.getElementById('draft-checkbox').checked = currentMetadata.draft;
+            document.getElementById('math-checkbox').checked = currentMetadata.math;
+            document.getElementById('comments-checkbox').checked = currentMetadata.comments;
+            document.getElementById('hidden-checkbox').checked = currentMetadata.hidden;
+            document.getElementById('pinned-checkbox').checked = currentMetadata.pinned;
+        }
+
+        function addCategory() {
+            const input = document.getElementById('category-input');
+            const value = input.value.trim();
+            if (value && !currentMetadata.categories.includes(value)) {
+                currentMetadata.categories.push(value);
+                renderMetadata();
+                input.value = '';
+            }
+        }
+
+        function removeCategory(cat) {
+            currentMetadata.categories = currentMetadata.categories.filter(c => c !== cat);
+            renderMetadata();
+        }
+
+        function addTag() {
+            const input = document.getElementById('tag-input');
+            const value = input.value.trim();
+            if (value && !currentMetadata.tags.includes(value)) {
+                currentMetadata.tags.push(value);
+                renderMetadata();
+                input.value = '';
+            }
+        }
+
+        function removeTag(tag) {
+            currentMetadata.tags = currentMetadata.tags.filter(t => t !== tag);
+            renderMetadata();
+        }
+
+        function applyMetadata() {
+            // 更新当前元数据
+            currentMetadata.title = document.getElementById('title-input').value.trim();
+            currentMetadata.date = document.getElementById('date-input').value;
+            currentMetadata.description = document.getElementById('description-input').value.trim();
+            currentMetadata.image = document.getElementById('image-input').value.trim();
+            currentMetadata.license = document.getElementById('license-input').value.trim();
+            currentMetadata.draft = document.getElementById('draft-checkbox').checked;
+            currentMetadata.math = document.getElementById('math-checkbox').checked;
+            currentMetadata.comments = document.getElementById('comments-checkbox').checked;
+            currentMetadata.hidden = document.getElementById('hidden-checkbox').checked;
+            currentMetadata.pinned = document.getElementById('pinned-checkbox').checked;
+            currentMetadata.pinned = document.getElementById('pinned-checkbox').checked;
+
+            // 获取当前文章内容
+            const content = document.getElementById('editor-textarea').value;
+            
+            // 更新frontmatter
+            const fmMatch = content.match(/^(---\n[\s\S]*?\n---\n)([\s\S]*)$/);
+            if (!fmMatch) {
+                alert('⚠️ 未找到frontmatter，无法更新');
+                return;
+            }
+
+            const oldFm = fmMatch[1];
+            const bodyContent = fmMatch[2];
+            
+            // 构建新的frontmatter
+            let newFm = oldFm;
+            
+            // 更新title
+            if (currentMetadata.title) {
+                newFm = newFm.replace(/title:\s*["']?[^"'\n]+["']?/, 'title: "' + currentMetadata.title + '"');
+            }
+
+            // 更新date (转换为Hugo格式)
+            if (currentMetadata.date) {
+                const hugoDate = currentMetadata.date + ':00+08:00';
+                newFm = newFm.replace(/date:\s*[\w\-:+]+/, 'date: ' + hugoDate);
+            }
+            
+            // 更新categories
+            if (currentMetadata.categories.length > 0) {
+                const catYaml = 'categories:\n' + currentMetadata.categories.map(c => '    - ' + c).join('\n');
+                newFm = newFm.replace(/categories:.*?(?=\n[a-z]|\n---)/s, catYaml);
+                if (!newFm.includes('categories:')) {
+                    newFm = newFm.replace(/---\n/, '---\n' + catYaml + '\n');
+                }
+            } else {
+                newFm = newFm.replace(/categories:.*?(?=\n[a-z]|\n---)/s, '');
+            }
+
+            // 更新tags
+            if (currentMetadata.tags.length > 0) {
+                const tagYaml = 'tags:\n' + currentMetadata.tags.map(t => '    - ' + t).join('\n');
+                newFm = newFm.replace(/tags:.*?(?=\n[a-z]|\n---)/s, tagYaml);
+                if (!newFm.includes('tags:')) {
+                    newFm = newFm.replace(/---\n/, '---\n' + tagYaml + '\n');
+                }
+            } else {
+                newFm = newFm.replace(/tags:.*?(?=\n[a-z]|\n---)/s, '');
+            }
+
+            // 更新description
+            if (currentMetadata.description) {
+                newFm = newFm.replace(/description:.*?\n/, 'description: "' + currentMetadata.description + '"\n');
+                if (!newFm.includes('description:')) {
+                    newFm = newFm.replace(/---\n/, '---\ndescription: "' + currentMetadata.description + '"\n');
+                }
+            }
+
+            // 更新image
+            if (currentMetadata.image) {
+                newFm = newFm.replace(/image:.*?\n/, 'image: "' + currentMetadata.image + '"\n');
+                if (!newFm.includes('image:')) {
+                    newFm = newFm.replace(/---\n/, '---\nimage: "' + currentMetadata.image + '"\n');
+                }
+            }
+
+            // 更新draft
+            newFm = newFm.replace(/draft:.*?\n/, 'draft: ' + currentMetadata.draft + '\n');
+            if (!newFm.includes('draft:')) {
+                newFm = newFm.replace(/---\n/, '---\ndraft: ' + currentMetadata.draft + '\n');
+            }
+
+            // 更新license
+            if (currentMetadata.license) {
+                newFm = newFm.replace(/license:.*?\n/, 'license: ' + currentMetadata.license + '\n');
+                if (!newFm.includes('license:')) {
+                    newFm = newFm.replace(/---\n/, '---\nlicense: ' + currentMetadata.license + '\n');
+                }
+            }
+
+            // 更新math
+            newFm = newFm.replace(/math:.*?\n/, 'math: ' + currentMetadata.math + '\n');
+            if (!newFm.includes('math:')) {
+                newFm = newFm.replace(/---\n/, '---\nmath: ' + currentMetadata.math + '\n');
+            }
+
+            // 更新comments
+            newFm = newFm.replace(/comments:.*?\n/, 'comments: ' + currentMetadata.comments + '\n');
+            if (!newFm.includes('comments:')) {
+                newFm = newFm.replace(/---\n/, '---\ncomments: ' + currentMetadata.comments + '\n');
+            }
+
+            // 更新hidden
+            newFm = newFm.replace(/hidden:.*?\n/, 'hidden: ' + currentMetadata.hidden + '\n');
+            if (!newFm.includes('hidden:')) {
+                newFm = newFm.replace(/---\n/, '---\nhidden: ' + currentMetadata.hidden + '\n');
+            }
+
+            // 更新pinned
+            newFm = newFm.replace(/pinned:.*?\n/, 'pinned: ' + currentMetadata.pinned + '\n');
+            if (!newFm.includes('pinned:')) {
+                newFm = newFm.replace(/---\n/, '---\npinned: ' + currentMetadata.pinned + '\n');
+            }
+
+            // 更新编辑器内容
+            document.getElementById('editor-textarea').value = newFm + bodyContent;
+            
+            alert('✅ 元数据已应用到编辑器，请点击保存按钮保存文件');
         }
 
         async function saveDocument() {
@@ -1223,7 +2703,10 @@ var htmlTemplate = `<!DOCTYPE html>
                 const data = await res.json();
                 if(data.success) {
                     statusEl.textContent = "✅ 已保存 " + new Date().toLocaleTimeString();
-                    statusEl.style.color = "#00ff88";
+                    statusEl.style.color = "rgba(100, 255, 150, 0.9)";
+                    
+                    // 更新字数统计
+                    updateWordCount();
                     
                     // 如果是中文版本，自动同步翻译到英文版本
                     if(currentDocPath.includes('zh-cn')) {
@@ -1400,7 +2883,451 @@ var htmlTemplate = `<!DOCTYPE html>
             }
         }
 
+        function switchCommentView() {
+            if (!currentDocPath) {
+                alert('⚠️ 请先选择一篇文章');
+                return;
+            }
+            const metaPanel = document.getElementById('meta-panel');
+            const commentsPanel = document.getElementById('comments-panel');
+            
+            if (commentsPanel.classList.contains('hide')) {
+                commentsPanel.classList.remove('hide');
+                commentsPanel.classList.add('show');
+                metaPanel.style.display = 'none';
+                loadComments(currentDocPath);
+            } else {
+                commentsPanel.classList.remove('show');
+                commentsPanel.classList.add('hide');
+                metaPanel.style.display = 'block';
+            }
+        }
+
+        async function loadComments(postPath) {
+            try {
+                const res = await fetch('/api/all_comments?path=' + encodeURIComponent(postPath));
+                const data = await res.json();
+                
+                let html = '';
+                if (data.data && data.data.length > 0) {
+                    data.data.forEach(comment => {
+                        const statusBadge = comment.approved ? 
+                            '<span style="color:#4CAF50; font-weight:bold;">已批准</span>' : 
+                            '<span style="color:#FF9800; font-weight:bold;">待审核</span>';
+                        
+                        const bg = comment.approved ? '#f9f9f9' : '#fffbf0';
+                        const approveBtn = !comment.approved ? 
+                            '<button onclick="approveComment(\'' + postPath + '\', \'' + comment.id + '\')" style="padding: 5px 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">批准</button>' : '';
+                        
+                        const ipInfo = comment.ip_address ? '<div style="font-size: 11px; color: #999; margin-top: 5px;"><strong>IP:</strong> ' + escapeHtml(comment.ip_address) + '</div>' : '';
+                        const uaInfo = comment.user_agent ? '<div style="font-size: 11px; color: #999; margin-top: 2px; word-break: break-all;"><strong>UA:</strong> ' + escapeHtml(comment.user_agent) + '</div>' : '';
+                        
+                        html += '<div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 6px; background: ' + bg + ';">' +
+                            '<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">' +
+                            '<div>' +
+                            '<strong>' + escapeHtml(comment.author) + '</strong>' +
+                            '<span style="font-size: 12px; color: #999;"> · ' + comment.timestamp + '</span>' +
+                            '</div>' +
+                            statusBadge +
+                            '</div>' +
+                            '<p style="margin: 10px 0; color: #333; word-break: break-word;">' + escapeHtml(comment.content) + '</p>' +
+                            ipInfo + uaInfo +
+                            '<div style="display: flex; gap: 10px; margin-top: 10px;">' +
+                            approveBtn +
+                            '<button onclick="deleteCommentConfirm(\'' + postPath + '\', \'' + comment.id + '\')" style="padding: 5px 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">删除</button>' +
+                            '</div>' +
+                            '</div>';
+                    });
+                } else {
+                    html = '<div style="text-align: center; color: #999; padding: 40px;">暂无评论</div>';
+                }
+                
+                document.getElementById('comments-list').innerHTML = html;
+            } catch (e) {
+                document.getElementById('comments-list').innerHTML = '<div style="color: red;">加载失败: ' + e + '</div>';
+            }
+        }
+
+        async function approveComment(postPath, commentId) {
+            try {
+                const res = await fetch('/api/approve_comment', {
+                    method: 'POST',
+                    body: JSON.stringify({ post_path: postPath, comment_id: commentId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ 评论已批准');
+                    loadComments(postPath);
+                } else {
+                    alert('❌ 批准失败: ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ 错误: ' + e);
+            }
+        }
+
+        function deleteCommentConfirm(postPath, commentId) {
+            if (confirm('确定要删除这条评论吗？此操作不可恢复。')) {
+                deleteCommentAction(postPath, commentId);
+            }
+        }
+
+        async function deleteCommentAction(postPath, commentId) {
+            try {
+                const res = await fetch('/api/delete_comment', {
+                    method: 'POST',
+                    body: JSON.stringify({ post_path: postPath, comment_id: commentId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ 评论已删除');
+                    loadComments(postPath);
+                } else {
+                    alert('❌ 删除失败: ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ 错误: ' + e);
+            }
+        }
+
+        async function loadPendingComments() {
+            const listEl = document.getElementById('pending-comments-list');
+            const countEl = document.getElementById('pending-total-count');
+            const selectAll = document.getElementById('pending-select-all');
+            
+            listEl.innerHTML = '<div style="text-align:center; padding:40px; color:#999;">加载中...</div>';
+            if (selectAll) selectAll.checked = false;
+            
+            try {
+                const res = await fetch('/api/pending_comments');
+                const data = await res.json();
+                
+                if (data.success && data.data) {
+                    const comments = data.data;
+                    
+                    if (comments.length === 0) {
+                        listEl.innerHTML = '<div style="text-align:center; padding:60px; color:#999; font-size:16px;">🎉 没有待审核的评论</div>';
+                        countEl.textContent = '0 条待审核';
+                        return;
+                    }
+                    
+                    countEl.textContent = comments.length + ' 条待审核';
+                    
+                    let html = '';
+                    comments.forEach(item => {
+                        const c = item;
+                        html += '<div class="pending-comment-card">' +
+                            '<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">' +
+                            '<input type="checkbox" class="pending-select" data-post="' + c.post_path.replace(/\\/g, '\\\\') + '" data-id="' + c.id + '" />' +
+                            '<div class="comment-post-title">📝 ' + escapeHtml(c.post_title) + '</div>' +
+                            '</div>' +
+                            '<div class="comment-meta">' +
+                            '<span class="comment-author">👤 ' + escapeHtml(c.author) + '</span>' +
+                            '<span>📧 ' + escapeHtml(c.email) + '</span>' +
+                            '<span>🕐 ' + c.timestamp + '</span>' +
+                            '</div>' +
+                            '<div class="comment-content">' + escapeHtml(c.content) + '</div>' +
+                            '<div class="comment-tech-info">' +
+                            '<div>🌐 IP: ' + escapeHtml(c.ip_address || '未记录') + '</div>' +
+                            '<div>💻 ' + escapeHtml(c.user_agent || '未记录') + '</div>' +
+                            '</div>' +
+                            '<div class="comment-actions">' +
+                            '<button class="btn-approve" onclick="approvePendingComment(\'' + c.post_path.replace(/\\/g, '\\\\') + '\', \'' + c.id + '\')">✅ 批准</button>' +
+                            '<button class="btn-delete" onclick="deletePendingComment(\'' + c.post_path.replace(/\\/g, '\\\\') + '\', \'' + c.id + '\')">🗑 删除</button>' +
+                            '</div>' +
+                            '</div>';
+                    });
+                    
+                    listEl.innerHTML = html;
+                } else {
+                    listEl.innerHTML = '<div style="text-align:center; padding:40px; color:red;">加载失败</div>';
+                }
+            } catch (e) {
+                listEl.innerHTML = '<div style="text-align:center; padding:40px; color:red;">网络错误: ' + e + '</div>';
+            }
+        }
+
+        function getSelectedPendingItems() {
+            const checks = document.querySelectorAll('.pending-select:checked');
+            const items = [];
+            checks.forEach(ch => {
+                items.push({
+                    post_path: ch.getAttribute('data-post'),
+                    comment_id: ch.getAttribute('data-id')
+                });
+            });
+            return items;
+        }
+
+        function toggleSelectAllPending() {
+            const selectAll = document.getElementById('pending-select-all');
+            const checks = document.querySelectorAll('.pending-select');
+            checks.forEach(ch => ch.checked = selectAll.checked);
+        }
+
+        async function bulkApprovePending() {
+            const items = getSelectedPendingItems();
+            if (items.length === 0) {
+                alert('请选择要批准的评论');
+                return;
+            }
+            try {
+                const res = await fetch('/api/bulk_comments', {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'approve', items: items })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ 批量批准完成');
+                    loadPendingComments();
+                } else {
+                    alert('❌ 批量批准失败: ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ 错误: ' + e);
+            }
+        }
+
+        async function bulkDeletePending() {
+            const items = getSelectedPendingItems();
+            if (items.length === 0) {
+                alert('请选择要删除的评论');
+                return;
+            }
+            if (!confirm('确定要批量删除所选评论吗？此操作不可恢复。')) return;
+            try {
+                const res = await fetch('/api/bulk_comments', {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'delete', items: items })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ 批量删除完成');
+                    loadPendingComments();
+                } else {
+                    alert('❌ 批量删除失败: ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ 错误: ' + e);
+            }
+        }
+
+        function exportCommentsCsv() {
+            window.open('/api/export_comments', '_blank');
+        }
+
+        async function loadCommentSettings() {
+            try {
+                const res = await fetch('/api/comment_settings');
+                const data = await res.json();
+                if (data.success && data.data) {
+                    const s = data.data;
+                    document.getElementById('smtp-enabled').checked = !!s.smtp_enabled;
+                    document.getElementById('smtp-host').value = s.smtp_host || '';
+                    document.getElementById('smtp-port').value = s.smtp_port || 587;
+                    document.getElementById('smtp-user').value = s.smtp_user || '';
+                    document.getElementById('smtp-pass').value = s.smtp_pass || '';
+                    document.getElementById('smtp-from').value = s.smtp_from || '';
+                    document.getElementById('smtp-to').value = (s.smtp_to || []).join(',');
+                    document.getElementById('notify-pending').checked = !!s.notify_on_pending;
+                    document.getElementById('blacklist-ips').value = (s.blacklist_ips || []).join('\n');
+                    document.getElementById('blacklist-words').value = (s.blacklist_keywords || []).join('\n');
+                }
+            } catch (e) {
+                console.error('加载评论设置失败:', e);
+            }
+        }
+
+        async function saveCommentSettings() {
+            const payload = {
+                smtp_enabled: document.getElementById('smtp-enabled').checked,
+                smtp_host: document.getElementById('smtp-host').value.trim(),
+                smtp_port: parseInt(document.getElementById('smtp-port').value || '587', 10),
+                smtp_user: document.getElementById('smtp-user').value.trim(),
+                smtp_pass: document.getElementById('smtp-pass').value.trim(),
+                smtp_from: document.getElementById('smtp-from').value.trim(),
+                smtp_to: document.getElementById('smtp-to').value.split(',').map(s => s.trim()).filter(Boolean),
+                notify_on_pending: document.getElementById('notify-pending').checked,
+                blacklist_ips: document.getElementById('blacklist-ips').value.split('\n').map(s => s.trim()).filter(Boolean),
+                blacklist_keywords: document.getElementById('blacklist-words').value.split('\n').map(s => s.trim()).filter(Boolean)
+            };
+
+            try {
+                const res = await fetch('/api/save_comment_settings', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ 设置已保存');
+                } else {
+                    alert('❌ 保存失败: ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ 错误: ' + e);
+            }
+        }
+        
+        async function approvePendingComment(postPath, commentId) {
+            try {
+                const res = await fetch('/api/approve_comment', {
+                    method: 'POST',
+                    body: JSON.stringify({ post_path: postPath, comment_id: commentId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ 评论已批准');
+                    loadPendingComments();
+                } else {
+                    alert('❌ 批准失败: ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ 错误: ' + e);
+            }
+        }
+        
+        function deletePendingComment(postPath, commentId) {
+            if (confirm('确定要删除这条评论吗？此操作不可恢复。')) {
+                deletePendingCommentAction(postPath, commentId);
+            }
+        }
+        
+        async function deletePendingCommentAction(postPath, commentId) {
+            try {
+                const res = await fetch('/api/delete_comment', {
+                    method: 'POST',
+                    body: JSON.stringify({ post_path: postPath, comment_id: commentId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ 评论已删除');
+                    loadPendingComments();
+                } else {
+                    alert('❌ 删除失败: ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ 错误: ' + e);
+            }
+        }
+
+        function updateWordCount() {
+            const textarea = document.getElementById('editor-textarea');
+            if (!textarea) return;
+            
+            const content = textarea.value;
+            const bodyContent = content.replace(/^---[\s\S]*?---\n/, '');
+            const chineseChars = (bodyContent.match(/[\u4e00-\u9fa5]/g) || []).length;
+            const englishWords = (bodyContent.match(/[a-zA-Z]+/g) || []).length;
+            const totalWords = chineseChars + englishWords;
+            
+            const wordCountEl = document.getElementById('word-count');
+            if (wordCountEl) {
+                wordCountEl.textContent = '字数: ' + totalWords.toLocaleString();
+            }
+        }
+        
+        function toggleMetadataPanel() {
+            const metaPanel = document.getElementById('meta-panel');
+            const commentsPanel = document.getElementById('comments-panel');
+            
+            if (metaPanel.style.display === 'none') {
+                metaPanel.style.display = 'block';
+                commentsPanel.classList.add('hide');
+                commentsPanel.classList.remove('show');
+            } else {
+                metaPanel.style.display = 'none';
+            }
+        }
+        
+        function insertTable() {
+            const textarea = document.getElementById('editor-textarea');
+            if (!textarea) return;
+            
+            const rows = prompt('请输入表格行数：', '3');
+            const cols = prompt('请输入表格列数：', '3');
+            
+            if (!rows || !cols || isNaN(rows) || isNaN(cols)) return;
+            
+            const numRows = parseInt(rows);
+            const numCols = parseInt(cols);
+            
+            let table = '\n| ';
+            for (let i = 0; i < numCols; i++) {
+                table += '列' + (i + 1) + ' | ';
+            }
+            table += '\n| ';
+            for (let i = 0; i < numCols; i++) {
+                table += '--- | ';
+            }
+            
+            for (let i = 0; i < numRows; i++) {
+                table += '\n| ';
+                for (let j = 0; j < numCols; j++) {
+                    table += '内容 | ';
+                }
+            }
+            table += '\n\n';
+            
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            textarea.value = textarea.value.substring(0, start) + table + textarea.value.substring(end);
+            textarea.focus();
+            updateWordCount();
+        }
+        
+        function insertMarkdown(before, after) {
+            const textarea = document.getElementById('editor-textarea');
+            if (!textarea) return;
+            
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selectedText = textarea.value.substring(start, end);
+            
+            const newText = before + (selectedText || '文本') + after;
+            textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end);
+            
+            if (selectedText) {
+                textarea.setSelectionRange(start, start + newText.length);
+            } else {
+                textarea.setSelectionRange(start + before.length, start + before.length + 2);
+            }
+            textarea.focus();
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
         fetchPosts();
+        fetchCommentStats();
+        
+        // 快捷键支持
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveDocument();
+            }
+            if (e.ctrlKey && e.key === 'b') {
+                e.preventDefault();
+                insertMarkdown('**', '**');
+            }
+            if (e.ctrlKey && e.key === 'i') {
+                e.preventDefault();
+                insertMarkdown('*', '*');
+            }
+            if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault();
+                const backtick = String.fromCharCode(96);
+                insertMarkdown(backtick, backtick);
+            }
+        });
     </script>
 </body>
 </html>`
