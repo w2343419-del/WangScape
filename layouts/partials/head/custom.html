@@ -35,24 +35,34 @@
         
         // 处理文章详情页的阅读量
         const detailViewsElement = document.querySelector('[data-umami-page-pv] .umami-value');
-        if (detailViewsElement) {
+        if (detailViewsElement && currentPath.includes('/p/')) {
             // 文章详情页：增加阅读量
             const views = incrementPageViews(currentPath);
             detailViewsElement.innerText = views;
         }
         
-        // 处理首页文章列表的阅读量显示
-        document.querySelectorAll('.article-list article').forEach(function (article) {
-            const link = article.querySelector('header a[href]');
-            const viewsElement = article.querySelector('[data-umami-page-pv] .umami-value');
-            
-            if (link && viewsElement) {
-                // 获取文章的路径
-                const articlePath = new URL(link.href).pathname;
-                // 显示该文章的阅读量（不增加）
-                viewsElement.innerText = getPageViews(articlePath);
-            }
-        });
+        // 处理首页和列表页的阅读量显示
+        setTimeout(function() {
+            document.querySelectorAll('[data-umami-page-pv] .umami-value').forEach(function (viewsElement) {
+                // 跳过已经处理过的详情页元素
+                if (viewsElement.innerText !== '0') return;
+                
+                // 找到最近的 article 元素
+                const article = viewsElement.closest('article');
+                if (!article) return;
+                
+                // 找到文章链接
+                const link = article.querySelector('a[href*="/p/"]');
+                if (!link) return;
+                
+                // 获取文章路径
+                const articlePath = new URL(link.href, window.location.origin).pathname;
+                
+                // 显示该文章的阅读量
+                const views = getPageViews(articlePath);
+                viewsElement.innerText = views;
+            });
+        }, 100);
     });
 </script>
 
