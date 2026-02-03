@@ -414,7 +414,7 @@
     
     async function loadComments() {
         try {
-            const res = await fetch('/api/comments?path=' + encodeURIComponent(currentPostPath));
+            const res = await fetch('http://localhost:8080/api/comments?path=' + encodeURIComponent(currentPostPath));
             const data = await res.json();
             
             let html = '';
@@ -455,7 +455,7 @@
         statusEl.style.color = '#ff9800';
 
         try {
-            const res = await fetch('/api/add_comment', {
+            const res = await fetch('http://localhost:8080/api/add_comment', {
                 method: 'POST',
                 body: JSON.stringify({
                     post_path: currentPostPath,
