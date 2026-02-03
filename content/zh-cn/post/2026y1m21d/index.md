@@ -1,11 +1,11 @@
 ---
+pinned: true
 title: "你好，欢迎来到我的博客"
 description: 
 date: 2026-01-21T19:39:21+08:00
-tags: ["随笔", "生活"]
-categories: ["日记"]
+
 image: 
-math: 
+math: false
 license: 
 hidden: false
 comments: true
