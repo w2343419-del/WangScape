@@ -17,7 +17,7 @@
     </div>
 
     <!-- 评论表单模态窗口 -->
-    <div id="comment-modal" class="comment-modal" style="display: none;">
+    <div id="comment-modal" class="comment-modal" style="display: none;" data-api-base="{{ .Site.Params.apiBase | default "" }}" data-github-repo="{{ .Site.Params.githubCommentsRepo | default "" }}" data-github-label-approved="{{ .Site.Params.githubCommentsLabelApproved | default "approved" }}" data-github-label-pending="{{ .Site.Params.githubCommentsLabelPending | default "pending" }}" data-github-label-comment="{{ .Site.Params.githubCommentsLabelComment | default "comment" }}">
         <div class="comment-modal-content">
             <div class="comment-modal-header">
                 <h4>{{ if eq .Lang "zh-cn" }}💬 发表评论{{ else }}💬 Post a Comment{{ end }}</h4>
@@ -456,22 +456,86 @@
         }
     });
     
+    const commentModalEl = document.getElementById('comment-modal');
+    const apiBase = (commentModalEl && commentModalEl.dataset && commentModalEl.dataset.apiBase) ? commentModalEl.dataset.apiBase.trim() : '';
+    const githubRepo = (commentModalEl && commentModalEl.dataset && commentModalEl.dataset.githubRepo) ? commentModalEl.dataset.githubRepo.trim() : '';
+    const githubLabelApproved = (commentModalEl && commentModalEl.dataset && commentModalEl.dataset.githubLabelApproved) ? commentModalEl.dataset.githubLabelApproved.trim() : 'approved';
+    const githubLabelPending = (commentModalEl && commentModalEl.dataset && commentModalEl.dataset.githubLabelPending) ? commentModalEl.dataset.githubLabelPending.trim() : 'pending';
+    const githubLabelComment = (commentModalEl && commentModalEl.dataset && commentModalEl.dataset.githubLabelComment) ? commentModalEl.dataset.githubLabelComment.trim() : 'comment';
+    function buildApiUrl(path) {
+        if (!apiBase) return path;
+        return apiBase.replace(/\/$/, '') + path;
+    }
+
+    function useGithubComments() {
+        return !!githubRepo;
+    }
+
+    function extractCommentField(body, fieldName) {
+        const regex = new RegExp('^' + fieldName + '\\s*:\\s*(.*)$', 'mi');
+        const match = body.match(regex);
+        return match ? match[1].trim() : '';
+    }
+
+    function extractCommentContent(body) {
+        const marker = 'Content:';
+        const idx = body.indexOf(marker);
+        if (idx === -1) return body.trim();
+        return body.slice(idx + marker.length).trim();
+    }
+
     async function loadComments() {
         try {
-            const res = await fetch('http://localhost:8080/api/comments?path=' + encodeURIComponent(currentPostPath));
-            const data = await res.json();
-            
-            let html = '';
-            if (data.data && data.data.length > 0) {
-                const tree = buildCommentTree(data.data);
-                tree.forEach(comment => {
-                    html += renderCommentItem(comment);
-                });
+            if (useGithubComments()) {
+                const labels = encodeURIComponent(githubLabelComment + ',' + githubLabelApproved);
+                const apiUrl = 'https://api.github.com/repos/' + githubRepo + '/issues?state=all&per_page=100&labels=' + labels;
+                const res = await fetch(apiUrl);
+                const issues = await res.json();
+
+                let html = '';
+                const filtered = Array.isArray(issues) ? issues.filter(issue => {
+                    if (!issue || !issue.body) return false;
+                    const postPath = extractCommentField(issue.body, 'Post');
+                    return postPath === currentPostPath;
+                }) : [];
+
+                if (filtered.length > 0) {
+                    const data = filtered.map(issue => {
+                        return {
+                            Id: String(issue.id),
+                            Author: extractCommentField(issue.body, 'Author') || (issue.user ? issue.user.login : 'GitHub'),
+                            Email: extractCommentField(issue.body, 'Email') || '',
+                            Content: extractCommentContent(issue.body),
+                            Time: issue.created_at || '',
+                            ParentID: '',
+                            Approved: true
+                        };
+                    });
+                    const tree = buildCommentTree(data);
+                    tree.forEach(comment => {
+                        html += renderCommentItem(comment);
+                    });
+                } else {
+                    html = '<div style="text-align: center; color: #999; padding: 40px;">' + i18n.noComments + '</div>';
+                }
+
+                document.getElementById('comments-list').innerHTML = html;
             } else {
-                html = '<div style="text-align: center; color: #999; padding: 40px;">' + i18n.noComments + '</div>';
+                const res = await fetch(buildApiUrl('/api/comments?path=' + encodeURIComponent(currentPostPath)));
+                const data = await res.json();
+                
+                let html = '';
+                if (data.data && data.data.length > 0) {
+                    const tree = buildCommentTree(data.data);
+                    tree.forEach(comment => {
+                        html += renderCommentItem(comment);
+                    });
+                } else {
+                    html = '<div style="text-align: center; color: #999; padding: 40px;">' + i18n.noComments + '</div>';
+                }
+                
+                document.getElementById('comments-list').innerHTML = html;
             }
-            
-            document.getElementById('comments-list').innerHTML = html;
         } catch (e) {
             document.getElementById('comments-list').innerHTML = '<div style="color: red; padding: 20px;">' + i18n.loadFailed + '</div>';
             console.error(i18n.loadError, e);
@@ -500,6 +564,28 @@
         statusEl.style.color = '#ff9800';
 
         try {
+            if (useGithubComments()) {
+                const issueTitle = '[Comment] ' + (document.title || currentPostPath);
+                const body = [
+                    'Post: ' + currentPostPath,
+                    'Author: ' + name,
+                    'Email: ' + email,
+                    'Content:',
+                    content
+                ].join('\n');
+
+                const labels = encodeURIComponent(githubLabelComment + ',' + githubLabelPending);
+                const url = 'https://github.com/' + githubRepo + '/issues/new?title=' + encodeURIComponent(issueTitle) + '&body=' + encodeURIComponent(body) + '&labels=' + labels;
+
+                statusEl.textContent = i18n.submitting;
+                statusEl.style.color = '#ff9800';
+                window.open(url, '_blank');
+                statusEl.textContent = i18n.submitSuccess + '（已跳转到 GitHub 提交）';
+                statusEl.style.color = '#4CAF50';
+                submitBtn.disabled = false;
+                return;
+            }
+
             // 上传图片
             let imageUrls = [];
             if (imageInput.files.length > 0) {
@@ -508,7 +594,7 @@
                     const formData = new FormData();
                     formData.append('image', imageInput.files[i]);
                     
-                    const uploadRes = await fetch('http://localhost:8080/api/upload_comment_image', {
+                    const uploadRes = await fetch(buildApiUrl('/api/upload_comment_image'), {
                         method: 'POST',
                         body: formData
                     });
@@ -521,8 +607,11 @@
             }
             
             statusEl.textContent = i18n.submitting;
-            const res = await fetch('http://localhost:8080/api/add_comment', {
+            const res = await fetch(buildApiUrl('/api/add_comment'), {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({
                     post_path: currentPostPath,
                     author: name,

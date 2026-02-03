@@ -3,6 +3,20 @@ mainSections = ["post"]
 rssFullContent = true
 favicon = "favicon.png"
 
+[params]
+    # 评论/点赞等接口的后端地址（留空表示同域）
+    # 例: apiBase = "https://api.example.com"
+    apiBase = ""
+    # GitHub 评论（Issues）仓库，格式：owner/repo
+    # 例: githubCommentsRepo = "w2343419-del/WangScape"
+    githubCommentsRepo = "w2343419-del/WangScape"
+    # 审核通过显示的标签
+    githubCommentsLabelApproved = "approved"
+    # 待审核标签
+    githubCommentsLabelPending = "pending"
+    # 评论标识标签
+    githubCommentsLabelComment = "comment"
+
 # --- 多语言核心配置 ---
 defaultContentLanguage = "zh-cn"
 hasCJKLanguage = true
