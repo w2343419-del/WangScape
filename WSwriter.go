@@ -2,11 +2,25 @@ package main
 
 import (
     "bytes"
+    "context"
+    "compress/gzip"
+    "crypto/aes"
+    "crypto/cipher"
+    "crypto/hmac"
+    "crypto/rand"
+    "crypto/sha256"
+    "crypto/subtle"
+    "crypto/tls"
+    "encoding/base64"
     "encoding/csv"
+    "encoding/hex"
     "encoding/json"
     "fmt"
+    "html"
     "io"
-    "io/ioutil"
+    "log"
+    "net"
+    "net/mail"
     "net/http"
     "net/smtp"
     "net/url"
@@ -18,6 +32,7 @@ import (
     "sort"
     "strconv"
     "strings"
+    "sync"
     "time"
 )
 
@@ -27,6 +42,22 @@ const (
 )
 
 var hugoPath string
+
+const (
+    maxCommentNameLen   = 50
+    maxCommentEmailLen  = 100
+    maxCommentContentLen = 2000
+    maxCommentImages    = 5
+    maxImageSize        = 5 << 20
+)
+
+var (
+    adminToken = "" // 从环境变量或配置读取
+    rateLimiter = struct {
+        sync.Mutex
+        records map[string][]time.Time
+    }{records: make(map[string][]time.Time)}
+)
 
 // Post represents a blog post
 type Post struct {
@@ -125,7 +156,7 @@ func loadCommentSettings() CommentSettings {
         return settings
     }
 
-    content, err := ioutil.ReadFile(path)
+    content, err := os.ReadFile(path)
     if err != nil {
         return settings
     }
@@ -143,7 +174,7 @@ func saveCommentSettings(settings CommentSettings) error {
     if err != nil {
         return err
     }
-    return ioutil.WriteFile(path, data, 0644)
+    return os.WriteFile(path, data, 0644)
 }
 
 func loadPostLikes() LikesFile {
@@ -154,7 +185,7 @@ func loadPostLikes() LikesFile {
         return likesFile
     }
     
-    content, err := ioutil.ReadFile(path)
+    content, err := os.ReadFile(path)
     if err != nil {
         return likesFile
     }
@@ -172,7 +203,7 @@ func savePostLikes(likesFile LikesFile) error {
     if err != nil {
         return err
     }
-    return ioutil.WriteFile(path, data, 0644)
+    return os.WriteFile(path, data, 0644)
 }
 
 func getPostLikes(postPath string) PostLikes {
@@ -222,12 +253,12 @@ func sendCommentNotification(settings CommentSettings, comment Comment, postTitl
     body := fmt.Sprintf(
         "文章: %s\n作者: %s\n邮箱: %s\n时间: %s\nIP: %s\nUA: %s\n\n内容:\n%s\n",
         postTitle,
-        comment.Author,
-        comment.Email,
+        escapeHTML(comment.Author),      // 安全转义
+        escapeHTML(comment.Email),       // 安全转义
         comment.Timestamp,
         comment.IPAddress,
-        comment.UserAgent,
-        comment.Content,
+        escapeHTML(comment.UserAgent),   // 安全转义
+        escapeHTML(comment.Content),     // 安全转义
     )
 
     msg := bytes.NewBuffer(nil)
@@ -239,9 +270,102 @@ func sendCommentNotification(settings CommentSettings, comment Comment, postTitl
     msg.WriteString("\r\n")
     msg.WriteString(body)
 
+    // 使用新的密码获取函数（支持加密密码和环境变量）
+    password, err := getSMTPPassword(settings)
+    if err != nil {
+        log.Printf("[ERROR] Failed to get SMTP password: %v", err)
+        return err
+    }
+
     addr := settings.SMTPHost + ":" + strconv.Itoa(settings.SMTPPort)
-    auth := smtp.PlainAuth("", settings.SMTPUser, settings.SMTPPass, settings.SMTPHost)
-    return smtp.SendMail(addr, auth, from, settings.SMTPTo, msg.Bytes())
+    
+    // 检查是否使用安全端口
+    var tlsConfig *tls.Config
+    if settings.SMTPPort == 465 {
+        // SMTPS (隐式TLS)
+        tlsConfig = &tls.Config{
+            ServerName:         settings.SMTPHost,
+            InsecureSkipVerify: false, // 生产环境必须验证证书
+        }
+    }
+    
+    auth := smtp.PlainAuth("", settings.SMTPUser, password, settings.SMTPHost)
+    
+    // 使用SendMail（添加TLS支持）
+    if settings.SMTPPort == 465 {
+        // SMTPS连接
+        conn, err := tls.Dial("tcp", addr, tlsConfig)
+        if err != nil {
+            return err
+        }
+        defer conn.Close()
+        
+        client, err := smtp.NewClient(conn, settings.SMTPHost)
+        if err != nil {
+            return err
+        }
+        defer client.Close()
+        
+        if err := client.Auth(auth); err != nil {
+            return err
+        }
+        
+        if err := client.Mail(from); err != nil {
+            return err
+        }
+        
+        for _, to := range settings.SMTPTo {
+            if err := client.Rcpt(to); err != nil {
+                return err
+            }
+        }
+        
+        w, err := client.Data()
+        if err != nil {
+            return err
+        }
+        _, err = w.Write(msg.Bytes())
+        if err != nil {
+            return err
+        }
+        return w.Close()
+    } else {
+        // 标准SMTP + STARTTLS (端口587)
+        client, err := smtp.Dial(addr)
+        if err != nil {
+            return err
+        }
+        defer client.Close()
+        
+        // 升级到TLS
+        if err := client.StartTLS(&tls.Config{ServerName: settings.SMTPHost}); err != nil {
+            return err
+        }
+        
+        if err := client.Auth(auth); err != nil {
+            return err
+        }
+        
+        if err := client.Mail(from); err != nil {
+            return err
+        }
+        
+        for _, to := range settings.SMTPTo {
+            if err := client.Rcpt(to); err != nil {
+                return err
+            }
+        }
+        
+        w, err := client.Data()
+        if err != nil {
+            return err
+        }
+        _, err = w.Write(msg.Bytes())
+        if err != nil {
+            return err
+        }
+        return w.Close()
+    }
 }
 
 type CommentWithPost struct {
@@ -267,7 +391,7 @@ func collectAllComments() ([]CommentWithPost, error) {
             if err != nil {
                 return nil
             }
-            content, err := ioutil.ReadFile(indexPath)
+            content, err := os.ReadFile(indexPath)
             if err != nil {
                 return nil
             }
@@ -288,12 +412,608 @@ func collectAllComments() ([]CommentWithPost, error) {
     return results, nil
 }
 
+// ==================== 安全工具函数 ====================
+
+// escapeHTML 安全地转义HTML特殊字符
+func escapeHTML(s string) string {
+	return html.EscapeString(s)
+}
+
+// validateEmail 验证邮箱格式
+func validateEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
+}
+
+// validatePath 严格验证路径，防止目录遍历
+func validatePath(relPath, basePath string) (string, error) {
+	// 规范化路径（多次Clean确保安全）
+	cleaned := filepath.Clean(relPath)
+	cleaned = filepath.Clean(cleaned)
+	
+	// 检查绝对路径
+	if filepath.IsAbs(cleaned) {
+		return "", fmt.Errorf("absolute paths not allowed")
+	}
+	
+	// 检查目录遍历
+	if strings.HasPrefix(cleaned, "..") || strings.Contains(cleaned, "/../") {
+		return "", fmt.Errorf("directory traversal not allowed")
+	}
+	
+	// Windows特定检查
+	if strings.ContainsAny(cleaned, ":") {
+		return "", fmt.Errorf("invalid characters in path")
+	}
+	
+	// 构建完整路径
+	fullPath := filepath.Join(basePath, cleaned)
+	fullPath, err := filepath.Abs(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("invalid path")
+	}
+	
+	// 验证路径在基目录内
+	basePath, _ = filepath.Abs(basePath)
+	fullPathLower := strings.ToLower(fullPath)
+	basePathLower := strings.ToLower(basePath)
+	
+	if !strings.HasPrefix(fullPathLower, basePathLower) {
+		return "", fmt.Errorf("path outside base directory")
+	}
+	
+	return fullPath, nil
+}
+
+// ==================== 密码加密管理 ====================
+
+// getSMTPEncryptionKey 从环境变量获取加密密钥
+func getSMTPEncryptionKey() ([]byte, error) {
+	keyHex := os.Getenv("SMTP_ENCRYPTION_KEY")
+	if keyHex == "" {
+		// 如果没有设置密钥，返回错误
+		return nil, fmt.Errorf("SMTP_ENCRYPTION_KEY not set in environment")
+	}
+	
+	key, err := hex.DecodeString(keyHex)
+	if err != nil {
+		return nil, fmt.Errorf("invalid SMTP_ENCRYPTION_KEY format: %v", err)
+	}
+	
+	// 验证密钥长度（应为32字节用于AES-256）
+	if len(key) != 32 {
+		return nil, fmt.Errorf("SMTP_ENCRYPTION_KEY must be 64 hex characters (32 bytes for AES-256)")
+	}
+	
+	return key, nil
+}
+
+// encryptPassword 使用AES-256-GCM加密SMTP密码
+func encryptPassword(plainPassword string) (string, error) {
+	key, err := getSMTPEncryptionKey()
+	if err != nil {
+		return "", err
+	}
+	
+	// 创建cipher block
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("failed to create cipher: %v", err)
+	}
+	
+	// 创建GCM mode
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("failed to create GCM: %v", err)
+	}
+	
+	// 生成随机nonce
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return "", fmt.Errorf("failed to generate nonce: %v", err)
+	}
+	
+	// 加密
+	ciphertext := gcm.Seal(nonce, nonce, []byte(plainPassword), nil)
+	
+	// 返回base64编码的结果
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+// decryptPassword 解密SMTP密码
+func decryptPassword(encryptedPassword string) (string, error) {
+	key, err := getSMTPEncryptionKey()
+	if err != nil {
+		return "", err
+	}
+	
+	// 解码base64
+	ciphertext, err := base64.StdEncoding.DecodeString(encryptedPassword)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode password: %v", err)
+	}
+	
+	// 创建cipher block
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("failed to create cipher: %v", err)
+	}
+	
+	// 创建GCM mode
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("failed to create GCM: %v", err)
+	}
+	
+	// 提取nonce（前nonceSize字节）
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return "", fmt.Errorf("ciphertext too short")
+	}
+	
+	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	
+	// 解密
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", fmt.Errorf("decryption failed: %v", err)
+	}
+	
+	return string(plaintext), nil
+}
+
+// getSMTPPassword 从配置或环境变量安全地获取SMTP密码
+func getSMTPPassword(settings CommentSettings) (string, error) {
+	// 优先从环境变量读取（用于生产环境）
+	envPassword := os.Getenv("SMTP_PASSWORD")
+	if envPassword != "" {
+		return envPassword, nil
+	}
+	
+	// 如果配置文件中的密码是加密的，则解密
+	if settings.SMTPPass != "" {
+		// 尝试解密（如果是加密的）
+		decrypted, err := decryptPassword(settings.SMTPPass)
+		if err == nil {
+			return decrypted, nil
+		}
+		// 如果解密失败，返回原始值（可能是明文）
+		log.Printf("[WARN] Failed to decrypt SMTP password, using plaintext: %v", err)
+		return settings.SMTPPass, nil
+	}
+	
+	return "", fmt.Errorf("SMTP password not found")
+}
+
+// ==================== JWT身份认证系统 ====================
+
+var jwtSecret []byte
+
+// initJWTSecret 初始化JWT密钥
+func initJWTSecret() {
+	// 优先从环境变量读取
+	secretEnv := os.Getenv("JWT_SECRET")
+	if secretEnv != "" {
+		jwtSecret = []byte(secretEnv)
+		return
+	}
+	
+	// 从文件读取
+	secretFile := filepath.Join(hugoPath, "config", ".jwt_secret")
+	if secret, err := os.ReadFile(secretFile); err == nil {
+		jwtSecret = secret
+		return
+	}
+	
+	// 生成新密钥
+	newSecret := make([]byte, 32)
+	if _, err := rand.Read(newSecret); err != nil {
+		log.Printf("[WARN] Failed to generate JWT secret: %v", err)
+		jwtSecret = []byte("default-insecure-key")
+		return
+	}
+	
+	jwtSecret = newSecret
+	
+	// 尝试保存到文件（用于后续使用）
+	secretFile = filepath.Join(hugoPath, "config", ".jwt_secret")
+	if err := os.WriteFile(secretFile, newSecret, 0600); err != nil {
+		log.Printf("[WARN] Failed to save JWT secret: %v", err)
+	}
+}
+
+type jwtClaims struct {
+    Sub string `json:"sub"`
+    Iat int64  `json:"iat"`
+    Exp int64  `json:"exp"`
+    Jti string `json:"jti"` // JWT ID for refresh token rotation
+    Typ string `json:"typ"` // token type: "access" or "refresh"
+}
+
+// 刷新令牌存储 (内存存储，生产环境建议使用Redis)
+var refreshTokenStore = make(map[string]int64) // jti -> expiry time
+var refreshTokenMutex sync.RWMutex
+
+func base64URLEncode(data []byte) string {
+    return base64.RawURLEncoding.EncodeToString(data)
+}
+
+func base64URLDecode(s string) ([]byte, error) {
+    return base64.RawURLEncoding.DecodeString(s)
+}
+
+func getJWTExpiry() time.Duration {
+    if hoursStr := os.Getenv("JWT_TTL_HOURS"); hoursStr != "" {
+        if hours, err := strconv.Atoi(hoursStr); err == nil && hours > 0 {
+            return time.Duration(hours) * time.Hour
+        }
+    }
+    return 8 * time.Hour
+}
+
+func signJWT(headerPayload string) string {
+    h := hmac.New(sha256.New, jwtSecret)
+    h.Write([]byte(headerPayload))
+    return base64URLEncode(h.Sum(nil))
+}
+
+func createJWT(username string, tokenType string) (string, error) {
+    if len(jwtSecret) == 0 {
+        return "", fmt.Errorf("JWT secret not initialized")
+    }
+	
+    header := base64URLEncode([]byte(`{"alg":"HS256","typ":"JWT"}`))
+    jti := fmt.Sprintf("%s-%d-%s", username, time.Now().UnixNano(), generateRandomString(8))
+    
+    var expiry time.Duration
+    if tokenType == "refresh" {
+        expiry = 30 * 24 * time.Hour // 刷新令牌有效期30天
+    } else {
+        expiry = getJWTExpiry() // 访问令牌有效期从环境变量读取
+    }
+    
+    claims := jwtClaims{
+        Sub: username,
+        Iat: time.Now().Unix(),
+        Exp: time.Now().Add(expiry).Unix(),
+        Jti: jti,
+        Typ: tokenType,
+    }
+    claimsJSON, err := json.Marshal(claims)
+    if err != nil {
+        return "", err
+    }
+	
+    payload := base64URLEncode(claimsJSON)
+    unsigned := header + "." + payload
+    signature := signJWT(unsigned)
+    token := unsigned + "." + signature
+    
+    // 存储刷新令牌以支持令牌轮转
+    if tokenType == "refresh" {
+        refreshTokenMutex.Lock()
+        refreshTokenStore[jti] = time.Now().Add(expiry).Unix()
+        refreshTokenMutex.Unlock()
+    }
+    
+    return token, nil
+}
+
+func generateRandomString(length int) string {
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    b := make([]byte, length)
+    for i := range b {
+        randByte := make([]byte, 1)
+        if _, err := rand.Read(randByte); err != nil {
+            // fallback to sequential if rand fails
+            b[i] = charset[i%len(charset)]
+            continue
+        }
+        b[i] = charset[int(randByte[0])%len(charset)]
+    }
+    return string(b)
+}
+
+func verifyJWT(token string) (*jwtClaims, error) {
+    parts := strings.Split(token, ".")
+    if len(parts) != 3 {
+        return nil, fmt.Errorf("invalid token format")
+    }
+    unsigned := parts[0] + "." + parts[1]
+    expectedSig := signJWT(unsigned)
+    if subtle.ConstantTimeCompare([]byte(expectedSig), []byte(parts[2])) != 1 {
+        return nil, fmt.Errorf("invalid token signature")
+    }
+	
+    payloadBytes, err := base64URLDecode(parts[1])
+    if err != nil {
+        return nil, fmt.Errorf("invalid token payload")
+    }
+    var claims jwtClaims
+    if err := json.Unmarshal(payloadBytes, &claims); err != nil {
+        return nil, fmt.Errorf("invalid token claims")
+    }
+	
+    now := time.Now().Unix()
+    if claims.Exp <= now {
+        return nil, fmt.Errorf("token expired")
+    }
+    if claims.Iat > now+60 {
+        return nil, fmt.Errorf("token issued in the future")
+    }
+    
+    // 检查刷新令牌是否被撤销
+    if claims.Typ == "refresh" {
+        refreshTokenMutex.RLock()
+        expiry, exists := refreshTokenStore[claims.Jti]
+        refreshTokenMutex.RUnlock()
+        
+        if !exists || expiry < now {
+            return nil, fmt.Errorf("refresh token revoked or expired")
+        }
+    }
+    
+    return &claims, nil
+}
+
+func verifyAdminCredentials(username, password string) bool {
+    adminUser := os.Getenv("ADMIN_USERNAME")
+    if adminUser == "" {
+        adminUser = "admin"
+    }
+    if username != adminUser {
+        return false
+    }
+	
+    passwordEnv := os.Getenv("ADMIN_PASSWORD")
+    passwordHash := strings.ToLower(strings.TrimSpace(os.Getenv("ADMIN_PASSWORD_HASH")))
+    if passwordEnv == "" && passwordHash == "" {
+        return false
+    }
+	
+    if passwordHash != "" {
+        sum := sha256.Sum256([]byte(password))
+        calc := hex.EncodeToString(sum[:])
+        return subtle.ConstantTimeCompare([]byte(calc), []byte(passwordHash)) == 1
+    }
+	
+    return subtle.ConstantTimeCompare([]byte(password), []byte(passwordEnv)) == 1
+}
+
+func extractBearerToken(r *http.Request) string {
+    authHeader := r.Header.Get("Authorization")
+    if authHeader == "" {
+        return ""
+    }
+    parts := strings.SplitN(authHeader, " ", 2)
+    if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+        return ""
+    }
+    return strings.TrimSpace(parts[1])
+}
+
+func requireAuth(w http.ResponseWriter, r *http.Request) bool {
+    // 如果未配置任何认证方式，仅允许本地访问
+    adminTokenEnv := os.Getenv("ADMIN_TOKEN")
+    adminPass := os.Getenv("ADMIN_PASSWORD")
+    adminHash := os.Getenv("ADMIN_PASSWORD_HASH")
+    if adminTokenEnv == "" && adminPass == "" && adminHash == "" {
+        if !isLocalRequest(r) {
+            respondJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "认证未配置"})
+            return false
+        }
+        return true
+    }
+	
+    // 兼容旧的X-Admin-Token
+    if adminTokenEnv != "" {
+        if r.Header.Get("X-Admin-Token") == adminTokenEnv {
+            return true
+        }
+    }
+	
+    // JWT验证 (仅接受access令牌)
+    token := extractBearerToken(r)
+    if token != "" {
+        claims, err := verifyJWT(token)
+        if err == nil {
+            // 检查令牌类型
+            if claims.Typ == "access" || claims.Typ == "" {
+                // 空的Typ表示旧版本的access令牌
+                return true
+            }
+        }
+    }
+	
+    respondJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "未授权"})
+    return false
+}
+
+func withAuth(handler http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        if !requireAuth(w, r) {
+            return
+        }
+        handler(w, r)
+    }
+}
+
+var auditLogMu sync.Mutex
+
+func writeAuditLog(action string, r *http.Request, details map[string]interface{}) {
+    auditLogMu.Lock()
+    defer auditLogMu.Unlock()
+	
+    entry := map[string]interface{}{
+        "ts":     time.Now().Format(time.RFC3339),
+        "action": action,
+        "ip":     getRealClientIP(r),
+        "ua":     r.UserAgent(),
+    }
+    for k, v := range details {
+        entry[k] = v
+    }
+	
+    data, err := json.Marshal(entry)
+    if err != nil {
+        log.Printf("[WARN] Failed to marshal audit log: %v", err)
+        return
+    }
+	
+    logPath := filepath.Join(hugoPath, "config", "audit.log")
+    file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+    if err != nil {
+        log.Printf("[WARN] Failed to open audit log: %v", err)
+        return
+    }
+    defer file.Close()
+	
+    _, _ = file.Write(append(data, '\n'))
+}
+
+// 定期轮转审计日志 (每天午夜或文件超过100MB时)
+func rotateAuditLogPeriodically() {
+    ticker := time.NewTicker(1 * time.Hour)
+    defer ticker.Stop()
+
+    for range ticker.C {
+        logPath := filepath.Join(hugoPath, "config", "audit.log")
+        info, err := os.Stat(logPath)
+        if err != nil {
+            continue
+        }
+
+        // 检查文件大小是否超过100MB
+        if info.Size() > 100*1024*1024 {
+            rotateAuditLog(logPath)
+        }
+    }
+}
+
+// 执行日志轮转
+func rotateAuditLog(logPath string) {
+    auditLogMu.Lock()
+    defer auditLogMu.Unlock()
+
+    timestamp := time.Now().Format("2006-01-02-15-04-05")
+    newName := logPath + "." + timestamp
+
+    // 重命名当前日志文件
+    if err := os.Rename(logPath, newName); err != nil {
+        log.Printf("[AUDIT] Failed to rotate audit log: %v", err)
+        return
+    }
+
+    // 压缩旧日志文件 (可选)
+    go compressAuditLog(newName)
+
+    // 清理超过30天的日志
+    go cleanupOldAuditLogs(filepath.Dir(logPath))
+}
+
+// 压缩日志文件
+func compressAuditLog(filePath string) {
+    gzipPath := filePath + ".gz"
+    inputFile, err := os.Open(filePath)
+    if err != nil {
+        return
+    }
+    defer inputFile.Close()
+
+    outputFile, err := os.Create(gzipPath)
+    if err != nil {
+        return
+    }
+    defer outputFile.Close()
+
+    writer := gzip.NewWriter(outputFile)
+    defer writer.Close()
+
+    if _, err := io.Copy(writer, inputFile); err != nil {
+        return
+    }
+
+    // 删除原始文件
+    os.Remove(filePath)
+}
+
+// 清理超过30天的日志
+func cleanupOldAuditLogs(logDir string) {
+    entries, err := os.ReadDir(logDir)
+    if err != nil {
+        return
+    }
+
+    cutoffTime := time.Now().AddDate(0, 0, -30)
+
+    for _, entry := range entries {
+        if !entry.IsDir() && strings.HasPrefix(entry.Name(), "audit.log.") {
+            filePath := filepath.Join(logDir, entry.Name())
+            info, err := entry.Info()
+            if err != nil {
+                continue
+            }
+
+            if info.ModTime().Before(cutoffTime) {
+                os.Remove(filePath)
+            }
+        }
+    }
+}
+
+// ==================== IP欺骗防护 ====================
+
+// getRealClientIP 获取真实客户端IP，防止IP欺骗
+func getRealClientIP(r *http.Request) string {
+	// 优先检查可信代理的X-Forwarded-For头（仅在生产环境使用代理时）
+	// 在开发环境，直接使用RemoteAddr
+	isProxied := os.Getenv("BEHIND_PROXY") == "true"
+	
+	if isProxied {
+		// 检查X-Forwarded-For（可信代理设置）
+		forwarded := r.Header.Get("X-Forwarded-For")
+		if forwarded != "" {
+			// 取最后一个IP（直接连接的代理IP）
+			ips := strings.Split(forwarded, ",")
+			if len(ips) > 0 {
+				ip := strings.TrimSpace(ips[len(ips)-1])
+				if isValidIP(ip) {
+					return ip
+				}
+			}
+		}
+		
+		// 检查X-Real-IP
+		realIP := r.Header.Get("X-Real-IP")
+		if realIP != "" && isValidIP(realIP) {
+			return realIP
+		}
+	}
+	
+	// 使用直接连接IP
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	
+	return ip
+}
+
+// isValidIP 验证IP地址格式
+func isValidIP(ip string) bool {
+	return net.ParseIP(ip) != nil
+}
+
 func init() {
 	var err error
 	hugoPath, err = os.Getwd()
 	if err != nil {
 		panic(err)
 	}
+	
+	// 初始化JWT密钥
+	initJWTSecret()
+    adminToken = os.Getenv("ADMIN_TOKEN")
 }
 
 // translateText translates text using MyMemory API
@@ -322,21 +1042,90 @@ func translateText(text, sourceLang, targetLang string) string {
 	return text
 }
 
+// ==================== 文件上传安全检查 ====================
+
+// validateFileUpload 验证上传文件的安全性
+func validateFileUpload(filename string, fileSize int64, contentType string, allowedMimeTypes map[string]bool, maxSize int64) error {
+	// 1. 检查文件大小
+	if fileSize <= 0 {
+		return fmt.Errorf("invalid file size")
+	}
+	if fileSize > maxSize {
+		return fmt.Errorf("file size exceeds limit: %d > %d", fileSize, maxSize)
+	}
+	
+	// 2. 检查MIME类型
+	if !allowedMimeTypes[contentType] {
+		return fmt.Errorf("unsupported file type: %s", contentType)
+	}
+	
+	// 3. 检查文件名
+	if filename == "" {
+		return fmt.Errorf("empty filename")
+	}
+	
+	// 移除路径信息，只保留文件名
+	filename = filepath.Base(filename)
+	
+	// 检查是否包含目录遍历字符
+	if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
+		return fmt.Errorf("invalid filename: path traversal detected")
+	}
+	
+	// 4. 检查特殊字符
+	validChars := regexp.MustCompile(`^[a-zA-Z0-9._\-]+$`)
+	if !validChars.MatchString(filename) {
+		return fmt.Errorf("filename contains invalid characters")
+	}
+	
+	// 5. 检查双重扩展名（防止服务器配置漏洞）
+	parts := strings.Split(filename, ".")
+	if len(parts) > 2 {
+		return fmt.Errorf("multiple extensions not allowed")
+	}
+	
+	return nil
+}
+
+// detectImageMIME 更严格地检测图片MIME类型（检查文件头）
+func detectImageMIME(data []byte) (string, error) {
+	if len(data) < 12 {
+		return "", fmt.Errorf("file too small")
+	}
+	
+	// PNG: 89 50 4E 47
+	if bytes.Equal(data[0:4], []byte{0x89, 0x50, 0x4E, 0x47}) {
+		return "image/png", nil
+	}
+	
+	// JPEG: FF D8 FF
+	if bytes.Equal(data[0:3], []byte{0xFF, 0xD8, 0xFF}) {
+		return "image/jpeg", nil
+	}
+	
+	// GIF: 47 49 46 38 (GIF8)
+	if bytes.Equal(data[0:4], []byte{0x47, 0x49, 0x46, 0x38}) {
+		return "image/gif", nil
+	}
+	
+	// WebP: RIFF ... WEBP
+	if len(data) >= 12 && bytes.Equal(data[0:4], []byte{0x52, 0x49, 0x46, 0x46}) &&
+		bytes.Equal(data[8:12], []byte{0x57, 0x45, 0x42, 0x50}) {
+		return "image/webp", nil
+	}
+	
+	return "", fmt.Errorf("unsupported image format")
+}
+
 // getContent reads file content
 func getContent(relPath string) (string, error) {
-	fullPath := filepath.Join(hugoPath, relPath)
-
-	// Security check
-	absPath, err := filepath.Abs(fullPath)
+	// 验证路径安全性
+	fullPath, err := validatePath(relPath, hugoPath)
 	if err != nil {
-		return "", err
-	}
-	absHugo, _ := filepath.Abs(hugoPath)
-
-	if !strings.HasPrefix(strings.ToLower(absPath), strings.ToLower(absHugo)) {
-		return "", fmt.Errorf("path security violation")
+		return "", fmt.Errorf("path validation failed: %v", err)
 	}
 
+	// 检查文件扩展名
 	if !strings.HasSuffix(strings.ToLower(fullPath), ".md") {
 		return "", fmt.Errorf("invalid file type")
 	}
@@ -345,30 +1134,28 @@ func getContent(relPath string) (string, error) {
 		return "", fmt.Errorf("file not found")
 	}
 
-	content, err := ioutil.ReadFile(fullPath)
+	content, err := os.ReadFile(fullPath)
 	return string(content), err
 }
 
 // saveContent saves file content
 func saveContent(relPath, content string) error {
-	fullPath := filepath.Join(hugoPath, relPath)
-
-	// Security check
-	if strings.Contains(relPath, "..") || !strings.HasSuffix(strings.ToLower(relPath), ".md") {
-		return fmt.Errorf("invalid path")
-	}
-
-	absPath, err := filepath.Abs(fullPath)
+	// 严格验证路径
+	fullPath, err := validatePath(relPath, hugoPath)
 	if err != nil {
-		return err
-	}
-	absHugo, _ := filepath.Abs(hugoPath)
-
-	if !strings.HasPrefix(strings.ToLower(absPath), strings.ToLower(absHugo)) {
-		return fmt.Errorf("path security violation")
+		return fmt.Errorf("path validation failed: %v", err)
 	}
 
-	return ioutil.WriteFile(fullPath, []byte(content), 0644)
+	// 检查文件扩展名
+	if !strings.HasSuffix(strings.ToLower(fullPath), ".md") {
+		return fmt.Errorf("only .md files allowed")
+	}
+
+	// 记录审计日志
+	log.Printf("[AUDIT] saveContent: path=%s", relPath)
+	
+	// 设置严格的文件权限（只有所有者可读写）
+	return os.WriteFile(fullPath, []byte(content), 0600)
 }
 
 // deletePost deletes a post file
@@ -412,7 +1199,7 @@ func deletePost(relPath string) error {
 
 	// Try to remove empty parent directory
 	parentDir := filepath.Dir(fullPath)
-	entries, err := ioutil.ReadDir(parentDir)
+	entries, err := os.ReadDir(parentDir)
 	if err == nil && len(entries) == 0 {
 		if err := os.Remove(parentDir); err == nil {
 			// Successfully removed empty parent
@@ -532,7 +1319,7 @@ func getPosts() []Post {
 		}
 
 		// Read frontmatter
-		content, _ := ioutil.ReadFile(path)
+		content, _ := os.ReadFile(path)
 		fm := parseFrontmatter(string(content))
 
 		dateStr := time.Unix(info.ModTime().Unix(), 0).Format("2006-01-02")
@@ -676,7 +1463,7 @@ func getComments(postPath string) ([]Comment, error) {
 		return []Comment{}, nil
 	}
 	
-	content, err := ioutil.ReadFile(fullPath)
+	content, err := os.ReadFile(fullPath)
 	if err != nil {
 		return nil, err
 	}
@@ -700,7 +1487,7 @@ func saveComments(postPath string, comments []Comment) error {
 		return err
 	}
 	
-	return ioutil.WriteFile(fullPath, data, 0644)
+	return os.WriteFile(fullPath, data, 0644)
 }
 
 // addComment adds a new comment to a post
@@ -768,7 +1555,7 @@ func deleteComment(postPath, commentID string) error {
 // updateFrontmatter updates post metadata
 func updateFrontmatter(relPath, title, categories string) error {
 	fullPath := filepath.Join(hugoPath, relPath)
-	content, err := ioutil.ReadFile(fullPath)
+	content, err := os.ReadFile(fullPath)
 	if err != nil {
 		return err
 	}
@@ -794,24 +1581,46 @@ func updateFrontmatter(relPath, title, categories string) error {
 		}
 	}
 
-	return ioutil.WriteFile(fullPath, []byte(strings.Join(newLines, "\n")), 0644)
+	return os.WriteFile(fullPath, []byte(strings.Join(newLines, "\n")), 0644)
 }
 
 // handleCommand executes system commands
 func handleCommand(cmd string) (map[string]interface{}, error) {
+	// 使用带超时的命令执行
+	timeout := 5 * time.Minute // 默认5分钟超时
+	
+	switch cmd {
+	case "preview":
+		timeout = 10 * time.Second // 预览启动10秒超时
+	case "deploy":
+		timeout = 10 * time.Minute // 部署可能需要更长时间
+	case "build":
+		timeout = 5 * time.Minute
+	case "sync":
+		timeout = 3 * time.Minute
+	}
+	
+	// 建立context用于超时控制
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	
+	// 后续命令都通过ctx执行
 	switch cmd {
 	case "preview":
 		// 先杀死可能占用端口的 hugo 进程
+		killCtx, killCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer killCancel()
+		
 		if runtime.GOOS == "windows" {
-			exec.Command("taskkill", "/F", "/IM", "hugo.exe").Run()
+			exec.CommandContext(killCtx, "taskkill", "/F", "/IM", "hugo.exe").Run()
 		} else {
-			exec.Command("pkill", "hugo").Run()
+			exec.CommandContext(killCtx, "pkill", "hugo").Run()
 		}
 		
 		time.Sleep(500 * time.Millisecond)
 		
 		// 先构建一次（包括草稿），确保所有内容都是最新的
-		buildCmd := exec.Command("hugo", "--buildDrafts", "--minify")
+		buildCmd := exec.CommandContext(ctx, "hugo", "--buildDrafts", "--minify")
 		buildCmd.Dir = hugoPath
 		buildOutput, err := buildCmd.CombinedOutput()
 		if err != nil {
@@ -819,7 +1628,7 @@ func handleCommand(cmd string) (map[string]interface{}, error) {
 		}
 		
 		// 启动预览服务器（后台运行，包括草稿）
-		serverCmd := exec.Command("hugo", "server", 
+		serverCmd := exec.CommandContext(ctx, "hugo", "server", 
 			"--bind", "127.0.0.1",
 			"--buildDrafts",           // 显示草稿文章
 			"--disableFastRender",     // 完整渲染，不使用快速渲染
@@ -844,7 +1653,7 @@ func handleCommand(cmd string) (map[string]interface{}, error) {
 
 	case "deploy":
 		// 1. 先编译网站 - 不包含草稿（生产环境）
-		buildCmd := exec.Command("hugo", "--minify")
+		buildCmd := exec.CommandContext(ctx, "hugo", "--minify")
 		buildCmd.Dir = hugoPath
 		buildOutput, err := buildCmd.CombinedOutput()
 		if err != nil {
@@ -852,7 +1661,7 @@ func handleCommand(cmd string) (map[string]interface{}, error) {
 		}
 		
 		// 2. 检查是否有变更
-		statusCmd := exec.Command("git", "status", "--porcelain")
+		statusCmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
 		statusCmd.Dir = hugoPath
 		statusOutput, _ := statusCmd.Output()
 		if len(strings.TrimSpace(string(statusOutput))) == 0 {
@@ -860,7 +1669,7 @@ func handleCommand(cmd string) (map[string]interface{}, error) {
 		}
 		
 		// 3. Git 添加所有更改
-		cmd := exec.Command("git", "add", ".")
+		cmd := exec.CommandContext(ctx, "git", "add", ".")
 		cmd.Dir = hugoPath
 		if err := cmd.Run(); err != nil {
 			return map[string]interface{}{"message": fmt.Sprintf("❌ Git add 失败: %v", err)}, err
@@ -911,6 +1720,11 @@ func handleGetPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetContent(w http.ResponseWriter, r *http.Request) {
+	// 仅允许本地访问
+	if !requireLocal(w, r) {
+		return
+	}
+
 	relPath := r.URL.Query().Get("path")
 	if relPath == "" {
 		http.Error(w, "Missing path", http.StatusBadRequest)
@@ -927,7 +1741,135 @@ func handleGetContent(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"content": content})
 }
 
+func handleLogin(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+
+    ip := getRealClientIP(r)
+    if !allowRequest("login:"+ip, 10, time.Minute) {
+        respondJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: "请求过于频繁"})
+        return
+    }
+
+    var data struct {
+        Username string `json:"username"`
+        Password string `json:"password"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+        return
+    }
+    data.Username = strings.TrimSpace(data.Username)
+
+    if !verifyAdminCredentials(data.Username, data.Password) {
+        writeAuditLog("login_failed", r, map[string]interface{}{"username": data.Username})
+        respondJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "用户名或密码错误"})
+        return
+    }
+
+    // 生成访问令牌 (短期)
+    accessToken, err := createJWT(data.Username, "access")
+    if err != nil {
+        writeAuditLog("login_error", r, map[string]interface{}{"username": data.Username, "error": err.Error()})
+        respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "生成令牌失败"})
+        return
+    }
+
+    // 生成刷新令牌 (长期)
+    refreshToken, err := createJWT(data.Username, "refresh")
+    if err != nil {
+        writeAuditLog("login_error", r, map[string]interface{}{"username": data.Username, "error": err.Error()})
+        respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "生成刷新令牌失败"})
+        return
+    }
+
+    accessExpiresAt := time.Now().Add(getJWTExpiry()).Format(time.RFC3339)
+    refreshExpiresAt := time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339)
+    writeAuditLog("login_success", r, map[string]interface{}{"username": data.Username})
+    respondJSON(w, http.StatusOK, map[string]interface{}{
+        "success":              true,
+        "access_token":         accessToken,
+        "refresh_token":        refreshToken,
+        "access_expires_at":    accessExpiresAt,
+        "refresh_expires_at":   refreshExpiresAt,
+        "token_type":           "Bearer",
+    })
+}
+
+func handleRefreshToken(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+
+    var data struct {
+        RefreshToken string `json:"refresh_token"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+        return
+    }
+
+    // 验证刷新令牌
+    claims, err := verifyJWT(data.RefreshToken)
+    if err != nil {
+        writeAuditLog("refresh_token_failed", r, map[string]interface{}{"error": err.Error()})
+        respondJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "刷新令牌无效"})
+        return
+    }
+
+    if claims.Typ != "refresh" {
+        writeAuditLog("refresh_token_failed", r, map[string]interface{}{"error": "not a refresh token"})
+        respondJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "令牌类型错误"})
+        return
+    }
+
+    // 令牌轮转: 撤销旧刷新令牌并发放新的
+    refreshTokenMutex.Lock()
+    delete(refreshTokenStore, claims.Jti)
+    refreshTokenMutex.Unlock()
+
+    // 生成新的访问令牌和刷新令牌
+    newAccessToken, err := createJWT(claims.Sub, "access")
+    if err != nil {
+        respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "生成令牌失败"})
+        return
+    }
+
+    newRefreshToken, err := createJWT(claims.Sub, "refresh")
+    if err != nil {
+        respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "生成刷新令牌失败"})
+        return
+    }
+
+    accessExpiresAt := time.Now().Add(getJWTExpiry()).Format(time.RFC3339)
+    refreshExpiresAt := time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339)
+    writeAuditLog("refresh_token_success", r, map[string]interface{}{"username": claims.Sub})
+    respondJSON(w, http.StatusOK, map[string]interface{}{
+        "success":              true,
+        "access_token":         newAccessToken,
+        "refresh_token":        newRefreshToken,
+        "access_expires_at":    accessExpiresAt,
+        "refresh_expires_at":   refreshExpiresAt,
+        "token_type":           "Bearer",
+    })
+}
+
 func handleSaveContent(w http.ResponseWriter, r *http.Request) {
+	// 仅允许本地访问
+	if !requireLocal(w, r) {
+		return
+	}
+
+    // 限流：防止文件系统被滥用
+    ip := getRealClientIP(r)
+	if !allowRequest("save_content:"+ip, 30, time.Minute) {
+		respondJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: "请求过于频繁"})
+		return
+	}
+
 	var data struct {
 		Path    string `json:"path"`
 		Content string `json:"content"`
@@ -942,11 +1884,23 @@ func handleSaveContent(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
 		return
 	}
-
+    writeAuditLog("save_content", r, map[string]interface{}{ "path": data.Path })
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Saved"})
 }
 
 func handleDeletePost(w http.ResponseWriter, r *http.Request) {
+	// 仅允许本地访问
+	if !requireLocal(w, r) {
+		return
+	}
+
+    // 限流：防止文件被滥用删除
+    ip := getRealClientIP(r)
+	if !allowRequest("delete_post:"+ip, 10, time.Minute) {
+		respondJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: "请求过于频繁"})
+		return
+	}
+
 	var data struct {
 		Path string `json:"path"`
 	}
@@ -960,7 +1914,7 @@ func handleDeletePost(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
 		return
 	}
-
+    writeAuditLog("delete_post", r, map[string]interface{}{ "path": data.Path })
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Deleted"})
 }
 
@@ -989,6 +1943,11 @@ func handleGetComments(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAddComment(w http.ResponseWriter, r *http.Request) {
+    if r.Method != "POST" {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+
 	var data struct {
 		PostPath string   `json:"post_path"`
 		Author   string   `json:"author"`
@@ -1003,17 +1962,48 @@ func handleAddComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get IP address
-	ipAddress := r.Header.Get("X-Forwarded-For")
-	if ipAddress == "" {
-		ipAddress = r.Header.Get("X-Real-IP")
-	}
-	if ipAddress == "" {
-		ipAddress = r.RemoteAddr
-	}
+    // 使用新的IP获取函数，防止IP欺骗
+    ipAddress := getRealClientIP(r)
+    if !allowRequest("add_comment:"+ipAddress, 5, time.Minute) {
+        respondJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: "请求过于频繁"})
+        return
+    }
 
-	// Get User-Agent
-	userAgent := r.Header.Get("User-Agent")
+    // Get User-Agent
+    userAgent := r.Header.Get("User-Agent")
+
+    data.Author = strings.TrimSpace(data.Author)
+    data.Email = strings.TrimSpace(data.Email)
+    data.Content = strings.TrimSpace(data.Content)
+    data.PostPath = strings.TrimSpace(data.PostPath)
+
+    if data.Author == "" || data.Email == "" || data.Content == "" || data.PostPath == "" {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+        return
+    }
+    cleanPostPath := filepath.Clean(data.PostPath)
+    if filepath.IsAbs(cleanPostPath) || strings.HasPrefix(cleanPostPath, "..") || strings.Contains(cleanPostPath, ":") {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "路径非法"})
+        return
+    }
+    if len(data.Author) > maxCommentNameLen || len(data.Email) > maxCommentEmailLen || len(data.Content) > maxCommentContentLen {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "内容过长"})
+        return
+    }
+    if _, err := mail.ParseAddress(data.Email); err != nil {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "邮箱格式不正确"})
+        return
+    }
+    if len(data.Images) > maxCommentImages {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "图片数量过多"})
+        return
+    }
+    for _, img := range data.Images {
+        if !strings.HasPrefix(img, "/img/comments/") || strings.Contains(img, "..") {
+            respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "图片路径非法"})
+            return
+        }
+    }
 
     settings := loadCommentSettings()
     if isCommentBlacklisted(settings, ipAddress, data.Author, data.Email, data.Content) {
@@ -1031,16 +2021,17 @@ func handleAddComment(w http.ResponseWriter, r *http.Request) {
     // 生成唯一ID
     id := fmt.Sprintf("%d-%d", time.Now().Unix(), len(comments))
     
+    // 安全转义用户输入
     comment := Comment{
         ID:        id,
-        Author:    data.Author,
-        Email:     data.Email,
-        Content:   data.Content,
+        Author:    escapeHTML(data.Author),    // 防XSS
+        Email:     escapeHTML(data.Email),     // 防XSS
+        Content:   escapeHTML(data.Content),   // 防XSS
         Timestamp: time.Now().Format("2006-01-02 15:04:05"),
         Approved:  false,
         PostPath:  data.PostPath,
         IPAddress: ipAddress,
-        UserAgent: userAgent,
+        UserAgent: escapeHTML(userAgent),      // 防XSS
         ParentID:  data.ParentID,
         Images:    data.Images,
     }
@@ -1052,11 +2043,15 @@ func handleAddComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+    // 记录审计日志
+    log.Printf("[AUDIT] addComment: author=%s ip=%s path=%s approved=%v", 
+        data.Author, ipAddress, data.PostPath, comment.Approved)
+
     // 发送邮件通知（不阻塞主流程）
     go func() {
         postTitle := ""
         fullPath := filepath.Join(hugoPath, data.PostPath)
-        if content, err := ioutil.ReadFile(fullPath); err == nil {
+        if content, err := os.ReadFile(fullPath); err == nil {
             fm := parseFrontmatter(string(content))
             postTitle = fm.Title
         }
@@ -1072,6 +2067,13 @@ func handleUploadCommentImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+    // 使用新的IP获取函数，防止IP欺骗
+    ipAddress := getRealClientIP(r)
+    if !allowRequest("upload_image:"+ipAddress, 10, time.Minute) {
+        respondJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: "请求过于频繁"})
+        return
+    }
+
 	// 解析multipart form (最大10MB)
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "文件过大"})
@@ -1085,6 +2087,11 @@ func handleUploadCommentImage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+    if handler.Size > maxImageSize {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "文件过大"})
+        return
+    }
+
 	// 检查文件类型
 	allowedTypes := map[string]bool{
 		"image/jpeg": true,
@@ -1093,33 +2100,73 @@ func handleUploadCommentImage(w http.ResponseWriter, r *http.Request) {
 		"image/gif":  true,
 		"image/webp": true,
 	}
-	
-	contentType := handler.Header.Get("Content-Type")
-	if !allowedTypes[contentType] {
+
+    // 读取文件头判断真实类型（增强安全检查）
+    head := make([]byte, 512)
+    n, _ := file.Read(head)
+    
+    // 使用更严格的MIME类型检测
+    contentType, err := detectImageMIME(head[:n])
+    if err != nil {
+        // 如果魔术字节检测失败，尝试标准检测
+        contentType = http.DetectContentType(head[:n])
+    }
+    
+    if !allowedTypes[contentType] {
 		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "只支持 JPG, PNG, GIF, WebP 格式"})
 		return
 	}
+    
+    // 验证文件上传安全性
+    if err := validateFileUpload(handler.Filename, handler.Size, contentType, allowedTypes, maxImageSize); err != nil {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: fmt.Sprintf("文件验证失败: %v", err)})
+        return
+    }
 
-	// 生成唯一文件名
-	ext := filepath.Ext(handler.Filename)
+    var reader io.Reader = file
+    if seeker, ok := file.(io.Seeker); ok {
+        _, _ = seeker.Seek(0, io.SeekStart)
+    } else {
+        reader = io.MultiReader(bytes.NewReader(head[:n]), file)
+    }
+
+	// 生成唯一文件名（不使用用户提供的文件名）
+    extMap := map[string]string{
+        "image/jpeg": ".jpg",
+        "image/jpg":  ".jpg",
+        "image/png":  ".png",
+        "image/gif":  ".gif",
+        "image/webp": ".webp",
+    }
+    ext := extMap[contentType]
 	filename := fmt.Sprintf("comment_%d%s", time.Now().UnixNano(), ext)
 	
-	// 确保目录存在
+	// 确保目录存在，权限设置为0755（仅owner可写）
 	uploadDir := filepath.Join(hugoPath, "static", "img", "comments")
 	os.MkdirAll(uploadDir, 0755)
 	
-	// 保存文件
+	// 保存文件，权限设置为0600（仅owner可读写）
 	dst, err := os.Create(filepath.Join(uploadDir, filename))
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "保存失败"})
 		return
 	}
 	defer dst.Close()
+    
+    // 修改文件权限为0600
+    os.Chmod(filepath.Join(uploadDir, filename), 0600)
 
-	if _, err := io.Copy(dst, file); err != nil {
+    limitReader := io.LimitReader(reader, maxImageSize+1)
+    written, err := io.Copy(dst, limitReader)
+    if err != nil {
 		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "保存失败"})
 		return
 	}
+    if written > maxImageSize {
+        _ = os.Remove(filepath.Join(uploadDir, filename))
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "文件过大"})
+        return
+    }
 
 	// 返回图片URL
 	imageURL := "/img/comments/" + filename
@@ -1131,6 +2178,11 @@ func handleUploadCommentImage(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleApproveComment(w http.ResponseWriter, r *http.Request) {
+	// 仅允许本地访问敏感操作
+	if !requireLocal(w, r) {
+		return
+	}
+
 	var data struct {
 		PostPath  string `json:"post_path"`
 		CommentID string `json:"comment_id"`
@@ -1145,11 +2197,16 @@ func handleApproveComment(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
 		return
 	}
-
+    writeAuditLog("approve_comment", r, map[string]interface{}{ "post_path": data.PostPath, "comment_id": data.CommentID })
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "评论已批准"})
 }
 
 func handleDeleteComment(w http.ResponseWriter, r *http.Request) {
+	// 仅允许本地访问敏感操作
+	if !requireLocal(w, r) {
+		return
+	}
+
 	var data struct {
 		PostPath  string `json:"post_path"`
 		CommentID string `json:"comment_id"`
@@ -1164,11 +2221,16 @@ func handleDeleteComment(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
 		return
 	}
-
+    writeAuditLog("delete_comment", r, map[string]interface{}{ "post_path": data.PostPath, "comment_id": data.CommentID })
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "评论已删除"})
 }
 
 func handleGetAllComments(w http.ResponseWriter, r *http.Request) {
+	// 仅允许本地访问敏感数据
+	if !requireLocal(w, r) {
+		return
+	}
+
 	postPath := r.URL.Query().Get("path")
 	if postPath == "" {
 		http.Error(w, "Missing path", http.StatusBadRequest)
@@ -1186,11 +2248,21 @@ func handleGetAllComments(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleCommentStats(w http.ResponseWriter, r *http.Request) {
+	// 仅允许本地访问敏感数据
+	if !requireLocal(w, r) {
+		return
+	}
+
 	stats := getAllCommentsStats()
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: stats})
 }
 
 func handleGetPendingComments(w http.ResponseWriter, r *http.Request) {
+	// 仅允许本地访问敏感数据
+	if !requireLocal(w, r) {
+		return
+	}
+
 	var pendingComments []CommentWithPost
 
 	// 遍历所有文章，收集未审核评论
@@ -1207,7 +2279,7 @@ func handleGetPendingComments(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				// 获取文章标题
 				indexPath := filepath.Join(path, "index.md")
-				content, err := ioutil.ReadFile(indexPath)
+				content, err := os.ReadFile(indexPath)
 				if err == nil {
 					fm := parseFrontmatter(string(content))
 					for _, c := range comments {
@@ -1235,11 +2307,21 @@ func handleGetPendingComments(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetCommentSettings(w http.ResponseWriter, r *http.Request) {
+    // 仅允许本地访问敏感配置
+    if !requireLocal(w, r) {
+        return
+    }
+
     settings := loadCommentSettings()
     respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: settings})
 }
 
 func handleSaveCommentSettings(w http.ResponseWriter, r *http.Request) {
+    // 仅允许本地访问敏感配置
+    if !requireLocal(w, r) {
+        return
+    }
+
     var settings CommentSettings
     if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
         respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
@@ -1250,11 +2332,16 @@ func handleSaveCommentSettings(w http.ResponseWriter, r *http.Request) {
         respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
         return
     }
-
+    writeAuditLog("save_comment_settings", r, map[string]interface{}{"smtp_enabled": settings.SMTPEnabled})
     respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Saved"})
 }
 
 func handleBulkComments(w http.ResponseWriter, r *http.Request) {
+    // 仅允许本地访问敏感操作
+    if !requireLocal(w, r) {
+        return
+    }
+
     var data struct {
         Action string `json:"action"`
         Items  []struct {
@@ -1280,16 +2367,23 @@ func handleBulkComments(w http.ResponseWriter, r *http.Request) {
             _ = deleteComment(item.PostPath, item.CommentID)
         }
     }
-
+    writeAuditLog("bulk_comments", r, map[string]interface{}{"action": data.Action, "count": len(data.Items)})
     respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "OK"})
 }
 
 func handleExportComments(w http.ResponseWriter, r *http.Request) {
+    // 仅允许本地访问敏感数据
+    if !requireLocal(w, r) {
+        return
+    }
+
     comments, err := collectAllComments()
     if err != nil {
         respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
         return
     }
+
+    writeAuditLog("export_comments", r, map[string]interface{}{"count": len(comments)})
 
     w.Header().Set("Content-Type", "text/csv; charset=utf-8")
     w.Header().Set("Content-Disposition", "attachment; filename=comments.csv")
@@ -1330,14 +2424,38 @@ func handleCreateSync(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
 		return
 	}
-
+    writeAuditLog("create_sync_post", r, map[string]interface{}{ "title": data.Title, "categories": data.Categories })
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: results})
 }
 
 func handleCommandAPI(w http.ResponseWriter, r *http.Request) {
+	// 仅允许本地访问敏感命令
+	if !requireLocal(w, r) {
+		return
+	}
+
+    // 限流：防止命令执行被滥用
+    ip := getRealClientIP(r)
+	if !allowRequest("command:"+ip, 10, time.Minute) {
+		respondJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: "请求过于频繁"})
+		return
+	}
+
 	cmd := r.URL.Query().Get("name")
 	if cmd == "" {
 		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Missing command"})
+		return
+	}
+
+	// 限制命令为预定义的安全命令
+	allowedCmds := map[string]bool{
+		"preview": true,
+		"deploy":  true,
+		"build":   true,
+		"sync":    true,
+	}
+	if !allowedCmds[cmd] {
+		respondJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Unknown command"})
 		return
 	}
 
@@ -1346,7 +2464,7 @@ func handleCommandAPI(w http.ResponseWriter, r *http.Request) {
 		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
 		return
 	}
-
+    writeAuditLog("command_exec", r, map[string]interface{}{ "command": cmd })
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: result})
 }
 
@@ -1397,11 +2515,11 @@ func handleSyncTranslate(w http.ResponseWriter, r *http.Request) {
 	enContent := "---" + enFrontmatter + "---" + translatedBody
 
 	// 保存英文版本
-	if err := ioutil.WriteFile(enFullPath, []byte(enContent), 0644); err != nil {
+	if err := os.WriteFile(enFullPath, []byte(enContent), 0644); err != nil {
 		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: fmt.Sprintf("Failed to save: %v", err)})
 		return
 	}
-
+    writeAuditLog("sync_translate", r, map[string]interface{}{ "zh_path": data.ZhPath, "en_path": data.EnPath })
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Content translated and synced"})
 }
 
@@ -1441,15 +2559,152 @@ func respondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 
 func withCORS(handler http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Access-Control-Allow-Origin", "*")
-        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        origin := r.Header.Get("Origin")
+        if origin != "" {
+            if !isAllowedOrigin(origin) {
+                // 拒绝不信任的origin，不暴露任何信息
+                w.Header().Set("X-Frame-Options", "DENY")
+                http.Error(w, "Forbidden", http.StatusForbidden)
+                return
+            }
+            // 只有白名单origin才允许跨域访问
+            w.Header().Set("Access-Control-Allow-Origin", origin)
+            w.Header().Set("Vary", "Origin")
+            
+            // 严格的CORS策略
+            w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Admin-Token")
+            w.Header().Set("Access-Control-Max-Age", "3600")
+            w.Header().Set("Access-Control-Allow-Credentials", "false")
+            w.Header().Set("Access-Control-Expose-Headers", "Content-Length")
+        }
+        
+        // 安全响应头
+        w.Header().Set("X-Content-Type-Options", "nosniff")
+        w.Header().Set("X-Frame-Options", "DENY")
+        w.Header().Set("X-XSS-Protection", "1; mode=block")
+        w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+        w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'")
+        
+        // 处理预检请求
         if r.Method == http.MethodOptions {
             w.WriteHeader(http.StatusNoContent)
             return
         }
+        
         handler(w, r)
     }
+}
+
+func isAllowedOrigin(origin string) bool {
+    allowed := map[string]bool{
+        "http://localhost:1313":  true,
+        "http://127.0.0.1:1313": true,
+        "http://localhost:8080":  true,
+        "http://127.0.0.1:8080": true,
+    }
+    return allowed[origin]
+}
+
+func getClientIP(r *http.Request) string {
+	ipAddress := r.Header.Get("X-Forwarded-For")
+	if ipAddress != "" {
+		parts := strings.Split(ipAddress, ",")
+		return strings.TrimSpace(parts[0])
+	}
+	if ipAddress = r.Header.Get("X-Real-IP"); ipAddress != "" {
+		return ipAddress
+	}
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
+	}
+	return r.RemoteAddr
+}
+
+func isLocalRequest(r *http.Request) bool {
+    ip := getRealClientIP(r)
+	return ip == "127.0.0.1" || ip == "localhost" || ip == "::1"
+}
+
+// getEnv 获取环境变量，如果未设置则返回默认值
+func getEnv(key, defaultValue string) string {
+    value := os.Getenv(key)
+    if value == "" {
+        return defaultValue
+    }
+    return value
+}
+
+func requireLocal(w http.ResponseWriter, r *http.Request) bool {
+    if isLocalRequest(r) {
+        return true
+    }
+    // 允许通过认证的远程访问
+    if requireAuth(w, r) {
+        return true
+    }
+    return false
+}
+
+func requireAdminToken(r *http.Request) bool {
+	if adminToken == "" {
+		return true
+	}
+	token := r.Header.Get("X-Admin-Token")
+	return token == adminToken
+}
+
+func allowRequest(key string, limit int, window time.Duration) bool {
+    if limit <= 0 {
+        return true
+    }
+    
+    now := time.Now()
+    cutoff := now.Add(-window)
+
+    rateLimiter.Lock()
+    defer rateLimiter.Unlock()
+
+    items := rateLimiter.records[key]
+    
+    // 过滤掉超时的记录（时间窗口外的请求）
+    filtered := items[:0]
+    for _, t := range items {
+        if t.After(cutoff) {
+            filtered = append(filtered, t)
+        }
+    }
+    
+    // 检查是否达到限制
+    if len(filtered) >= limit {
+        rateLimiter.records[key] = filtered
+        log.Printf("[RATE_LIMIT] Key=%s, Requests=%d, Limit=%d, Window=%v", key, len(filtered), limit, window)
+        return false
+    }
+    
+    // 添加新请求
+    filtered = append(filtered, now)
+    rateLimiter.records[key] = filtered
+    
+    // 定期清理过期记录（避免内存泄漏）
+    if len(rateLimiter.records) > 10000 {
+        // 清理所有过期的记录
+        for k, v := range rateLimiter.records {
+            newV := v[:0]
+            for _, t := range v {
+                if t.After(cutoff) {
+                    newV = append(newV, t)
+                }
+            }
+            if len(newV) == 0 {
+                delete(rateLimiter.records, k)
+            } else {
+                rateLimiter.records[k] = newV
+            }
+        }
+    }
+    
+    return true
 }
 
 // openBrowser opens the default browser
@@ -1470,9 +2725,10 @@ func handleLikePost(w http.ResponseWriter, r *http.Request) {
     }
 
     // Get client IP
-    ip := r.RemoteAddr
-    if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-        ip = strings.Split(forwarded, ",")[0]
+    ip := getRealClientIP(r)
+    if !allowRequest("like_post:"+ip, 20, time.Minute) {
+        respondJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: "请求过于频繁"})
+        return
     }
 
     // Load all likes
@@ -1552,9 +2808,10 @@ func handleUnlikePost(w http.ResponseWriter, r *http.Request) {
     }
 
     // Get client IP
-    ip := r.RemoteAddr
-    if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-        ip = strings.Split(forwarded, ",")[0]
+    ip := getRealClientIP(r)
+    if !allowRequest("unlike_post:"+ip, 20, time.Minute) {
+        respondJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: "请求过于频繁"})
+        return
     }
 
     // Load all likes
@@ -1659,39 +2916,111 @@ func openBrowser(url string) {
 	}
 }
 
-func main() {
-	// Setup routes
-	http.HandleFunc("/", handleIndex)
-    http.HandleFunc("/api/posts", withCORS(handleGetPosts))
-    http.HandleFunc("/api/get_content", withCORS(handleGetContent))
-    http.HandleFunc("/api/save_content", withCORS(handleSaveContent))
-    http.HandleFunc("/api/delete_post", withCORS(handleDeletePost))
-    http.HandleFunc("/api/create_sync", withCORS(handleCreateSync))
-    http.HandleFunc("/api/sync_translate", withCORS(handleSyncTranslate))
-    http.HandleFunc("/api/command", withCORS(handleCommandAPI))
-    http.HandleFunc("/api/comments", withCORS(handleGetComments))
-    http.HandleFunc("/api/add_comment", withCORS(handleAddComment))
-    http.HandleFunc("/api/upload_comment_image", withCORS(handleUploadCommentImage))
-    http.HandleFunc("/api/approve_comment", withCORS(handleApproveComment))
-    http.HandleFunc("/api/delete_comment", withCORS(handleDeleteComment))
-    http.HandleFunc("/api/all_comments", withCORS(handleGetAllComments))
-    http.HandleFunc("/api/comment_stats", withCORS(handleCommentStats))
-    http.HandleFunc("/api/pending_comments", withCORS(handleGetPendingComments))
-    http.HandleFunc("/api/comment_settings", withCORS(handleGetCommentSettings))
-    http.HandleFunc("/api/save_comment_settings", withCORS(handleSaveCommentSettings))
-    http.HandleFunc("/api/bulk_comments", withCORS(handleBulkComments))
-    http.HandleFunc("/api/export_comments", withCORS(handleExportComments))
-    http.HandleFunc("/api/like_post", withCORS(handleLikePost))
-    http.HandleFunc("/api/unlike_post", withCORS(handleUnlikePost))
-    http.HandleFunc("/api/get_likes", withCORS(handleGetLikes))
-
-	// Start server
-	fmt.Printf("WangScape Writer Online: http://127.0.0.1:%d\n", PORT)
-	openBrowser(fmt.Sprintf("http://127.0.0.1:%d", PORT))
-
-	if err := http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", PORT), nil); err != nil {
-		fmt.Println("Server error:", err)
+func limitRequestBody(h http.HandlerFunc, maxSize int64) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxSize)
+		h(w, r)
 	}
+}
+
+func main() {
+	// ==================== 安全中间件设置 ====================
+	
+	// 添加HSTS和其他安全头
+	hstsMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// HSTS: 强制HTTPS连接 (1年有效期)
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+			// 防止MIME嗅探
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			// XSS防护
+			w.Header().Set("X-XSS-Protection", "1; mode=block")
+			// 禁用iframe嵌入
+			w.Header().Set("X-Frame-Options", "DENY")
+			// 限制特性权限
+			w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+			// Content Security Policy
+			w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com")
+			
+			next.ServeHTTP(w, r)
+		})
+	}
+	
+	// 创建根mux并包装HSTS中间件
+	rootMux := http.NewServeMux()
+	wrappedMux := hstsMiddleware(rootMux)
+	
+	// Setup routes
+	rootMux.HandleFunc("/", handleIndex)
+    rootMux.HandleFunc("/api/login", withCORS(limitRequestBody(handleLogin, 4<<10)))
+    rootMux.HandleFunc("/api/refresh-token", withCORS(limitRequestBody(handleRefreshToken, 4<<10)))
+    rootMux.HandleFunc("/api/posts", withCORS(handleGetPosts))
+    rootMux.HandleFunc("/api/get_content", withCORS(withAuth(handleGetContent)))
+    rootMux.HandleFunc("/api/save_content", withCORS(withAuth(limitRequestBody(handleSaveContent, 2<<20))))
+    rootMux.HandleFunc("/api/delete_post", withCORS(withAuth(limitRequestBody(handleDeletePost, 1<<20))))
+    rootMux.HandleFunc("/api/create_sync", withCORS(withAuth(limitRequestBody(handleCreateSync, 5<<20))))
+    rootMux.HandleFunc("/api/sync_translate", withCORS(withAuth(limitRequestBody(handleSyncTranslate, 5<<20))))
+    rootMux.HandleFunc("/api/command", withCORS(withAuth(limitRequestBody(handleCommandAPI, 512))))
+    rootMux.HandleFunc("/api/comments", withCORS(handleGetComments))
+    rootMux.HandleFunc("/api/add_comment", withCORS(limitRequestBody(handleAddComment, 1<<20)))
+    rootMux.HandleFunc("/api/upload_comment_image", withCORS(limitRequestBody(handleUploadCommentImage, 12<<20)))
+    rootMux.HandleFunc("/api/approve_comment", withCORS(withAuth(limitRequestBody(handleApproveComment, 512))))
+    rootMux.HandleFunc("/api/delete_comment", withCORS(withAuth(limitRequestBody(handleDeleteComment, 512))))
+    rootMux.HandleFunc("/api/all_comments", withCORS(withAuth(handleGetAllComments)))
+    rootMux.HandleFunc("/api/comment_stats", withCORS(withAuth(handleCommentStats)))
+    rootMux.HandleFunc("/api/pending_comments", withCORS(withAuth(handleGetPendingComments)))
+    rootMux.HandleFunc("/api/comment_settings", withCORS(withAuth(handleGetCommentSettings)))
+    rootMux.HandleFunc("/api/save_comment_settings", withCORS(withAuth(limitRequestBody(handleSaveCommentSettings, 1<<20))))
+    rootMux.HandleFunc("/api/bulk_comments", withCORS(withAuth(limitRequestBody(handleBulkComments, 1<<20))))
+    rootMux.HandleFunc("/api/export_comments", withCORS(withAuth(handleExportComments)))
+    rootMux.HandleFunc("/api/like_post", withCORS(limitRequestBody(handleLikePost, 512)))
+    rootMux.HandleFunc("/api/unlike_post", withCORS(limitRequestBody(handleUnlikePost, 512)))
+    rootMux.HandleFunc("/api/get_likes", withCORS(handleGetLikes))
+
+	// 启动审计日志轮转
+	go rotateAuditLogPeriodically()
+
+	// 获取端口配置
+	httpPort := getEnv("HTTP_PORT", "8080")
+	httpsPort := getEnv("HTTPS_PORT", "443")
+	tlsCertFile := getEnv("TLS_CERT_FILE", "")
+	tlsKeyFile := getEnv("TLS_KEY_FILE", "")
+
+	// Start HTTP server
+	fmt.Printf("WangScape Writer Online: http://127.0.0.1:%s\n", httpPort)
+	openBrowser(fmt.Sprintf("http://127.0.0.1:%s", httpPort))
+
+	// 启动HTTP监听
+	go func() {
+		httpAddr := fmt.Sprintf(":%s", httpPort)
+		if err := http.ListenAndServe(httpAddr, wrappedMux); err != nil && err != http.ErrServerClosed {
+			fmt.Printf("[AUDIT] HTTP Server error: %v\n", err)
+		}
+	}()
+
+	// 启动HTTPS监听 (如果配置了证书)
+	if tlsCertFile != "" && tlsKeyFile != "" {
+		if _, err := os.Stat(tlsCertFile); err == nil {
+			if _, err := os.Stat(tlsKeyFile); err == nil {
+				go func() {
+					httpsAddr := fmt.Sprintf(":%s", httpsPort)
+					fmt.Printf("[AUDIT] HTTPS Server starting on %s\n", httpsAddr)
+					if err := http.ListenAndServeTLS(httpsAddr, tlsCertFile, tlsKeyFile, wrappedMux); err != nil && err != http.ErrServerClosed {
+						fmt.Printf("[AUDIT] HTTPS Server error: %v\n", err)
+					}
+				}()
+			} else {
+				fmt.Printf("[AUDIT] TLS key file not found: %s\n", tlsKeyFile)
+			}
+		} else {
+			fmt.Printf("[AUDIT] TLS cert file not found: %s\n", tlsCertFile)
+		}
+	} else {
+		fmt.Printf("[AUDIT] HTTPS not configured (set TLS_CERT_FILE and TLS_KEY_FILE to enable)\n")
+	}
+
+	// 持续运行
+	select {}
 }
 
 var htmlTemplate = `<!DOCTYPE html>
@@ -2469,6 +3798,15 @@ var htmlTemplate = `<!DOCTYPE html>
                     <div>总评论: <span id="total-count" style="color: var(--dash-text);">0</span></div>
                 </div>
             </div>
+
+            <div id="auth-panel" style="margin-top: 18px; padding: 12px; background: rgba(79,70,229,0.08); border: 1px solid rgba(79,70,229,0.2); border-radius: 12px;">
+                <div style="font-size: 12px; color: #4f46e5; font-weight: 700; margin-bottom: 8px;">🔐 登录状态</div>
+                <div id="auth-status" style="font-size: 12px; color: var(--dash-text); margin-bottom: 10px;">未登录</div>
+                <div style="display:flex; gap:8px;">
+                    <button class="dash-btn" style="flex:1;" onclick="openLoginModal()">登录</button>
+                    <button class="dash-btn" style="flex:1;" onclick="logout()">退出</button>
+                </div>
+            </div>
             
             <div style="margin-top:auto; font-size:12px; color:var(--dash-text-dim);">
                 <span>系统状态: 在线</span><br>
@@ -2487,6 +3825,15 @@ var htmlTemplate = `<!DOCTYPE html>
             <button class="dash-btn" onclick="switchView('dashboard')">← 返回主面板</button>
             <button class="dash-btn" onclick="loadPendingComments()">🔄 刷新</button>
             <button class="dash-btn" onclick="exportCommentsCsv()">📥 导出CSV</button>
+
+            <div id="auth-panel-pending" style="margin: 12px 0 8px; padding: 12px; background: rgba(79,70,229,0.08); border: 1px solid rgba(79,70,229,0.2); border-radius: 12px;">
+                <div style="font-size: 12px; color: #4f46e5; font-weight: 700; margin-bottom: 8px;">🔐 登录状态</div>
+                <div id="auth-status-pending" style="font-size: 12px; color: var(--dash-text); margin-bottom: 10px;">未登录</div>
+                <div style="display:flex; gap:8px;">
+                    <button class="dash-btn" style="flex:1;" onclick="openLoginModal()">登录</button>
+                    <button class="dash-btn" style="flex:1;" onclick="logout()">退出</button>
+                </div>
+            </div>
 
             <div class="settings-panel">
                 <div class="settings-title">🔔 邮件通知</div>
@@ -2691,11 +4038,101 @@ var htmlTemplate = `<!DOCTYPE html>
         </div>
     </div>
 
+    <div class="modal-overlay" id="login-modal" style="display:none;">
+        <div class="modal-card">
+            <h2 style="margin-top:0">管理员登录</h2>
+            <label>用户名</label>
+            <input type="text" id="login-username" placeholder="admin">
+            <label>密码</label>
+            <input type="password" id="login-password" placeholder="请输入密码">
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
+                <button class="btn-cancel" onclick="closeLoginModal()">取消</button>
+                <button class="btn-confirm" onclick="performLogin()">登录</button>
+            </div>
+            <p id="login-hint" style="font-size:12px; color:#64748b; margin-top:8px; display:none;"></p>
+        </div>
+    </div>
+
     <script>
         let postsData = [];
         let currentDocPath = '';
         let commentStatsData = null;
         let likesData = {};
+        let authToken = localStorage.getItem('auth_token') || '';
+
+        function setAuthToken(token) {
+            authToken = token || '';
+            if (authToken) {
+                localStorage.setItem('auth_token', authToken);
+            } else {
+                localStorage.removeItem('auth_token');
+            }
+            updateAuthStatus();
+        }
+
+        function getAuthHeaders() {
+            if (!authToken) return {};
+            return { 'Authorization': 'Bearer ' + authToken };
+        }
+
+        async function authFetch(url, options = {}) {
+            const headers = Object.assign({}, options.headers || {}, getAuthHeaders());
+            const response = await fetch(url, Object.assign({}, options, { headers }));
+            if (response.status === 401) {
+                openLoginModal('需要登录才能继续操作');
+            }
+            return response;
+        }
+
+        function openLoginModal(message) {
+            const modal = document.getElementById('login-modal');
+            const hint = document.getElementById('login-hint');
+            if (message) {
+                hint.textContent = message;
+                hint.style.display = 'block';
+            } else {
+                hint.style.display = 'none';
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeLoginModal() {
+            const modal = document.getElementById('login-modal');
+            modal.style.display = 'none';
+        }
+
+        async function performLogin() {
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            if (!username || !password) {
+                openLoginModal('请输入用户名和密码');
+                return;
+            }
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (data && data.token) {
+                setAuthToken(data.token);
+                closeLoginModal();
+            } else {
+                openLoginModal(data.message || '登录失败');
+            }
+        }
+
+        function logout() {
+            setAuthToken('');
+        }
+
+        function updateAuthStatus() {
+            const statusText = authToken ? '已登录' : '未登录';
+            const statusEl = document.getElementById('auth-status');
+            const statusElPending = document.getElementById('auth-status-pending');
+            if (statusEl) statusEl.textContent = statusText;
+            if (statusElPending) statusElPending.textContent = statusText;
+        }
 
         function switchView(view) {
             document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active'));
@@ -2712,7 +4149,7 @@ var htmlTemplate = `<!DOCTYPE html>
 
         async function fetchCommentStats() {
             try {
-                const res = await fetch('/api/comment_stats');
+                const res = await authFetch('/api/comment_stats');
                 const data = await res.json();
                 if (data.success && data.data) {
                     commentStatsData = data.data;
@@ -2899,7 +4336,7 @@ var htmlTemplate = `<!DOCTYPE html>
             paper.innerHTML = '<div style="text-align:center; margin-top:50px; color:#888;">加载中...</div>';
 
             try {
-                const res = await fetch('/api/get_content?path=' + encodeURIComponent(path));
+                const res = await authFetch('/api/get_content?path=' + encodeURIComponent(path));
                 const data = await res.json();
                 
                 // 解析frontmatter
@@ -3221,8 +4658,9 @@ var htmlTemplate = `<!DOCTYPE html>
             statusEl.style.color = "#ffa500";
 
             try {
-                const res = await fetch('/api/save_content', {
+                const res = await authFetch('/api/save_content', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ path: currentDocPath, content: content })
                 });
                 const data = await res.json();
@@ -3239,8 +4677,9 @@ var htmlTemplate = `<!DOCTYPE html>
                         const enPath = currentDocPath.replace(/zh-cn/g, 'en');
                         
                         // 调用翻译同步接口
-                        const syncRes = await fetch('/api/sync_translate', {
+                        const syncRes = await authFetch('/api/sync_translate', {
                             method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ 
                                 zhPath: currentDocPath, 
                                 enPath: enPath,
@@ -3275,8 +4714,9 @@ var htmlTemplate = `<!DOCTYPE html>
         async function deleteDocument(path) {
             if(!confirm("确定要删除这篇文章吗？操作不可恢复。")) return;
             try {
-                const res = await fetch('/api/delete_post', {
+                const res = await authFetch('/api/delete_post', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ path: path })
                 });
                 const data = await res.json();
@@ -3305,8 +4745,9 @@ var htmlTemplate = `<!DOCTYPE html>
             if(!title) return alert('⚠️ 请输入文章标题');
 
             try {
-                const res = await fetch('/api/create_sync', {
+                const res = await authFetch('/api/create_sync', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ title, categories: cat || 'Uncategorized' })
                 });
                 const data = await res.json();
@@ -3388,7 +4829,7 @@ var htmlTemplate = `<!DOCTYPE html>
             }
             
             try {
-                const res = await fetch('/api/command?name=' + cmd);
+                const res = await authFetch('/api/command?name=' + cmd);
                 const data = await res.json();
                 
                 // 对于预览命令，直接打开本地浏览器
@@ -3430,7 +4871,7 @@ var htmlTemplate = `<!DOCTYPE html>
 
         async function loadComments(postPath) {
             try {
-                const res = await fetch('/api/all_comments?path=' + encodeURIComponent(postPath));
+                const res = await authFetch('/api/all_comments?path=' + encodeURIComponent(postPath));
                 const data = await res.json();
                 
                 let html = '';
@@ -3475,8 +4916,9 @@ var htmlTemplate = `<!DOCTYPE html>
 
         async function approveComment(postPath, commentId) {
             try {
-                const res = await fetch('/api/approve_comment', {
+                const res = await authFetch('/api/approve_comment', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ post_path: postPath, comment_id: commentId })
                 });
                 const data = await res.json();
@@ -3499,8 +4941,9 @@ var htmlTemplate = `<!DOCTYPE html>
 
         async function deleteCommentAction(postPath, commentId) {
             try {
-                const res = await fetch('/api/delete_comment', {
+                const res = await authFetch('/api/delete_comment', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ post_path: postPath, comment_id: commentId })
                 });
                 const data = await res.json();
@@ -3524,7 +4967,7 @@ var htmlTemplate = `<!DOCTYPE html>
             if (selectAll) selectAll.checked = false;
             
             try {
-                const res = await fetch('/api/pending_comments');
+                const res = await authFetch('/api/pending_comments');
                 const data = await res.json();
                 
                 if (data.success && data.data) {
@@ -3597,8 +5040,9 @@ var htmlTemplate = `<!DOCTYPE html>
                 return;
             }
             try {
-                const res = await fetch('/api/bulk_comments', {
+                const res = await authFetch('/api/bulk_comments', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'approve', items: items })
                 });
                 const data = await res.json();
@@ -3621,8 +5065,9 @@ var htmlTemplate = `<!DOCTYPE html>
             }
             if (!confirm('确定要批量删除所选评论吗？此操作不可恢复。')) return;
             try {
-                const res = await fetch('/api/bulk_comments', {
+                const res = await authFetch('/api/bulk_comments', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'delete', items: items })
                 });
                 const data = await res.json();
@@ -3637,13 +5082,30 @@ var htmlTemplate = `<!DOCTYPE html>
             }
         }
 
-        function exportCommentsCsv() {
-            window.open('/api/export_comments', '_blank');
+        async function exportCommentsCsv() {
+            try {
+                const res = await authFetch('/api/export_comments');
+                if (!res.ok) {
+                    alert('❌ 导出失败');
+                    return;
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'comments.csv';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                alert('❌ 导出失败: ' + e);
+            }
         }
 
         async function loadCommentSettings() {
             try {
-                const res = await fetch('/api/comment_settings');
+                const res = await authFetch('/api/comment_settings');
                 const data = await res.json();
                 if (data.success && data.data) {
                     const s = data.data;
@@ -3678,8 +5140,9 @@ var htmlTemplate = `<!DOCTYPE html>
             };
 
             try {
-                const res = await fetch('/api/save_comment_settings', {
+                const res = await authFetch('/api/save_comment_settings', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json();
@@ -3695,8 +5158,9 @@ var htmlTemplate = `<!DOCTYPE html>
         
         async function approvePendingComment(postPath, commentId) {
             try {
-                const res = await fetch('/api/approve_comment', {
+                const res = await authFetch('/api/approve_comment', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ post_path: postPath, comment_id: commentId })
                 });
                 const data = await res.json();
@@ -3719,8 +5183,9 @@ var htmlTemplate = `<!DOCTYPE html>
         
         async function deletePendingCommentAction(postPath, commentId) {
             try {
-                const res = await fetch('/api/delete_comment', {
+                const res = await authFetch('/api/delete_comment', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ post_path: postPath, comment_id: commentId })
                 });
                 const data = await res.json();
@@ -3833,6 +5298,7 @@ var htmlTemplate = `<!DOCTYPE html>
         fetchPosts();
         fetchCommentStats();
         fetchLikesData();
+        updateAuthStatus();
         
         // 快捷键支持
         document.addEventListener('keydown', function(e) {
