@@ -1,34 +1,41 @@
 ---
-title: "Hello, and Welcome to My Blog!"
+pinned: true
+title: "Hello and welcome to my blog"
 description: 
 date: 2026-01-21T19:39:21+08:00
-tags: ["Musings", "Lifestyle"]
-categories: ["Journal"]
+
 image: 
-math: 
+math: false
 license: 
 hidden: false
 comments: true
 draft: false
 ---
-After spending half a day in self-doubt, another half-day wrestling with AI, and a full day testing whether my head or my desk is harder...
 
-January 21st, 2026, has finally become a day to remember.
+After nearly a day of half a day of self-doubt, half a day of fighting with AI (doge), and a whole day of using your head and table harder than anyone else...
 
-My personal blog is officially live!
+January 21, 2026 finally became an extraordinary day for me.
 
-I plan to use this space to document my learning journey, vent a little when things get tough, and occasionally share book reviews or even some of my favorite poetry when inspiration strikes.
+My personal blog is finally live!!!
 
-Specifically, you’ll find:
+I will record my learning experience on my blog, occasionally complain, and even occasionally write a book review (and even record some of my favorite poems)
 
-Study Notes: Summaries of key concepts and breakthroughs in my coding journey.
+I will record the difficulties I have encountered in programming, the harvest, and a summary of some knowledge points.
 
-Academic Archive: This might even evolve into a comprehensive notebook for all my university subjects.
+This blog might also be my all-disciplinary notebook?(University Only)
 
-Life & Hobbies: Beyond the technical stuff, I might dive into Artificial Intelligence, algorithms, or even my interests in gaming, music, and movies.
+(Although I don't know if I can maintain my blog all the time, after all, it's lazy, do your best)
 
-I’ll do my best to keep this blog focused on learning—at least, that’s the plan! Though I’ll admit I can be a bit lazy sometimes, I’m committed to maintaining this space as much as I can. I just hope my update frequency doesn't drop too low...
+Of course, I will also record some other things, not only in terms of code, but also in terms of artificial intelligence?Algorithmic?Or, in terms of gaming?
 
-That’s all for now. It’s time to go back and squash the remaining bugs!
+Or, music? Movies?
 
-(P.S. The site is still a bit rough around the edges, but I promise it’ll get better over time!)
+I will do my best to make blogging learning-oriented, hopefully.
+
+I hope my update frequency is not too low...
+
+That's it, it's time to continue fixing the bug...
+
+
+
+(ps. Now the blog is still rough, it will be better in the future!)
