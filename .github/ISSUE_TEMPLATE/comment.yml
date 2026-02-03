@@ -1,0 +1,37 @@
+name: "Blog Comment"
+description: "Submit a comment for a blog post"
+labels: ["comment", "pending"]
+body:
+  - type: input
+    id: post
+    attributes:
+      label: Post Path
+      description: "Paste the post path shown on the site (e.g. content/zh-cn/post/xxxx/index.md)"
+      placeholder: "content/zh-cn/post/xxxx/index.md"
+    validations:
+      required: true
+  - type: input
+    id: author
+    attributes:
+      label: Name
+      placeholder: "Your name"
+    validations:
+      required: true
+  - type: input
+    id: email
+    attributes:
+      label: Email
+      description: "Only visible to site owner for moderation."
+      placeholder: "you@example.com"
+    validations:
+      required: true
+  - type: textarea
+    id: content
+    attributes:
+      label: Comment
+      placeholder: "Write your comment here"
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: "Thanks! Your comment will appear on the site after approval."

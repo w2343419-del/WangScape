@@ -40,6 +40,9 @@
                 <div class="form-group">
                     <label for="comment-email">{{ if eq .Lang "zh-cn" }}邮箱 *{{ else }}Email *{{ end }}</label>
                     <input type="email" id="comment-email" name="email" placeholder="your@email.com" required />
+                    <small style="display:block; margin-top:6px; color:#888; font-size:12px;">
+                        {{ if eq .Lang "zh-cn" }}仅站长可见，用于审核与联系，不会在网站公开展示。{{ else }}Visible to site owner only for moderation; not shown publicly.{{ end }}
+                    </small>
                 </div>
                 <div class="form-group">
                     <label for="comment-content">{{ if eq .Lang "zh-cn" }}评论内容 *{{ else }}Comment *{{ end }}</label>
@@ -379,7 +382,7 @@
 
 <script>
     const currentPostPath = '{{ .File.Path }}';
-    const isZhCN = {{ if eq .Lang "zh-cn" }}true{{ else }}false{{ end }};
+    const isZhCN = '{{ .Lang }}' === 'zh-cn';
     
     const i18n = {
         noComments: isZhCN ? '暂无评论，快来抢沙发吧！' : 'No comments yet. Be the first!',
