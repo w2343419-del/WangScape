@@ -5,6 +5,7 @@ import (
     "encoding/csv"
     "encoding/json"
     "fmt"
+    "io"
     "io/ioutil"
     "net/http"
     "net/smtp"
@@ -57,16 +58,17 @@ type APIResponse struct {
 
 // Comment represents a blog comment
 type Comment struct {
-	ID        string `json:"id"`
-	Author    string `json:"author"`
-	Email     string `json:"email"`
-	Content   string `json:"content"`
-	Timestamp string `json:"timestamp"`
-	Approved  bool   `json:"approved"`
-	PostPath  string `json:"post_path"`
-	IPAddress string `json:"ip_address"`
-	UserAgent string `json:"user_agent"`
-    ParentID  string `json:"parent_id,omitempty"`
+	ID        string   `json:"id"`
+	Author    string   `json:"author"`
+	Email     string   `json:"email"`
+	Content   string   `json:"content"`
+	Timestamp string   `json:"timestamp"`
+	Approved  bool     `json:"approved"`
+	PostPath  string   `json:"post_path"`
+	IPAddress string   `json:"ip_address"`
+	UserAgent string   `json:"user_agent"`
+    ParentID  string   `json:"parent_id,omitempty"`
+    Images    []string `json:"images,omitempty"`
 }
 
 // CommentSettings represents comment notification and blacklist settings
@@ -988,11 +990,12 @@ func handleGetComments(w http.ResponseWriter, r *http.Request) {
 
 func handleAddComment(w http.ResponseWriter, r *http.Request) {
 	var data struct {
-		PostPath string `json:"post_path"`
-		Author   string `json:"author"`
-		Email    string `json:"email"`
-		Content  string `json:"content"`
-        ParentID string `json:"parent_id"`
+		PostPath string   `json:"post_path"`
+		Author   string   `json:"author"`
+		Email    string   `json:"email"`
+		Content  string   `json:"content"`
+        ParentID string   `json:"parent_id"`
+        Images   []string `json:"images"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
@@ -1018,8 +1021,33 @@ func handleAddComment(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    comment, err := addComment(data.PostPath, data.Author, data.Email, data.Content, ipAddress, userAgent, data.ParentID)
+    // 获取现有评论
+    comments, err := getComments(data.PostPath)
     if err != nil {
+        respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
+        return
+    }
+    
+    // 生成唯一ID
+    id := fmt.Sprintf("%d-%d", time.Now().Unix(), len(comments))
+    
+    comment := Comment{
+        ID:        id,
+        Author:    data.Author,
+        Email:     data.Email,
+        Content:   data.Content,
+        Timestamp: time.Now().Format("2006-01-02 15:04:05"),
+        Approved:  false,
+        PostPath:  data.PostPath,
+        IPAddress: ipAddress,
+        UserAgent: userAgent,
+        ParentID:  data.ParentID,
+        Images:    data.Images,
+    }
+    
+    // 保存评论
+    comments = append(comments, comment)
+    if err := saveComments(data.PostPath, comments); err != nil {
 		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
 		return
 	}
@@ -1036,6 +1064,70 @@ func handleAddComment(w http.ResponseWriter, r *http.Request) {
     }()
 
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "评论已提交，等待审核"})
+}
+
+func handleUploadCommentImage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// 解析multipart form (最大10MB)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "文件过大"})
+		return
+	}
+
+	file, handler, err := r.FormFile("image")
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "无法读取文件"})
+		return
+	}
+	defer file.Close()
+
+	// 检查文件类型
+	allowedTypes := map[string]bool{
+		"image/jpeg": true,
+		"image/jpg":  true,
+		"image/png":  true,
+		"image/gif":  true,
+		"image/webp": true,
+	}
+	
+	contentType := handler.Header.Get("Content-Type")
+	if !allowedTypes[contentType] {
+		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "只支持 JPG, PNG, GIF, WebP 格式"})
+		return
+	}
+
+	// 生成唯一文件名
+	ext := filepath.Ext(handler.Filename)
+	filename := fmt.Sprintf("comment_%d%s", time.Now().UnixNano(), ext)
+	
+	// 确保目录存在
+	uploadDir := filepath.Join(hugoPath, "static", "img", "comments")
+	os.MkdirAll(uploadDir, 0755)
+	
+	// 保存文件
+	dst, err := os.Create(filepath.Join(uploadDir, filename))
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "保存失败"})
+		return
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "保存失败"})
+		return
+	}
+
+	// 返回图片URL
+	imageURL := "/img/comments/" + filename
+	respondJSON(w, http.StatusOK, APIResponse{
+		Success: true, 
+		Message: "上传成功",
+		Data:    map[string]string{"url": imageURL},
+	})
 }
 
 func handleApproveComment(w http.ResponseWriter, r *http.Request) {
@@ -1566,6 +1658,7 @@ func main() {
 	http.HandleFunc("/api/command", handleCommandAPI)
 	http.HandleFunc("/api/comments", handleGetComments)
 	http.HandleFunc("/api/add_comment", handleAddComment)
+	http.HandleFunc("/api/upload_comment_image", handleUploadCommentImage)
 	http.HandleFunc("/api/approve_comment", handleApproveComment)
 	http.HandleFunc("/api/delete_comment", handleDeleteComment)
 	http.HandleFunc("/api/all_comments", handleGetAllComments)
