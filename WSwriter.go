@@ -2561,7 +2561,7 @@ func withCORS(handler http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         origin := r.Header.Get("Origin")
         if origin != "" {
-            if !isAllowedOrigin(origin) {
+            if !isAllowedOrigin(origin, r) {
                 // 拒绝不信任的origin，不暴露任何信息
                 w.Header().Set("X-Frame-Options", "DENY")
                 http.Error(w, "Forbidden", http.StatusForbidden)
@@ -2596,13 +2596,42 @@ func withCORS(handler http.HandlerFunc) http.HandlerFunc {
     }
 }
 
-func isAllowedOrigin(origin string) bool {
+func isAllowedOrigin(origin string, r *http.Request) bool {
     allowed := map[string]bool{
         "http://localhost:1313":  true,
         "http://127.0.0.1:1313": true,
         "http://localhost:8080":  true,
         "http://127.0.0.1:8080": true,
+        "https://localhost:1313":  true,
+        "https://127.0.0.1:1313": true,
+        "https://localhost:8080":  true,
+        "https://127.0.0.1:8080": true,
     }
+
+    // 允许与当前Host一致的来源
+    if r != nil {
+        hostOriginHTTP := "http://" + r.Host
+        hostOriginHTTPS := "https://" + r.Host
+        allowed[hostOriginHTTP] = true
+        allowed[hostOriginHTTPS] = true
+    }
+
+    // 允许 BASE_URL
+    if baseURL := strings.TrimSpace(os.Getenv("BASE_URL")); baseURL != "" {
+        allowed[baseURL] = true
+    }
+
+    // 允许自定义来源列表 ALLOWED_ORIGINS (逗号分隔)
+    if raw := strings.TrimSpace(os.Getenv("ALLOWED_ORIGINS")); raw != "" {
+        parts := strings.Split(raw, ",")
+        for _, p := range parts {
+            p = strings.TrimSpace(p)
+            if p != "" {
+                allowed[p] = true
+            }
+        }
+    }
+
     return allowed[origin]
 }
 
