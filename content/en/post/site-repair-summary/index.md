@@ -11,7 +11,7 @@ image: ""
 math: false
 license: ""
 hidden: false
-comments: true
+comments: false
 draft: false
 ---
 
@@ -27,4 +27,6 @@ draft: false
 
 6. Added commenting function;
 
-7. Fixed an issue where WSwriter added tags with double quotation marks.
+7. Fixed the error of double quotes when adding tags to WSwriter;
+
+8. The security of the website has been maintained.

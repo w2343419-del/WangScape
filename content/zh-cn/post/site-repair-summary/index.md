@@ -11,7 +11,7 @@ image: ""
 math: false
 license: ""
 hidden: false
-comments: true
+comments: false
 draft: false
 ---
 
@@ -27,4 +27,6 @@ draft: false
 
 6、添加了评论功能；
 
-7、修复了 WSwriter 添加标签时出现双引号错误的问题。
+7、修复了 WSwriter 添加标签时出现双引号错误的问题；
+
+8、对网站安全性进行了维护。
