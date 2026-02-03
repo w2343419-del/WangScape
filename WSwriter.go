@@ -1439,6 +1439,19 @@ func respondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 	json.NewEncoder(w).Encode(data)
 }
 
+func withCORS(handler http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        if r.Method == http.MethodOptions {
+            w.WriteHeader(http.StatusNoContent)
+            return
+        }
+        handler(w, r)
+    }
+}
+
 // openBrowser opens the default browser
 // handleLikePost handles liking a post
 func handleLikePost(w http.ResponseWriter, r *http.Request) {
@@ -1649,28 +1662,28 @@ func openBrowser(url string) {
 func main() {
 	// Setup routes
 	http.HandleFunc("/", handleIndex)
-	http.HandleFunc("/api/posts", handleGetPosts)
-	http.HandleFunc("/api/get_content", handleGetContent)
-	http.HandleFunc("/api/save_content", handleSaveContent)
-	http.HandleFunc("/api/delete_post", handleDeletePost)
-	http.HandleFunc("/api/create_sync", handleCreateSync)
-	http.HandleFunc("/api/sync_translate", handleSyncTranslate)
-	http.HandleFunc("/api/command", handleCommandAPI)
-	http.HandleFunc("/api/comments", handleGetComments)
-	http.HandleFunc("/api/add_comment", handleAddComment)
-	http.HandleFunc("/api/upload_comment_image", handleUploadCommentImage)
-	http.HandleFunc("/api/approve_comment", handleApproveComment)
-	http.HandleFunc("/api/delete_comment", handleDeleteComment)
-	http.HandleFunc("/api/all_comments", handleGetAllComments)
-	http.HandleFunc("/api/comment_stats", handleCommentStats)
-	http.HandleFunc("/api/pending_comments", handleGetPendingComments)
-    http.HandleFunc("/api/comment_settings", handleGetCommentSettings)
-    http.HandleFunc("/api/save_comment_settings", handleSaveCommentSettings)
-    http.HandleFunc("/api/bulk_comments", handleBulkComments)
-    http.HandleFunc("/api/export_comments", handleExportComments)
-    http.HandleFunc("/api/like_post", handleLikePost)
-    http.HandleFunc("/api/unlike_post", handleUnlikePost)
-    http.HandleFunc("/api/get_likes", handleGetLikes)
+    http.HandleFunc("/api/posts", withCORS(handleGetPosts))
+    http.HandleFunc("/api/get_content", withCORS(handleGetContent))
+    http.HandleFunc("/api/save_content", withCORS(handleSaveContent))
+    http.HandleFunc("/api/delete_post", withCORS(handleDeletePost))
+    http.HandleFunc("/api/create_sync", withCORS(handleCreateSync))
+    http.HandleFunc("/api/sync_translate", withCORS(handleSyncTranslate))
+    http.HandleFunc("/api/command", withCORS(handleCommandAPI))
+    http.HandleFunc("/api/comments", withCORS(handleGetComments))
+    http.HandleFunc("/api/add_comment", withCORS(handleAddComment))
+    http.HandleFunc("/api/upload_comment_image", withCORS(handleUploadCommentImage))
+    http.HandleFunc("/api/approve_comment", withCORS(handleApproveComment))
+    http.HandleFunc("/api/delete_comment", withCORS(handleDeleteComment))
+    http.HandleFunc("/api/all_comments", withCORS(handleGetAllComments))
+    http.HandleFunc("/api/comment_stats", withCORS(handleCommentStats))
+    http.HandleFunc("/api/pending_comments", withCORS(handleGetPendingComments))
+    http.HandleFunc("/api/comment_settings", withCORS(handleGetCommentSettings))
+    http.HandleFunc("/api/save_comment_settings", withCORS(handleSaveCommentSettings))
+    http.HandleFunc("/api/bulk_comments", withCORS(handleBulkComments))
+    http.HandleFunc("/api/export_comments", withCORS(handleExportComments))
+    http.HandleFunc("/api/like_post", withCORS(handleLikePost))
+    http.HandleFunc("/api/unlike_post", withCORS(handleUnlikePost))
+    http.HandleFunc("/api/get_likes", withCORS(handleGetLikes))
 
 	// Start server
 	fmt.Printf("WangScape Writer Online: http://127.0.0.1:%d\n", PORT)
