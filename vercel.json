@@ -1,25 +1,9 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/**/*.go",
-      "use": "@vercel/go",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
+  "functions": {
+    "api/submit_comment.go": {
+      "runtime": "@vercel/go@latest",
+      "memory": 256
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1.go"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ],
-  "env": {
-    "GITHUB_TOKEN": "@github_token"
   }
 }
