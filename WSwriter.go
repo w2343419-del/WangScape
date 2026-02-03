@@ -88,8 +88,24 @@ type CommentsFile struct {
 	Comments []Comment `json:"comments"`
 }
 
+// PostLikes represents likes data for a post
+type PostLikes struct {
+	PostPath string   `json:"post_path"`
+	Likes    int      `json:"likes"`
+	LikedIPs []string `json:"liked_ips"`
+}
+
+// LikesFile represents all posts likes data
+type LikesFile struct {
+	Likes []PostLikes `json:"likes"`
+}
+
 func getCommentSettingsPath() string {
     return filepath.Join(hugoPath, "config", "comment_settings.json")
+}
+
+func getLikesPath() string {
+    return filepath.Join(hugoPath, "config", "post_likes.json")
 }
 
 func loadCommentSettings() CommentSettings {
@@ -97,6 +113,7 @@ func loadCommentSettings() CommentSettings {
     settings := CommentSettings{
         SMTPEnabled:     false,
         SMTPPort:        587,
+        SMTPTo:          []string{"w2343419@gmail.com"},
         NotifyOnPending: true,
         BlacklistIPs:    []string{},
         BlacklistWords:  []string{},
@@ -125,6 +142,45 @@ func saveCommentSettings(settings CommentSettings) error {
         return err
     }
     return ioutil.WriteFile(path, data, 0644)
+}
+
+func loadPostLikes() LikesFile {
+    path := getLikesPath()
+    likesFile := LikesFile{Likes: []PostLikes{}}
+    
+    if _, err := os.Stat(path); os.IsNotExist(err) {
+        return likesFile
+    }
+    
+    content, err := ioutil.ReadFile(path)
+    if err != nil {
+        return likesFile
+    }
+    
+    if err := json.Unmarshal(content, &likesFile); err != nil {
+        return likesFile
+    }
+    
+    return likesFile
+}
+
+func savePostLikes(likesFile LikesFile) error {
+    path := getLikesPath()
+    data, err := json.MarshalIndent(likesFile, "", "  ")
+    if err != nil {
+        return err
+    }
+    return ioutil.WriteFile(path, data, 0644)
+}
+
+func getPostLikes(postPath string) PostLikes {
+    likesFile := loadPostLikes()
+    for _, pl := range likesFile.Likes {
+        if pl.PostPath == postPath {
+            return pl
+        }
+    }
+    return PostLikes{PostPath: postPath, Likes: 0, LikedIPs: []string{}}
 }
 
 func isCommentBlacklisted(settings CommentSettings, ip, author, email, content string) bool {
@@ -717,10 +773,13 @@ func updateFrontmatter(relPath, title, categories string) error {
 
 	lines := strings.Split(string(content), "\n")
 	var newLines []string
+	
+	// 转义标题中的双引号
+	escapedTitle := strings.ReplaceAll(title, `"`, `\"`)
 
 	for _, line := range lines {
 		if strings.HasPrefix(line, "title:") {
-			newLines = append(newLines, fmt.Sprintf(`title: "%s"`, title))
+			newLines = append(newLines, fmt.Sprintf(`title: "%s"`, escapedTitle))
 		} else if strings.HasPrefix(line, "categories:") {
 			cats := strings.Split(categories, ",")
 			for i := range cats {
@@ -1289,6 +1348,201 @@ func respondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 }
 
 // openBrowser opens the default browser
+// handleLikePost handles liking a post
+func handleLikePost(w http.ResponseWriter, r *http.Request) {
+    if r.Method != "POST" {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+
+    var data struct {
+        PostPath string `json:"post_path"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+        return
+    }
+
+    // Get client IP
+    ip := r.RemoteAddr
+    if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+        ip = strings.Split(forwarded, ",")[0]
+    }
+
+    // Load all likes
+    likesFile := loadPostLikes()
+    
+    // Find or create post likes
+    found := false
+    for i := range likesFile.Likes {
+        if likesFile.Likes[i].PostPath == data.PostPath {
+            // Check if IP already liked
+            for _, likedIP := range likesFile.Likes[i].LikedIPs {
+                if likedIP == ip {
+                    respondJSON(w, http.StatusOK, APIResponse{
+                        Success: false,
+                        Message: "Already liked",
+                        Data:    map[string]int{"likes": likesFile.Likes[i].Likes},
+                    })
+                    return
+                }
+            }
+            
+            // Add like
+            likesFile.Likes[i].Likes++
+            likesFile.Likes[i].LikedIPs = append(likesFile.Likes[i].LikedIPs, ip)
+            found = true
+            
+            if err := savePostLikes(likesFile); err != nil {
+                respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Failed to save"})
+                return
+            }
+            
+            respondJSON(w, http.StatusOK, APIResponse{
+                Success: true,
+                Message: "Liked",
+                Data:    map[string]int{"likes": likesFile.Likes[i].Likes},
+            })
+            return
+        }
+    }
+
+    // If not found, create new
+    if !found {
+        newLikes := PostLikes{
+            PostPath: data.PostPath,
+            Likes:    1,
+            LikedIPs: []string{ip},
+        }
+        likesFile.Likes = append(likesFile.Likes, newLikes)
+        
+        if err := savePostLikes(likesFile); err != nil {
+            respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Failed to save"})
+            return
+        }
+        
+        respondJSON(w, http.StatusOK, APIResponse{
+            Success: true,
+            Message: "Liked",
+            Data:    map[string]int{"likes": 1},
+        })
+    }
+}
+
+// handleUnlikePost handles unliking a post
+func handleUnlikePost(w http.ResponseWriter, r *http.Request) {
+    if r.Method != "POST" {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+
+    var data struct {
+        PostPath string `json:"post_path"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+        return
+    }
+
+    // Get client IP
+    ip := r.RemoteAddr
+    if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+        ip = strings.Split(forwarded, ",")[0]
+    }
+
+    // Load all likes
+    likesFile := loadPostLikes()
+    
+    // Find post likes
+    for i := range likesFile.Likes {
+        if likesFile.Likes[i].PostPath == data.PostPath {
+            // Check if IP liked before
+            ipIndex := -1
+            for j, likedIP := range likesFile.Likes[i].LikedIPs {
+                if likedIP == ip {
+                    ipIndex = j
+                    break
+                }
+            }
+            
+            if ipIndex == -1 {
+                respondJSON(w, http.StatusOK, APIResponse{
+                    Success: false,
+                    Message: "Not liked yet",
+                    Data:    map[string]int{"likes": likesFile.Likes[i].Likes},
+                })
+                return
+            }
+            
+            // Remove like
+            if likesFile.Likes[i].Likes > 0 {
+                likesFile.Likes[i].Likes--
+            }
+            likesFile.Likes[i].LikedIPs = append(likesFile.Likes[i].LikedIPs[:ipIndex], likesFile.Likes[i].LikedIPs[ipIndex+1:]...)
+            
+            if err := savePostLikes(likesFile); err != nil {
+                respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Failed to save"})
+                return
+            }
+            
+            respondJSON(w, http.StatusOK, APIResponse{
+                Success: true,
+                Message: "Unliked",
+                Data:    map[string]int{"likes": likesFile.Likes[i].Likes},
+            })
+            return
+        }
+    }
+
+    respondJSON(w, http.StatusOK, APIResponse{
+        Success: false,
+        Message: "Post not found",
+        Data:    map[string]int{"likes": 0},
+    })
+}
+
+// handleGetLikes returns likes data for all posts or a specific post
+func handleGetLikes(w http.ResponseWriter, r *http.Request) {
+    postPath := r.URL.Query().Get("path")
+    
+    if postPath != "" {
+        // Get likes for specific post
+        likes := getPostLikes(postPath)
+        
+        // Check if current IP liked
+        ip := r.RemoteAddr
+        if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+            ip = strings.Split(forwarded, ",")[0]
+        }
+        
+        liked := false
+        for _, likedIP := range likes.LikedIPs {
+            if likedIP == ip {
+                liked = true
+                break
+            }
+        }
+        
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(map[string]interface{}{
+            "likes": likes.Likes,
+            "liked": liked,
+        })
+    } else {
+        // Get all likes
+        likesFile := loadPostLikes()
+        likesMap := make(map[string]int)
+        for _, likes := range likesFile.Likes {
+            likesMap[likes.PostPath] = likes.Likes
+        }
+        
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(likesMap)
+    }
+}
+
 func openBrowser(url string) {
 	switch runtime.GOOS {
 	case "darwin":
@@ -1321,6 +1575,9 @@ func main() {
     http.HandleFunc("/api/save_comment_settings", handleSaveCommentSettings)
     http.HandleFunc("/api/bulk_comments", handleBulkComments)
     http.HandleFunc("/api/export_comments", handleExportComments)
+    http.HandleFunc("/api/like_post", handleLikePost)
+    http.HandleFunc("/api/unlike_post", handleUnlikePost)
+    http.HandleFunc("/api/get_likes", handleGetLikes)
 
 	// Start server
 	fmt.Printf("WangScape Writer Online: http://127.0.0.1:%d\n", PORT)
@@ -1340,17 +1597,17 @@ var htmlTemplate = `<!DOCTYPE html>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sitka+Small&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --dash-bg: #0a0a0a;
-            --dash-sidebar: #141414;
-            --dash-text: #ffffff;
-            --dash-text-dim: #888888;
-            --dash-accent: #00ffcc;
-            --dash-border: rgba(255,255,255,0.1);
-            --word-bg: #f3f2f1;
-            --word-blue: #2b579a;
+            --dash-bg: #f7f8fb;
+            --dash-sidebar: #0f172a;
+            --dash-text: #0f172a;
+            --dash-text-dim: #64748b;
+            --dash-accent: #4f46e5;
+            --dash-border: #e2e8f0;
+            --word-bg: #eef2f7;
+            --word-blue: #2563eb;
             --word-paper: #ffffff;
-            --word-text: #201f1e;
-            --word-border: #e1dfdd;
+            --word-text: #0f172a;
+            --word-border: #e2e8f0;
             --font-main: 'Inter', 'Noto Sans SC', sans-serif;
         }
 
@@ -1377,88 +1634,110 @@ var htmlTemplate = `<!DOCTYPE html>
         }
 
         .dash-sidebar {
-            width: 280px;
-            background: var(--dash-sidebar);
-            border-right: 1px solid var(--dash-border);
-            padding: 30px;
+            width: 300px;
+            background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+            border-right: 1px solid rgba(255,255,255,0.08);
+            padding: 28px;
             display: flex;
             flex-direction: column;
             gap: 20px;
+            box-shadow: 6px 0 18px rgba(15, 23, 42, 0.18);
+            --dash-text: #e2e8f0;
+            --dash-text-dim: #94a3b8;
         }
 
         .dash-logo {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--dash-accent);
+            font-size: 22px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a5b4fc 0%, #4f46e5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
+            letter-spacing: 0.2px;
         }
 
         .dash-btn {
-            background: transparent;
-            border: 1px solid var(--dash-border);
-            color: var(--dash-text);
-            padding: 12px 20px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #e2e8f0;
+            padding: 12px 14px;
             border-radius: 12px;
             cursor: pointer;
             text-align: left;
             font-size: 14px;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             gap: 12px;
+            font-weight: 500;
         }
 
         .dash-btn:hover {
-            border-color: var(--dash-accent);
-            background: rgba(0, 255, 204, 0.05);
+            border-color: rgba(165, 180, 252, 0.4);
+            background: rgba(79, 70, 229, 0.18);
+            color: #c7d2fe;
         }
 
         .dash-btn.primary {
-            background: var(--dash-accent);
-            color: #000;
+            background: linear-gradient(135deg, #a5b4fc 0%, #4f46e5 100%);
+            color: #0f172a;
             border: none;
-            font-weight: 600;
+            font-weight: 700;
+            box-shadow: 0 8px 18px rgba(79, 70, 229, 0.35);
+            transition: all 0.3s ease;
         }
 
         .dash-btn.primary:hover {
-            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(79, 70, 229, 0.45);
         }
 
         .dash-main {
             flex: 1;
-            padding: 50px;
+            padding: 44px 56px;
             overflow-y: auto;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 65%);
+            color: var(--dash-text);
         }
 
         .dash-header {
             font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 30px;
-            letter-spacing: -0.5px;
+            font-weight: 800;
+            margin-bottom: 28px;
+            letter-spacing: -0.2px;
+            color: #0f172a;
         }
 
         .post-list-card {
-            background: var(--dash-sidebar);
+            background: #ffffff;
             border-radius: 16px;
-            border: 1px solid var(--dash-border);
+            border: 1px solid #e2e8f0;
             overflow: hidden;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+            transition: all 0.3s ease;
+        }
+
+        .post-list-card:hover {
+            box-shadow: 0 18px 32px rgba(15, 23, 42, 0.1);
+            border-color: #cbd5f5;
         }
 
         .dash-post-item {
-            padding: 20px 25px;
-            border-bottom: 1px solid var(--dash-border);
+            padding: 22px 26px;
+            border-bottom: 1px solid #f1f5f9;
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s ease;
         }
 
         .dash-post-item:hover {
-            background: rgba(255,255,255,0.03);
+            background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
         }
 
         .dash-post-item:last-child {
@@ -1466,16 +1745,31 @@ var htmlTemplate = `<!DOCTYPE html>
         }
 
         .dpi-title {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
-            color: var(--dash-text);
+            color: #0f172a;
             margin-bottom: 5px;
         }
 
         .dpi-meta {
             font-size: 12px;
-            color: var(--dash-text-dim);
-            font-family: monospace;
+            color: #64748b;
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+        }
+
+        .like-btn {
+            transition: all 0.2s ease;
+        }
+
+        .like-btn:hover {
+            background: #fff0f3 !important;
+            border-color: #ff69b4 !important;
+            transform: scale(1.05);
+        }
+
+        .like-btn.liked {
+            background: #ffe7e7 !important;
+            border-color: #e91e63 !important;
         }
 
         #editor-view {
@@ -1485,55 +1779,60 @@ var htmlTemplate = `<!DOCTYPE html>
         }
 
         .word-topbar {
-            background: var(--word-blue);
+            background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
             color: white;
-            height: 48px;
+            height: 54px;
             display: flex;
             align-items: center;
-            padding: 0 16px;
+            padding: 0 20px;
             justify-content: space-between;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
         }
 
         .word-back-btn {
-            background: rgba(255,255,255,0.2);
-            border: none;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
             color: white;
-            padding: 6px 12px;
-            border-radius: 4px;
+            padding: 8px 14px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 13px;
             display: flex;
             align-items: center;
             gap: 6px;
+            font-weight: 600;
+            transition: all 0.2s ease;
         }
 
         .word-back-btn:hover {
-            background: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.25);
+            transform: translateX(-2px);
         }
 
         .word-ribbon {
-            background: white;
-            border-bottom: 1px solid var(--word-border);
-            padding: 8px 20px;
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 14px 20px;
             display: flex;
             gap: 10px;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
         }
 
         .word-rib-btn {
-            border: 1px solid transparent;
-            background: transparent;
-            padding: 8px 14px;
-            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            padding: 10px 14px;
+            border-radius: 10px;
             cursor: pointer;
             font-size: 12px;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 5px;
-            color: #555;
+            color: #0f172a;
             transition: all 0.2s ease;
             position: relative;
+            font-weight: 600;
         }
         
         .word-rib-btn span:first-child {
@@ -1541,10 +1840,11 @@ var htmlTemplate = `<!DOCTYPE html>
         }
 
         .word-rib-btn:hover {
-            background: #e8f4ff;
-            border-color: #4a90e2;
-            color: #4a90e2;
-            transform: translateY(-1px);
+            background: #4f46e5;
+            border-color: #4338ca;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
         }
         
         .word-rib-btn:active {
@@ -1559,12 +1859,12 @@ var htmlTemplate = `<!DOCTYPE html>
 
         .word-canvas {
             flex: 1;
-            background: #e8eaed;
-            padding: 30px;
+            background: linear-gradient(135deg, #eef2f7 0%, #ffffff 100%);
+            padding: 36px;
             overflow-y: auto;
             display: flex;
             justify-content: center;
-            gap: 25px;
+            gap: 24px;
             align-items: flex-start;
             max-width: 100%;
         }
@@ -1575,46 +1875,37 @@ var htmlTemplate = `<!DOCTYPE html>
             flex-shrink: 0;
             min-height: calc(100vh - 200px);
             background: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-            padding: 60px 80px;
+            box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.08);
+            padding: 56px 72px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            border-radius: 4px;
+            border-radius: 16px;
             position: relative;
         }
         
-        .word-paper::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 80px;
-            width: 2px;
-            height: 100%;
-            background: #ffeaea;
-            opacity: 0.3;
-        }
 
         .meta-panel {
             width: 360px;
             min-width: 360px;
             max-width: 360px;
             flex-shrink: 0;
-            background: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            padding: 25px;
+            background: #ffffff;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1);
+            padding: 26px;
             box-sizing: border-box;
-            border-radius: 4px;
+            border-radius: 16px;
             max-height: calc(100vh - 200px);
             overflow-y: auto;
             position: sticky;
             top: 30px;
-            border: 1px solid #e0e0e0;
-            transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         .meta-panel:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            box-shadow: 0 16px 32px rgba(15, 23, 42, 0.14);
+            border-color: #cbd5f5;
         }
 
         #comments-panel {
@@ -1623,16 +1914,16 @@ var htmlTemplate = `<!DOCTYPE html>
             max-width: 360px !important;
             flex-shrink: 0 !important;
             background: white !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
-            padding: 25px !important;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1) !important;
+            padding: 24px !important;
             box-sizing: border-box !important;
-            border-radius: 4px !important;
+            border-radius: 16px !important;
             max-height: calc(100vh - 200px) !important;
             overflow-y: auto !important;
             position: sticky !important;
             top: 30px !important;
-            border: 1px solid #ffa726 !important;
-            border-left: 4px solid #ffa726 !important;
+            border: 1px solid #e2e8f0 !important;
+            border-left: 4px solid #f59e0b !important;
             transition: all 0.3s ease !important;
         }
 
@@ -1645,62 +1936,83 @@ var htmlTemplate = `<!DOCTYPE html>
         }
 
         .meta-panel h3 {
-            margin: 0 0 20px 0;
+            margin: 0 0 22px 0;
             font-size: 16px;
-            color: #333;
-            border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 10px;
+            font-weight: 700;
+            color: #1a1a1a;
+            border-bottom: 2px solid #4a90e2;
+            padding-bottom: 12px;
+            letter-spacing: 0.5px;
         }
 
         .meta-section {
-            margin-bottom: 25px;
+            margin-bottom: 22px;
         }
 
         .meta-section label {
             display: block;
-            font-size: 13px;
+            font-size: 12px;
             color: #666;
             margin-bottom: 8px;
-            font-weight: 500;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .meta-input {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
+            padding: 12px 14px;
+            border: 1.5px solid #dfe3ec;
+            border-radius: 8px;
+            font-size: 13px;
             box-sizing: border-box;
             font-family: var(--font-main);
+            background: #fafbfc;
+            color: #2c3e50;
+            transition: all 0.2s ease;
         }
 
         .meta-input:focus {
             outline: none;
-            border-color: var(--word-blue);
+            border-color: #4a90e2;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+
+        .meta-input:hover {
+            border-color: #c5d0e0;
         }
 
         .tag-container {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 10px;
-            min-height: 34px;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            background: #fafafa;
+            margin-bottom: 12px;
+            min-height: 44px;
+            padding: 12px 14px;
+            border: 1.5px solid #dfe3ec;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #fafbfc 0%, #f5f7fb 100%);
+            align-content: flex-start;
         }
 
         .tag-item {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: var(--word-blue);
+            background: linear-gradient(135deg, #4a90e2 0%, #2e5bad 100%);
             color: white;
-            padding: 5px 12px;
-            border-radius: 16px;
+            padding: 7px 14px;
+            border-radius: 18px;
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(74, 144, 226, 0.25);
+            transition: all 0.2s ease;
+        }
+
+        .tag-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(74, 144, 226, 0.35);
         }
 
         .tag-remove {
@@ -1721,48 +2033,86 @@ var htmlTemplate = `<!DOCTYPE html>
 
         .tag-input-row input {
             flex: 1;
+            padding: 10px 12px;
+            border: 1.5px solid #dfe3ec;
+            border-radius: 8px;
+            font-size: 13px;
+            background: #fafbfc;
+            color: #2c3e50;
+            transition: all 0.2s ease;
+        }
+
+        .tag-input-row input:focus {
+            outline: none;
+            border-color: #4a90e2;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
         }
 
         .tag-input-row button {
-            padding: 8px 16px;
-            background: var(--word-blue);
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #4a90e2 0%, #2e5bad 100%);
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(74, 144, 226, 0.2);
         }
 
         .tag-input-row button:hover {
-            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.35);
+        }
+
+        .tag-input-row button:active {
+            transform: translateY(0);
         }
 
         .meta-checkbox {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-top: 8px;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #f5f7fb;
+            transition: all 0.2s ease;
+        }
+
+        .meta-checkbox:hover {
+            background: #eff3fb;
         }
 
         .meta-checkbox input[type="checkbox"] {
             width: 18px;
             height: 18px;
             cursor: pointer;
+            accent-color: #4a90e2;
         }
 
         .meta-checkbox label {
             margin: 0;
             cursor: pointer;
+            font-size: 13px;
+            color: #2c3e50;
+            font-weight: 500;
         }
 
         .wp-title {
             font-family: 'Sitka Small', serif;
-            font-size: 32px;
-            font-weight: 700;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
+            font-size: 36px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            border-bottom: 2px solid #e8eef5;
+            padding-bottom: 22px;
+            margin-bottom: 32px;
+            letter-spacing: -0.5px;
         }
 
         .modal-overlay {
@@ -1825,19 +2175,34 @@ var htmlTemplate = `<!DOCTYPE html>
             width: 100%;
             height: 100%;
             min-height: 600px;
-            border: none;
+            border: 1.5px solid #dfe3ec;
             resize: none;
             outline: none;
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             font-size: 15px;
             line-height: 1.8;
             color: #2c3e50;
-            padding: 0;
+            padding: 20px;
             tab-size: 4;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            transition: all 0.2s ease;
+        }
+        
+        #editor-textarea:focus {
+            border-color: #4a90e2;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02), 0 0 0 3px rgba(74, 144, 226, 0.1);
         }
         
         #editor-textarea::selection {
-            background: rgba(74, 144, 226, 0.3);
+            background: #4f46e5;
+            color: #ffffff;
+        }
+        
+        #editor-textarea::-moz-selection {
+            background: #4f46e5;
+            color: #ffffff;
         }
         
         .pending-comment-card {
@@ -2224,6 +2589,7 @@ var htmlTemplate = `<!DOCTYPE html>
         let postsData = [];
         let currentDocPath = '';
         let commentStatsData = null;
+        let likesData = {};
 
         function switchView(view) {
             document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active'));
@@ -2231,6 +2597,7 @@ var htmlTemplate = `<!DOCTYPE html>
             if (view === 'dashboard') {
                 fetchPosts();
                 fetchCommentStats();
+                fetchLikesData();
             } else if (view === 'pending-comments') {
                 loadPendingComments();
                 loadCommentSettings();
@@ -2271,6 +2638,53 @@ var htmlTemplate = `<!DOCTYPE html>
             const res = await fetch('/api/posts');
             postsData = await res.json();
             renderDashboardList();
+        }
+
+        async function fetchLikesData() {
+            try {
+                const res = await fetch('/api/get_likes');
+                likesData = await res.json();
+                renderDashboardList();
+            } catch(e) {
+                console.error('获取点赞数据失败:', e);
+            }
+        }
+
+        async function toggleLike(postPath, event) {
+            event.stopPropagation();
+            
+            const btn = event.target;
+            const isLiked = btn.classList.contains('liked');
+            const endpoint = isLiked ? '/api/unlike_post' : '/api/like_post';
+            
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ post_path: postPath })
+                });
+                const data = await res.json();
+                
+                if (data.success || data.data) {
+                    // 更新本地数据
+                    likesData[postPath] = data.data.likes;
+                    
+                    // 更新按钮状态
+                    if (isLiked) {
+                        btn.classList.remove('liked');
+                        btn.innerHTML = '🤍 ' + (data.data.likes || 0);
+                    } else {
+                        btn.classList.add('liked');
+                        btn.innerHTML = '❤️ ' + (data.data.likes || 0);
+                    }
+                } else if (data.message === 'Already liked') {
+                    // 已经点赞过，更新UI
+                    btn.classList.add('liked');
+                    btn.innerHTML = '❤️ ' + (data.data.likes || 0);
+                }
+            } catch(e) {
+                console.error('点赞失败:', e);
+            }
         }
 
         function renderDashboardList() {
@@ -2332,10 +2746,15 @@ var htmlTemplate = `<!DOCTYPE html>
                     }
                 }
                 
+                // 显示点赞数
+                const likes = likesData[primaryVersion.path] || 0;
+                html += '<span style="font-size:9px; padding:2px 4px; background:#ffe7e7; color:#e91e63; border-radius:3px; margin-left:4px;">❤️ ' + likes + '</span>';
+                
                 html += '</div>' +
                     '<div class="dpi-meta">' + primaryVersion.date + ' · ' + primaryVersion.path + '</div>' +
                     '</div>' +
-                    '<div style="display:flex; gap:8px; align-items:center;">';
+                    '<div style="display:flex; gap:8px; align-items:center;">' +
+                    '<button onclick="toggleLike(\'' + escapedPath + '\', event)" class="like-btn" style="background:#fff; border:1px solid #ffc0cb; color:#e91e63; padding:4px 10px; border-radius:6px; font-size:11px; cursor:pointer; transition:all 0.2s;">🤍 ' + likes + '</button>';
                 
                 // 显示切换按钮
                 if (versions.zh && versions.en) {
@@ -2344,12 +2763,12 @@ var htmlTemplate = `<!DOCTYPE html>
                     const zhTitle = versions.zh.title.replace(/'/g, "\\'");
                     const enTitle = versions.en.title.replace(/'/g, "\\'");
                     
-                    html += '<button onclick="openEditor(\'' + zhPath + '\', \'' + zhTitle + '\', \'' + versions.zh.date + '\')" style="background:rgba(255,165,0,0.1); border:1px solid rgba(255,165,0,0.3); color:#ffa500; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">编辑中文</button>' +
-                            '<button onclick="openEditor(\'' + enPath + '\', \'' + enTitle + '\', \'' + versions.en.date + '\')" style="background:rgba(80,200,120,0.1); border:1px solid rgba(80,200,120,0.3); color:#50c878; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer;">编辑英文</button>';
+                        html += '<button onclick="openEditor(\'' + zhPath + '\', \'' + zhTitle + '\', \'' + versions.zh.date + '\')" style="background:#fff7ed; border:1px solid #fed7aa; color:#c2410c; padding:4px 8px; border-radius:6px; font-size:11px; cursor:pointer;">编辑中文</button>' +
+                            '<button onclick="openEditor(\'' + enPath + '\', \'' + enTitle + '\', \'' + versions.en.date + '\')" style="background:#ecfdf3; border:1px solid #bbf7d0; color:#15803d; padding:4px 8px; border-radius:6px; font-size:11px; cursor:pointer;">编辑英文</button>';
                 }
                 
-                html += '<button onclick="deleteDocument(\'' + escapedPath + '\')" style="background:rgba(255,50,50,0.1); border:1px solid rgba(255,50,50,0.2); color:#ff5555; width:32px; height:32px; border-radius:8px; cursor:pointer;">🗑</button>' +
-                        '<button onclick="openEditor(\'' + escapedPath + '\', \'' + primaryVersion.title.replace(/'/g, "\\'") + '\', \'' + primaryVersion.date + '\')" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; width:32px; height:32px; border-radius:8px; cursor:pointer;">✎</button>' +
+                    html += '<button onclick="deleteDocument(\'' + escapedPath + '\')" style="background:#fee2e2; border:1px solid #fecaca; color:#b91c1c; width:32px; height:32px; border-radius:8px; cursor:pointer;">🗑</button>' +
+                        '<button onclick="openEditor(\'' + escapedPath + '\', \'' + primaryVersion.title.replace(/'/g, "\\'") + '\', \'' + primaryVersion.date + '\')" style="background:#eef2ff; border:1px solid #c7d2fe; color:#4338ca; width:32px; height:32px; border-radius:8px; cursor:pointer;">✎</button>' +
                         '</div>' +
                         '</div>';
                 
@@ -2597,7 +3016,7 @@ var htmlTemplate = `<!DOCTYPE html>
             
             // 更新title
             if (currentMetadata.title) {
-                newFm = newFm.replace(/title:\s*["']?[^"'\n]+["']?/, 'title: "' + currentMetadata.title + '"');
+                newFm = newFm.replace(/title:\s*["']?[^"'\n]+["']?/, 'title: "' + currentMetadata.title.replace(/"/g, '\\"') + '"');
             }
 
             // 更新date (转换为Hugo格式)
@@ -2608,7 +3027,7 @@ var htmlTemplate = `<!DOCTYPE html>
             
             // 更新categories
             if (currentMetadata.categories.length > 0) {
-                const catYaml = 'categories:\n' + currentMetadata.categories.map(c => '    - ' + c).join('\n');
+                const catYaml = 'categories:\n' + currentMetadata.categories.map(c => '    - ' + c.replace(/"/g, '\\"')).join('\n');
                 newFm = newFm.replace(/categories:.*?(?=\n[a-z]|\n---)/s, catYaml);
                 if (!newFm.includes('categories:')) {
                     newFm = newFm.replace(/---\n/, '---\n' + catYaml + '\n');
@@ -2619,7 +3038,7 @@ var htmlTemplate = `<!DOCTYPE html>
 
             // 更新tags
             if (currentMetadata.tags.length > 0) {
-                const tagYaml = 'tags:\n' + currentMetadata.tags.map(t => '    - ' + t).join('\n');
+                const tagYaml = 'tags:\n' + currentMetadata.tags.map(t => '    - ' + t.replace(/"/g, '\\"')).join('\n');
                 newFm = newFm.replace(/tags:.*?(?=\n[a-z]|\n---)/s, tagYaml);
                 if (!newFm.includes('tags:')) {
                     newFm = newFm.replace(/---\n/, '---\n' + tagYaml + '\n');
@@ -2630,17 +3049,17 @@ var htmlTemplate = `<!DOCTYPE html>
 
             // 更新description
             if (currentMetadata.description) {
-                newFm = newFm.replace(/description:.*?\n/, 'description: "' + currentMetadata.description + '"\n');
+                newFm = newFm.replace(/description:.*?\n/, 'description: "' + currentMetadata.description.replace(/"/g, '\\"') + '"\n');
                 if (!newFm.includes('description:')) {
-                    newFm = newFm.replace(/---\n/, '---\ndescription: "' + currentMetadata.description + '"\n');
+                    newFm = newFm.replace(/---\n/, '---\ndescription: "' + currentMetadata.description.replace(/"/g, '\\"') + '"\n');
                 }
             }
 
             // 更新image
             if (currentMetadata.image) {
-                newFm = newFm.replace(/image:.*?\n/, 'image: "' + currentMetadata.image + '"\n');
+                newFm = newFm.replace(/image:.*?\n/, 'image: "' + currentMetadata.image.replace(/"/g, '\\"') + '"\n');
                 if (!newFm.includes('image:')) {
-                    newFm = newFm.replace(/---\n/, '---\nimage: "' + currentMetadata.image + '"\n');
+                    newFm = newFm.replace(/---\n/, '---\nimage: "' + currentMetadata.image.replace(/"/g, '\\"') + '"\n');
                 }
             }
 
@@ -3307,6 +3726,7 @@ var htmlTemplate = `<!DOCTYPE html>
 
         fetchPosts();
         fetchCommentStats();
+        fetchLikesData();
         
         // 快捷键支持
         document.addEventListener('keydown', function(e) {

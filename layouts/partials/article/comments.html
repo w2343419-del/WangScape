@@ -1,38 +1,61 @@
 {{ if (.Params.comments | default true) }}
 <div class="article-comments">
-    <h3>💬 评论</h3>
+    <h3>{{ if eq .Lang "zh-cn" }}💬 评论{{ else }}💬 Comments{{ end }}</h3>
     
     <!-- 评论列表 -->
     <div id="comments-list" class="comments-container">
         <div style="text-align: center; color: #999; padding: 40px;">
-            加载评论中...
+            {{ if eq .Lang "zh-cn" }}加载评论中...{{ else }}Loading comments...{{ end }}
         </div>
     </div>
 
-    <!-- 评论表单 -->
-    <div class="comment-form-wrapper">
-        <h4>发表评论</h4>
-        <div id="replying-to" style="display:none; margin-bottom:10px; font-size:13px; color:#666;">
-            正在回复：<span id="replying-to-name"></span>
-            <button type="button" class="comment-reply-cancel" onclick="cancelReply()">取消回复</button>
+    <!-- 发表评论按钮 -->
+    <div style="text-align: center; margin: 30px 0;">
+        <button type="button" class="btn-open-comment-form" onclick="openCommentForm()">
+            {{ if eq .Lang "zh-cn" }}💬 发表评论{{ else }}💬 Post a Comment{{ end }}
+        </button>
+    </div>
+
+    <!-- 评论表单模态窗口 -->
+    <div id="comment-modal" class="comment-modal" style="display: none;">
+        <div class="comment-modal-content">
+            <div class="comment-modal-header">
+                <h4>{{ if eq .Lang "zh-cn" }}💬 发表评论{{ else }}💬 Post a Comment{{ end }}</h4>
+                <button type="button" class="comment-modal-close" onclick="closeCommentForm()">✕</button>
+            </div>
+            <div id="replying-to" style="display:none; margin-bottom:10px; font-size:13px; color:#666; padding: 10px; background: #f0f8ff; border-radius: 4px;">
+                {{ if eq .Lang "zh-cn" }}正在回复：{{ else }}Replying to: {{ end }}<span id="replying-to-name" style="font-weight: 600;"></span>
+                <button type="button" class="comment-reply-cancel" onclick="cancelReply()">{{ if eq .Lang "zh-cn" }}取消回复{{ else }}Cancel{{ end }}</button>
+            </div>
+            <form id="comment-form" onsubmit="submitComment(event)">
+                <input type="hidden" id="comment-parent-id" name="parent_id" />
+                <div class="form-group">
+                    <label for="comment-name">{{ if eq .Lang "zh-cn" }}姓名 *{{ else }}Name *{{ end }}</label>
+                    {{ if eq .Lang "zh-cn" }}
+                    <input type="text" id="comment-name" name="name" placeholder="您的姓名" required />
+                    {{ else }}
+                    <input type="text" id="comment-name" name="name" placeholder="Your name" required />
+                    {{ end }}
+                </div>
+                <div class="form-group">
+                    <label for="comment-email">{{ if eq .Lang "zh-cn" }}邮箱 *{{ else }}Email *{{ end }}</label>
+                    <input type="email" id="comment-email" name="email" placeholder="your@email.com" required />
+                </div>
+                <div class="form-group">
+                    <label for="comment-content">{{ if eq .Lang "zh-cn" }}评论内容 *{{ else }}Comment *{{ end }}</label>
+                    {{ if eq .Lang "zh-cn" }}
+                    <textarea id="comment-content" name="content" placeholder="请输入您的评论..." required rows="5"></textarea>
+                    {{ else }}
+                    <textarea id="comment-content" name="content" placeholder="Write your comment..." required rows="5"></textarea>
+                    {{ end }}
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" class="btn-cancel" onclick="closeCommentForm()">{{ if eq .Lang "zh-cn" }}取消{{ else }}Cancel{{ end }}</button>
+                    <button type="submit" class="btn-submit">{{ if eq .Lang "zh-cn" }}提交评论{{ else }}Submit{{ end }}</button>
+                </div>
+                <div id="comment-status" style="margin-top: 10px; text-align: center; color: #999;"></div>
+            </form>
         </div>
-        <form id="comment-form" onsubmit="submitComment(event)">
-            <input type="hidden" id="comment-parent-id" name="parent_id" />
-            <div class="form-group">
-                <label for="comment-name">姓名 *</label>
-                <input type="text" id="comment-name" name="name" placeholder="您的姓名" required />
-            </div>
-            <div class="form-group">
-                <label for="comment-email">邮箱 *</label>
-                <input type="email" id="comment-email" name="email" placeholder="your@email.com" required />
-            </div>
-            <div class="form-group">
-                <label for="comment-content">评论 *</label>
-                <textarea id="comment-content" name="content" placeholder="请输入您的评论..." required rows="4"></textarea>
-            </div>
-            <button type="submit" class="btn-submit">发表评论</button>
-            <span id="comment-status" style="margin-left: 15px; color: #999;"></span>
-        </form>
     </div>
 </div>
 
@@ -51,6 +74,99 @@
 
 .comments-container {
     margin-bottom: 40px;
+}
+
+.btn-open-comment-form {
+    background: #2b579a;
+    color: white;
+    padding: 12px 32px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 15px;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(43, 87, 154, 0.2);
+}
+
+.btn-open-comment-form:hover {
+    background: #1e4073;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(43, 87, 154, 0.3);
+}
+
+.comment-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.comment-modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.comment-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.comment-modal-header h4 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.comment-modal-close {
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.comment-modal-close:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+#comment-form {
+    padding: 25px;
 }
 
 .comment-item {
@@ -74,10 +190,39 @@
     cursor: pointer;
     font-size: 12px;
     padding: 0;
+    margin-right: 15px;
 }
 
 .comment-reply-btn:hover {
     text-decoration: underline;
+}
+
+.comment-translate-btn {
+    background: transparent;
+    border: none;
+    color: #ff9800;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0;
+}
+
+.comment-translate-btn:hover {
+    text-decoration: underline;
+}
+
+.comment-translate-btn:disabled {
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.comment-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 10px;
+}
+
+.comment-translation {
+    margin-top: 10px;
 }
 
 .comment-reply-cancel {
@@ -194,8 +339,25 @@
     cursor: not-allowed;
 }
 
+.btn-cancel {
+    background: #f5f5f5;
+    color: #666;
+    padding: 10px 24px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.btn-cancel:hover {
+    background: #e0e0e0;
+    border-color: #ccc;
+}
+
 #comment-status {
-    display: inline-block;
+    display: block;
 }
 
 @media (max-width: 768px) {
@@ -212,6 +374,43 @@
 
 <script>
     const currentPostPath = '{{ .File.Path }}';
+    const isZhCN = {{ if eq .Lang "zh-cn" }}true{{ else }}false{{ end }};
+    
+    const i18n = {
+        noComments: isZhCN ? '暂无评论，快来抢沙发吧！' : 'No comments yet. Be the first!',
+        loadFailed: isZhCN ? '加载评论失败' : 'Failed to load comments',
+        loadError: isZhCN ? '加载评论出错:' : 'Error loading comments:',
+        fillAll: isZhCN ? '⚠️ 请填写所有字段' : '⚠️ Please fill in all fields',
+        submitting: isZhCN ? '⏳ 提交中...' : '⏳ Submitting...',
+        submitSuccess: isZhCN ? '✅ 评论提交成功！' : '✅ Comment submitted!',
+        submitFailed: isZhCN ? '提交失败' : 'Submission failed',
+        networkError: isZhCN ? '❌ 网络错误:' : '❌ Network error:',
+        approved: isZhCN ? '✓ 已批准' : '✓ Approved',
+        reply: isZhCN ? '回复' : 'Reply',
+        translate: isZhCN ? '翻译' : 'Translate',
+        showOriginal: isZhCN ? '显示原文' : 'Show Original',
+        translating: isZhCN ? '翻译中...' : 'Translating...',
+        translateFailed: isZhCN ? '翻译失败' : 'Translation failed'
+    };
+    
+    function openCommentForm() {
+        document.getElementById('comment-modal').style.display = 'flex';
+    }
+    
+    function closeCommentForm() {
+        document.getElementById('comment-modal').style.display = 'none';
+        document.getElementById('comment-form').reset();
+        cancelReply();
+        document.getElementById('comment-status').textContent = '';
+    }
+    
+    // 点击模态窗口外部关闭
+    document.addEventListener('click', function(event) {
+        const modal = document.getElementById('comment-modal');
+        if (event.target === modal) {
+            closeCommentForm();
+        }
+    });
     
     async function loadComments() {
         try {
@@ -225,13 +424,13 @@
                     html += renderCommentItem(comment);
                 });
             } else {
-                html = '<div style="text-align: center; color: #999; padding: 40px;">暂无评论，快来抢沙发吧！</div>';
+                html = '<div style="text-align: center; color: #999; padding: 40px;">' + i18n.noComments + '</div>';
             }
             
             document.getElementById('comments-list').innerHTML = html;
         } catch (e) {
-            document.getElementById('comments-list').innerHTML = '<div style="color: red; padding: 20px;">加载评论失败</div>';
-            console.error('加载评论出错:', e);
+            document.getElementById('comments-list').innerHTML = '<div style="color: red; padding: 20px;">' + i18n.loadFailed + '</div>';
+            console.error(i18n.loadError, e);
         }
     }
 
@@ -246,13 +445,13 @@
         const submitBtn = event.target.querySelector('.btn-submit');
         
         if (!name || !email || !content) {
-            statusEl.textContent = '⚠️ 请填写所有字段';
+            statusEl.textContent = i18n.fillAll;
             statusEl.style.color = '#f44336';
             return;
         }
 
         submitBtn.disabled = true;
-        statusEl.textContent = '⏳ 提交中...';
+        statusEl.textContent = i18n.submitting;
         statusEl.style.color = '#ff9800';
 
         try {
@@ -269,24 +468,22 @@
             
             const data = await res.json();
             if (data.success) {
-                statusEl.textContent = '✅ 评论已提交，等待审核';
+                statusEl.textContent = i18n.submitSuccess;
                 statusEl.style.color = '#4CAF50';
-                document.getElementById('comment-form').reset();
-                cancelReply();
                 
-                // 重新加载评论列表
+                // 延迟关闭模态窗口
                 setTimeout(() => {
+                    closeCommentForm();
                     loadComments();
-                    statusEl.textContent = '';
-                }, 2000);
+                }, 1500);
             } else {
-                statusEl.textContent = '❌ ' + (data.message || '提交失败');
+                statusEl.textContent = '❌ ' + (data.message || i18n.submitFailed);
                 statusEl.style.color = '#f44336';
             }
         } catch (e) {
-            statusEl.textContent = '❌ 网络错误: ' + e;
+            statusEl.textContent = i18n.networkError + ' ' + e;
             statusEl.style.color = '#f44336';
-            console.error('提交评论出错:', e);
+            console.error(i18n.loadError, e);
         } finally {
             submitBtn.disabled = false;
         }
@@ -326,15 +523,19 @@
             <div class="comment-item">
                 <div class="comment-author">
                     ${escapeHtml(comment.author)}
-                    <span class="comment-status approved">✓ 已批准</span>
+                    <span class="comment-status approved">${i18n.approved}</span>
                 </div>
                 <div class="comment-meta">
                     ${comment.timestamp}
                 </div>
-                <div class="comment-content">
+                <div class="comment-content" id="comment-content-${comment.id}">
                     ${escapeHtml(comment.content).replace(/\n/g, '<br>')}
                 </div>
-                <button class="comment-reply-btn" onclick="startReply('${comment.id}', '${safeAuthor}')">回复</button>
+                <div class="comment-actions">
+                    <button class="comment-reply-btn" onclick="startReply('${comment.id}', '${safeAuthor}')">${i18n.reply}</button>
+                    <button class="comment-translate-btn" id="translate-btn-${comment.id}" onclick="toggleTranslate('${comment.id}', \`${escapeHtml(comment.content).replace(/`/g, '\\`')}\`)">${i18n.translate}</button>
+                </div>
+                <div class="comment-translation" id="translation-${comment.id}" style="display: none;"></div>
             </div>
         `;
         if (comment.children && comment.children.length > 0) {
@@ -351,6 +552,7 @@
         document.getElementById('comment-parent-id').value = commentId;
         document.getElementById('replying-to-name').textContent = author;
         document.getElementById('replying-to').style.display = 'block';
+        openCommentForm();
         document.getElementById('comment-content').focus();
     }
 
@@ -358,6 +560,58 @@
         document.getElementById('comment-parent-id').value = '';
         document.getElementById('replying-to').style.display = 'none';
         document.getElementById('replying-to-name').textContent = '';
+    }
+
+    // 翻译功能
+    async function toggleTranslate(commentId, originalText) {
+        const translationDiv = document.getElementById('translation-' + commentId);
+        const translateBtn = document.getElementById('translate-btn-' + commentId);
+        const contentDiv = document.getElementById('comment-content-' + commentId);
+        
+        // 如果已经显示翻译，则切换回原文
+        if (translationDiv.style.display !== 'none') {
+            translationDiv.style.display = 'none';
+            contentDiv.style.display = 'block';
+            translateBtn.textContent = i18n.translate;
+            return;
+        }
+        
+        // 如果已经翻译过，直接显示
+        if (translationDiv.dataset.translated === 'true') {
+            translationDiv.style.display = 'block';
+            contentDiv.style.display = 'none';
+            translateBtn.textContent = i18n.showOriginal;
+            return;
+        }
+        
+        // 开始翻译
+        translateBtn.textContent = i18n.translating;
+        translateBtn.disabled = true;
+        
+        try {
+            const targetLang = isZhCN ? 'zh-CN' : 'en';
+            const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=` + encodeURIComponent(originalText));
+            const data = await response.json();
+            
+            if (data && data[0]) {
+                const translatedText = data[0].map(item => item[0]).join('');
+                translationDiv.innerHTML = '<div style="padding: 10px; background: #f0f8ff; border-left: 3px solid #2b579a; border-radius: 4px; margin-top: 10px;">' + 
+                    escapeHtml(translatedText).replace(/\n/g, '<br>') + '</div>';
+                translationDiv.dataset.translated = 'true';
+                translationDiv.style.display = 'block';
+                contentDiv.style.display = 'none';
+                translateBtn.textContent = i18n.showOriginal;
+            } else {
+                throw new Error('Translation failed');
+            }
+        } catch (e) {
+            translationDiv.innerHTML = '<div style="color: #f44336; font-size: 12px; margin-top: 5px;">' + i18n.translateFailed + '</div>';
+            translationDiv.style.display = 'block';
+            translateBtn.textContent = i18n.translate;
+            console.error('Translation error:', e);
+        } finally {
+            translateBtn.disabled = false;
+        }
     }
 
     // 页面加载时获取评论

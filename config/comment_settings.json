@@ -1,0 +1,14 @@
+{
+  "smtp_enabled": true,
+  "smtp_host": "smtp.gmail.com",
+  "smtp_port": 587,
+  "smtp_user": "w2343419@gmail.com",
+  "smtp_pass": "peph clxw yijb mzsr",
+  "smtp_from": "w2343419@gmail.com",
+  "smtp_to": [
+    "w2343419@gmail.com"
+  ],
+  "notify_on_pending": true,
+  "blacklist_ips": [],
+  "blacklist_keywords": []
+}
