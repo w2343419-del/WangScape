@@ -1,12 +1,12 @@
 ---
-pinned: false
+pinned: true
 tags:
     - 网站更新
 categories:
     - 网站更新
 title: "Site Repair Summary"
 description: "网站修复记录"
-date: 2026-02-02T12:14:36+08:00
+date: 2026-02-02T12:14:00+08:00
 image: ""
 math: false
 license: ""
