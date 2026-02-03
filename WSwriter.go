@@ -841,8 +841,8 @@ func handleCommand(cmd string) (map[string]interface{}, error) {
 		}, nil
 
 	case "deploy":
-		// 1. 先编译网站 - 包含草稿和未来日期的文章
-		buildCmd := exec.Command("hugo", "--minify", "--buildDrafts", "--buildFuture")
+		// 1. 先编译网站 - 不包含草稿（生产环境）
+		buildCmd := exec.Command("hugo", "--minify")
 		buildCmd.Dir = hugoPath
 		buildOutput, err := buildCmd.CombinedOutput()
 		if err != nil {
