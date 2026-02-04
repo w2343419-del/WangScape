@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>Posts on WangScape</title>
+        <link>https://w2343419-del.github.io/WangScape/en/post/</link>
+        <description>Recent content in Posts on WangScape</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>en</language>
+        <lastBuildDate>Tue, 03 Feb 2026 13:28:00 +0800</lastBuildDate><atom:link href="https://w2343419-del.github.io/WangScape/en/post/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>Hello and welcome to my blog</title>
+        <link>https://w2343419-del.github.io/WangScape/en/p/hello-and-welcome-to-my-blog/</link>
+        <pubDate>Tue, 03 Feb 2026 13:28:00 +0800</pubDate>
+        
+        <guid>https://w2343419-del.github.io/WangScape/en/p/hello-and-welcome-to-my-blog/</guid>
+        <description>&lt;p&gt;After nearly a day of half a day of self-doubt, half a day of fighting with AI (doge), and a whole day of using your head and table harder than anyone else&amp;hellip;&lt;/p&gt;
+&lt;p&gt;January 21, 2026 finally became an extraordinary day for me.&lt;/p&gt;
+&lt;p&gt;My personal blog is finally live!!!&lt;/p&gt;
+&lt;p&gt;I will record my learning experience on my blog, occasionally complain, and even occasionally write a book review (and even record some of my favorite poems)&lt;/p&gt;
+&lt;p&gt;I will record the difficulties I have encountered in programming, the harvest, and a summary of some knowledge points.&lt;/p&gt;
+&lt;p&gt;This blog might also be my all-disciplinary notebook? (University Only)&lt;/p&gt;
+&lt;p&gt;(Although I don&amp;rsquo;t know if I can maintain my blog all the time, after all, it&amp;rsquo;s lazy, do your best)&lt;/p&gt;
+&lt;p&gt;Of course, I will also record some other things, not only in terms of code, but also in terms of artificial intelligence? Algorithmic? Or, in terms of gaming?&lt;/p&gt;
+&lt;p&gt;Or, music? Movies?&lt;/p&gt;
+&lt;p&gt;I will do my best to make blogging learning-oriented, hopefully.&lt;/p&gt;
+&lt;p&gt;I hope my update frequency is not too low&amp;hellip;&lt;/p&gt;
+&lt;p&gt;That&amp;rsquo;s it, it&amp;rsquo;s time to continue fixing the bug&amp;hellip;&lt;/p&gt;
+&lt;p&gt;(ps. Now the blog is still rough, it will be better in the future!)&lt;/p&gt;
+&lt;p&gt;Edited February 3, 2026&lt;/p&gt;
+</description>
+        </item>
+        <item>
+        <title>Site Repair Summary</title>
+        <link>https://w2343419-del.github.io/WangScape/en/p/site-repair-summary/</link>
+        <pubDate>Mon, 02 Feb 2026 12:14:00 +0800</pubDate>
+        
+        <guid>https://w2343419-del.github.io/WangScape/en/p/site-repair-summary/</guid>
+        <description>&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;Fixed the animation carton problem in the lower left column;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Fixed the problem of switching between the Chinese and English interfaces;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Fixed the problem of avatar display;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Fixed the problem of counting function and solved the problem of calling Umami API;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Launched WSwriter, a website article writing and pushing assistant, to meet the needs of writing in the office-like interface without the IDE interface, supporting one-click preview, submission, modification, and deletion of articles, as well as inserting code, images, and tables;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Added commenting function;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Fixed the error of double quotes when adding tags to WSwriter;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;The security of the website has been maintained.&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+        </item>
+        
+    </channel>
+</rss>

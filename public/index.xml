@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>首页 on 望境</title>
+        <link>https://w2343419-del.github.io/WangScape/</link>
+        <description>Recent content in 首页 on 望境</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>zh-cn</language>
+        <lastBuildDate>Tue, 03 Feb 2026 13:28:00 +0800</lastBuildDate><atom:link href="https://w2343419-del.github.io/WangScape/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>你好，欢迎来到我的博客</title>
+        <link>https://w2343419-del.github.io/WangScape/p/%E4%BD%A0%E5%A5%BD%E6%AC%A2%E8%BF%8E%E6%9D%A5%E5%88%B0%E6%88%91%E7%9A%84%E5%8D%9A%E5%AE%A2/</link>
+        <pubDate>Tue, 03 Feb 2026 13:28:00 +0800</pubDate>
+        
+        <guid>https://w2343419-del.github.io/WangScape/p/%E4%BD%A0%E5%A5%BD%E6%AC%A2%E8%BF%8E%E6%9D%A5%E5%88%B0%E6%88%91%E7%9A%84%E5%8D%9A%E5%AE%A2/</guid>
+        <description>&lt;p&gt;经过了近一天的半天的自我怀疑、半天的与AI搏斗（doge）、和全天的用头和桌子比谁更硬……&lt;/p&gt;
+&lt;p&gt;2026年1月21日最终成为了一个对我而言非同寻常的日子。&lt;/p&gt;
+&lt;p&gt;我的个人博客终于上线了！！！&lt;/p&gt;
+&lt;p&gt;我将在我的博客上记录我的学习心得，偶尔发发牢骚，甚至偶尔雅兴大发写点书评（甚至记录一些我喜欢的诗词）&lt;/p&gt;
+&lt;p&gt;我会记录我在编程中遇到的困难、收获，以及一些知识点的总结。&lt;/p&gt;
+&lt;p&gt;这个博客也许也会成为我的全学科笔记？（仅限大学期间）&lt;/p&gt;
+&lt;p&gt;（虽然我不知道我能不能一直维护我的博客，毕竟比较懒惰，尽力而为吧）&lt;/p&gt;
+&lt;p&gt;当然，我也会记录一些其他的东西，不光光是代码方面的，也许，也会有人工智能方面的？算法方面的？或者，游戏方面的？&lt;/p&gt;
+&lt;p&gt;再或者，音乐？电影？&lt;/p&gt;
+&lt;p&gt;我会尽力让博客是以学习为主的，但愿吧。&lt;/p&gt;
+&lt;p&gt;也但愿我的更新频率不会太低……&lt;/p&gt;
+&lt;p&gt;就到这里了吧，该继续修bug了……&lt;/p&gt;
+&lt;p&gt;（ps.现在的博客还比较粗糙，以后会更好的！）&lt;/p&gt;
+&lt;p&gt;编辑于2026年2月3日&lt;/p&gt;
+</description>
+        </item>
+        <item>
+        <title>网站修复总结</title>
+        <link>https://w2343419-del.github.io/WangScape/p/%E7%BD%91%E7%AB%99%E4%BF%AE%E5%A4%8D%E6%80%BB%E7%BB%93/</link>
+        <pubDate>Mon, 02 Feb 2026 12:14:00 +0800</pubDate>
+        
+        <guid>https://w2343419-del.github.io/WangScape/p/%E7%BD%91%E7%AB%99%E4%BF%AE%E5%A4%8D%E6%80%BB%E7%BB%93/</guid>
+        <description>&lt;p&gt;1、修复了左下栏动画卡顿问题；&lt;/p&gt;
+&lt;p&gt;2、修复了中英文界面的切换问题；&lt;/p&gt;
+&lt;p&gt;3、修复了头像显示问题；&lt;/p&gt;
+&lt;p&gt;4、修复了计数功能的问题，解决了 Umami API 的调用问题；&lt;/p&gt;
+&lt;p&gt;5、推出了网站文章写作推送助手 WSwriter，满足脱离IDE界面，在类 OFFICE 界面进行写作的需求，支持一键预览、提交、修改、删除文章，同时支持插入代码、图片与表格；&lt;/p&gt;
+&lt;p&gt;6、添加了评论功能；&lt;/p&gt;
+&lt;p&gt;7、修复了 WSwriter 添加标签时出现双引号错误的问题；&lt;/p&gt;
+&lt;p&gt;8、对网站安全性进行了维护。&lt;/p&gt;
+</description>
+        </item>
+        <item>
+        <title>归档</title>
+        <link>https://w2343419-del.github.io/WangScape/archives/</link>
+        <pubDate>Wed, 21 Jan 2026 00:00:00 +0000</pubDate>
+        
+        <guid>https://w2343419-del.github.io/WangScape/archives/</guid>
+        <description></description>
+        </item>
+        <item>
+        <title>搜索</title>
+        <link>https://w2343419-del.github.io/WangScape/search/</link>
+        <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+        
+        <guid>https://w2343419-del.github.io/WangScape/search/</guid>
+        <description></description>
+        </item>
+        <item>
+        <title>友情链接</title>
+        <link>https://w2343419-del.github.io/WangScape/links/</link>
+        <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+        
+        <guid>https://w2343419-del.github.io/WangScape/links/</guid>
+        <description></description>
+        </item>
+        
+    </channel>
+</rss>

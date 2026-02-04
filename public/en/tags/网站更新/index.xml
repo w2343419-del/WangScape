@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>网站更新 on WangScape</title>
+        <link>https://w2343419-del.github.io/WangScape/en/tags/%E7%BD%91%E7%AB%99%E6%9B%B4%E6%96%B0/</link>
+        <description>Recent content in 网站更新 on WangScape</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>en</language>
+        <lastBuildDate>Mon, 02 Feb 2026 12:14:00 +0800</lastBuildDate><atom:link href="https://w2343419-del.github.io/WangScape/en/tags/%E7%BD%91%E7%AB%99%E6%9B%B4%E6%96%B0/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>Site Repair Summary</title>
+        <link>https://w2343419-del.github.io/WangScape/en/p/site-repair-summary/</link>
+        <pubDate>Mon, 02 Feb 2026 12:14:00 +0800</pubDate>
+        
+        <guid>https://w2343419-del.github.io/WangScape/en/p/site-repair-summary/</guid>
+        <description>&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;Fixed the animation carton problem in the lower left column;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Fixed the problem of switching between the Chinese and English interfaces;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Fixed the problem of avatar display;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Fixed the problem of counting function and solved the problem of calling Umami API;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Launched WSwriter, a website article writing and pushing assistant, to meet the needs of writing in the office-like interface without the IDE interface, supporting one-click preview, submission, modification, and deletion of articles, as well as inserting code, images, and tables;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Added commenting function;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Fixed the error of double quotes when adding tags to WSwriter;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;The security of the website has been maintained.&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+        </item>
+        
+    </channel>
+</rss>
