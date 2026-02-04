@@ -2,8 +2,8 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/*.go",
-      "use": "@vercel/go"
+      "src": "api/*.js",
+      "use": "@vercel/node"
     }
   ]
 }
