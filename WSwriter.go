@@ -608,8 +608,7 @@ func initJWTSecret() {
 	// 生成新密钥
 	newSecret := make([]byte, 32)
 	if _, err := rand.Read(newSecret); err != nil {
-		log.Printf("[WARN] Failed to generate JWT secret: %v", err)
-		jwtSecret = []byte("default-insecure-key")
+		log.Fatalf("[FATAL] 无法生成JWT密钥，请设置JWT_SECRET环境变量: %v", err)
 		return
 	}
 	
@@ -1918,6 +1917,119 @@ func handleDeletePost(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Deleted"})
 }
 
+// getCommentsFromGitHub 从GitHub Issues获取评论
+func getCommentsFromGitHub(postPath, repo, token string) ([]Comment, error) {
+	// 构建GitHub API URL
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/issues?state=all&labels=comment&per_page=100", repo)
+	
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "WSwriter")
+	
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	}
+	
+	var issues []struct {
+		ID     int    `json:"id"`
+		Number int    `json:"number"`
+		Title  string `json:"title"`
+		Body   string `json:"body"`
+		CreatedAt string `json:"created_at"`
+		Labels []struct {
+			Name string `json:"name"`
+		} `json:"labels"`
+	}
+	
+	if err := json.NewDecoder(resp.Body).Decode(&issues); err != nil {
+		return nil, err
+	}
+	
+	var comments []Comment
+	for _, issue := range issues {
+		// 从issue body解析评论字段
+		body := issue.Body
+		
+		// 提取Post路径
+		issuePostPath := extractField(body, "Post")
+		if issuePostPath != postPath {
+			continue
+		}
+		
+		// 检查是否approved
+		approved := false
+		for _, label := range issue.Labels {
+			if label.Name == "approved" {
+				approved = true
+				break
+			}
+		}
+		
+		// 只返回approved的评论
+		if !approved {
+			continue
+		}
+		
+		comment := Comment{
+			ID:        fmt.Sprintf("%d", issue.ID),
+			Author:    extractField(body, "Author"),
+			Email:     extractField(body, "Email"),
+			Content:   extractContent(body),
+			Timestamp: issue.CreatedAt,
+			Approved:  approved,
+			PostPath:  issuePostPath,
+		}
+		
+		comments = append(comments, comment)
+	}
+	
+	return comments, nil
+}
+
+// extractField 从Issue body提取字段
+func extractField(body, field string) string {
+	lines := strings.Split(body, "\n")
+	prefix := field + ":"
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, prefix) {
+			return strings.TrimSpace(strings.TrimPrefix(line, prefix))
+		}
+	}
+	return ""
+}
+
+// extractContent 提取评论内容
+func extractContent(body string) string {
+	lines := strings.Split(body, "\n")
+	inContent := false
+	var contentLines []string
+	
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "Content:" {
+			inContent = true
+			continue
+		}
+		if inContent {
+			contentLines = append(contentLines, line)
+		}
+	}
+	
+	return strings.TrimSpace(strings.Join(contentLines, "\n"))
+}
+
 func handleGetComments(w http.ResponseWriter, r *http.Request) {
 	postPath := r.URL.Query().Get("path")
 	if postPath == "" {
@@ -1925,6 +2037,20 @@ func handleGetComments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 尝试从GitHub Issues获取评论
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	githubRepo := "w2343419-del/WangScape" // 从配置读取
+	
+	if githubToken != "" && githubRepo != "" {
+		comments, err := getCommentsFromGitHub(postPath, githubRepo, githubToken)
+		if err == nil {
+			respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: comments})
+			return
+		}
+		// 如果GitHub失败，继续使用本地存储
+	}
+
+	// 降级：使用本地comments.json
 	comments, err := getComments(postPath)
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
@@ -2253,8 +2379,87 @@ func handleCommentStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 尝试从GitHub获取统计
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	githubRepo := "w2343419-del/WangScape"
+	
+	if githubToken != "" && githubRepo != "" {
+		stats, err := getCommentStatsFromGitHub(githubRepo, githubToken)
+		if err == nil {
+			respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: stats})
+			return
+		}
+	}
+
+	// 降级：使用本地统计
 	stats := getAllCommentsStats()
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: stats})
+}
+
+// getCommentStatsFromGitHub 从GitHub获取评论统计
+func getCommentStatsFromGitHub(repo, token string) (map[string]interface{}, error) {
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/issues?state=all&labels=comment&per_page=100", repo)
+	
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "WSwriter")
+	
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	}
+	
+	var issues []struct {
+		Labels []struct {
+			Name string `json:"name"`
+		} `json:"labels"`
+	}
+	
+	if err := json.NewDecoder(resp.Body).Decode(&issues); err != nil {
+		return nil, err
+	}
+	
+	total := len(issues)
+	pending := 0
+	approved := 0
+	
+	for _, issue := range issues {
+		isPending := false
+		isApproved := false
+		
+		for _, label := range issue.Labels {
+			if label.Name == "pending" {
+				isPending = true
+			}
+			if label.Name == "approved" {
+				isApproved = true
+			}
+		}
+		
+		if isPending {
+			pending++
+		}
+		if isApproved {
+			approved++
+		}
+	}
+	
+	return map[string]interface{}{
+		"total":    total,
+		"pending":  pending,
+		"approved": approved,
+	}, nil
 }
 
 func handleGetPendingComments(w http.ResponseWriter, r *http.Request) {
@@ -3881,8 +4086,8 @@ var htmlTemplate = `<!DOCTYPE html>
                 <div style="font-size: 12px; color: #4f46e5; font-weight: 700; margin-bottom: 8px;">🔐 登录状态</div>
                 <div id="auth-status" style="font-size: 12px; color: var(--dash-text); margin-bottom: 10px;">未登录</div>
                 <div style="display:flex; gap:8px;">
-                    <button class="dash-btn" style="flex:1;" onclick="openLoginModal()">登录</button>
-                    <button class="dash-btn" style="flex:1;" onclick="logout()">退出</button>
+                    <button id="login-btn" class="dash-btn" style="flex:1;" onclick="openLoginModal()">登录</button>
+                    <button id="logout-btn" class="dash-btn" style="flex:1; display:none;" onclick="logout()">退出</button>
                 </div>
             </div>
             
@@ -3908,8 +4113,8 @@ var htmlTemplate = `<!DOCTYPE html>
                 <div style="font-size: 12px; color: #4f46e5; font-weight: 700; margin-bottom: 8px;">🔐 登录状态</div>
                 <div id="auth-status-pending" style="font-size: 12px; color: var(--dash-text); margin-bottom: 10px;">未登录</div>
                 <div style="display:flex; gap:8px;">
-                    <button class="dash-btn" style="flex:1;" onclick="openLoginModal()">登录</button>
-                    <button class="dash-btn" style="flex:1;" onclick="logout()">退出</button>
+                    <button id="login-btn-pending" class="dash-btn" style="flex:1;" onclick="openLoginModal()">登录</button>
+                    <button id="logout-btn-pending" class="dash-btn" style="flex:1; display:none;" onclick="logout()">退出</button>
                 </div>
             </div>
 
@@ -4210,6 +4415,26 @@ var htmlTemplate = `<!DOCTYPE html>
             const statusElPending = document.getElementById('auth-status-pending');
             if (statusEl) statusEl.textContent = statusText;
             if (statusElPending) statusElPending.textContent = statusText;
+            
+            // 根据登录状态切换按钮显示
+            const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const loginBtnPending = document.getElementById('login-btn-pending');
+            const logoutBtnPending = document.getElementById('logout-btn-pending');
+            
+            if (authToken) {
+                // 已登录：隐藏登录按钮，显示退出按钮
+                if (loginBtn) loginBtn.style.display = 'none';
+                if (logoutBtn) logoutBtn.style.display = 'block';
+                if (loginBtnPending) loginBtnPending.style.display = 'none';
+                if (logoutBtnPending) logoutBtnPending.style.display = 'block';
+            } else {
+                // 未登录：显示登录按钮，隐藏退出按钮
+                if (loginBtn) loginBtn.style.display = 'block';
+                if (logoutBtn) logoutBtn.style.display = 'none';
+                if (loginBtnPending) loginBtnPending.style.display = 'block';
+                if (logoutBtnPending) logoutBtnPending.style.display = 'none';
+            }
         }
 
         function switchView(view) {

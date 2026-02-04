@@ -12,6 +12,7 @@ temp_output.html
 # 测试文件夹
 --bind/
 bin/
+bin/*.exe
 theme/
 
 # 系统文件
@@ -20,6 +21,20 @@ Thumbs.db
 
 # 环境变量
 .env
+.env.local
+.env.*.local
+
+# 敏感配置文件
+config/comment_settings.json
+comments.json
+**/comments.json
+
+# 编译文件
+WSwriter.exe
+*.exe
+*.dll
+*.so
+*.dylib
 
 # IDE
 .idea/
