@@ -6,7 +6,7 @@ favicon = "favicon.png"
 [params]
     # 评论/点赞等接口的后端地址
     # Vercel API服务地址
-    apiBase = "https://unknown.vercel.app"
+    apiBase = "https://wang-scape.vercel.app"
     
     # GitHub 评论（Issues）仓库，格式：owner/repo
     githubCommentsRepo = "w2343419-del/WangScape"
