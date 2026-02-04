@@ -1,24 +1,5 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/submit_comment.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/submit_comment",
-      "dest": "api/submit_comment.js",
-      "methods": ["POST", "OPTIONS"]
-    },
-    {
-      "src": "/api/submit_comment/",
-      "dest": "api/submit_comment.js",
-      "methods": ["POST", "OPTIONS"]
-    }
-  ]
+  "buildCommand": "",
+  "outputDirectory": "."
 }
