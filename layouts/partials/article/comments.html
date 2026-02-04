@@ -1,6 +1,21 @@
 {{ if (.Params.comments | default true) }}
 <div class="article-comments">
-    <h3>{{ if eq .Lang "zh-cn" }}💬 评论{{ else }}💬 Comments{{ end }}</h3>
+    <!-- 文章点赞区域 -->
+    <div class="article-like-section">
+        <div class="like-container">
+            <button class="like-button" id="article-like-btn" onclick="toggleArticleLike()" title="{{ if eq .Lang "zh-cn" }}点赞这篇文章{{ else }}Like this article{{ end }}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="like-icon">
+                    <path d="M3.172 12.9L9 19L21 7"></path>
+                    <path d="M3 12.9L9 19"></path>
+                </svg>
+                <span class="like-text">{{ if eq .Lang "zh-cn" }}点赞{{ else }}Like{{ end }}</span>
+            </button>
+            <span class="like-count" id="like-count">0</span>
+        </div>
+        <div id="like-status" style="margin-top: 8px; font-size: 12px; color: #999;"></div>
+    </div>
+    
+    <h3 style="margin-top: 40px;">{{ if eq .Lang "zh-cn" }}💬 评论{{ else }}💬 Comments{{ end }}</h3>
     
     <!-- 评论列表 -->
     <div id="comments-list" class="comments-container">
@@ -78,6 +93,101 @@
     margin: 0 0 30px 0;
     font-size: 20px;
     font-weight: 700;
+}
+
+/* 文章点赞样式 */
+.article-like-section {
+    padding: 20px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 12px;
+    margin-bottom: 40px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.like-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.like-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    color: #666;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    user-select: none;
+    min-width: 140px;
+}
+
+.like-button:hover {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8c8c 100%);
+    color: white;
+    border-color: #ff6b6b;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(255, 107, 107, 0.3);
+}
+
+.like-button.liked {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8c8c 100%);
+    color: white;
+    border-color: #ff6b6b;
+    box-shadow: 0 4px 16px rgba(255, 107, 107, 0.3);
+}
+
+.like-button.liked .like-icon {
+    animation: likeAnimation 0.6s ease;
+}
+
+@keyframes likeAnimation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+.like-icon {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.2s;
+}
+
+.like-text {
+    font-weight: 600;
+}
+
+.like-count {
+    display: inline-block;
+    padding: 8px 16px;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #e91e63;
+    min-width: 50px;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.like-count.updated {
+    animation: countPulse 0.6s ease;
+}
+
+@keyframes countPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); color: #ff6b6b; }
+    100% { transform: scale(1); }
 }
 
 .comments-container {
@@ -383,6 +493,102 @@
 <script>
     const currentPostPath = '{{ .File.Path }}';
     const isZhCN = '{{ .Lang }}' === 'zh-cn';
+    const currentPostTitle = document.title || '{{ .Title }}';
+    
+    // 初始化点赞状态
+    function initLikeButton() {
+        const likeBtn = document.getElementById('article-like-btn');
+        const likeCount = document.getElementById('like-count');
+        const likeStatus = document.getElementById('like-status');
+        
+        // 从localStorage检查是否已点赞
+        const likedPosts = JSON.parse(localStorage.getItem('likedPosts') || '{}');
+        const postKey = btoa(currentPostPath); // 使用base64编码路径作为key
+        
+        if (likedPosts[postKey]) {
+            likeBtn.classList.add('liked');
+            likeStatus.textContent = isZhCN ? '✓ 您已点过赞' : '✓ You liked this';
+        }
+        
+        // 加载点赞数
+        loadLikeCount();
+    }
+    
+    async function loadLikeCount() {
+        try {
+            const response = await fetch(buildApiUrl('/api/like_count?path=' + encodeURIComponent(currentPostPath)));
+            const data = await response.json();
+            if (data.success && data.data) {
+                const likeCountValue = data.data.count || 0;
+                document.getElementById('like-count').textContent = likeCountValue;
+            } else {
+                document.getElementById('like-count').textContent = '0';
+            }
+        } catch (e) {
+            console.log('Failed to load like count:', e);
+            document.getElementById('like-count').textContent = '0';
+        }
+    }
+    
+    async function toggleArticleLike() {
+        const likeBtn = document.getElementById('article-like-btn');
+        const likeCount = document.getElementById('like-count');
+        const likeStatus = document.getElementById('like-status');
+        const postKey = btoa(currentPostPath);
+        
+        try {
+            const likedPosts = JSON.parse(localStorage.getItem('likedPosts') || '{}');
+            const isLiked = likedPosts[postKey];
+            
+            const response = await fetch(buildApiUrl('/api/like_post'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    post_path: currentPostPath,
+                    title: currentPostTitle,
+                    action: isLiked ? 'unlike' : 'like'
+                })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                if (isLiked) {
+                    delete likedPosts[postKey];
+                    likeBtn.classList.remove('liked');
+                    likeStatus.textContent = '';
+                } else {
+                    likedPosts[postKey] = true;
+                    likeBtn.classList.add('liked');
+                    likeStatus.textContent = isZhCN ? '✓ 感谢您的点赞！' : '✓ Thanks for liking!';
+                }
+                
+                localStorage.setItem('likedPosts', JSON.stringify(likedPosts));
+                
+                // 更新计数（后端返回的是 data.Data.likes）
+                let likeCountValue = 0;
+                if (data.data && typeof data.data === 'object' && data.data.likes !== undefined) {
+                    likeCountValue = data.data.likes;
+                } else if (data.count !== undefined) {
+                    likeCountValue = data.count;
+                }
+                
+                if (likeCountValue > 0) {
+                    const countEl = document.getElementById('like-count');
+                    countEl.classList.remove('updated');
+                    void countEl.offsetWidth; // 触发重排以重启动画
+                    countEl.textContent = likeCountValue;
+                    countEl.classList.add('updated');
+                }
+            } else {
+                likeStatus.textContent = isZhCN ? '❌ 操作失败，请重试' : '❌ Failed, please retry';
+            }
+        } catch (e) {
+            console.error('Like error:', e);
+            likeStatus.textContent = isZhCN ? '❌ 网络错误' : '❌ Network error';
+        }
+    }
     
     const i18n = {
         noComments: isZhCN ? '暂无评论，快来抢沙发吧！' : 'No comments yet. Be the first!',
@@ -756,13 +962,15 @@
         }
     }
 
-    // 页面加载时获取评论
+    // 页面加载时获取评论和初始化点赞
     document.addEventListener('DOMContentLoaded', function() {
+        initLikeButton();
         loadComments();
     });
 
-    // 如果页面已加载，直接加载评论
+    // 如果页面已加载，直接加载评论和初始化点赞
     if (document.readyState === 'interactive' || document.readyState === 'complete') {
+        initLikeButton();
         loadComments();
     }
 </script>

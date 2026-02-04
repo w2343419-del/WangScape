@@ -19,13 +19,12 @@ theme/
 .DS_Store
 Thumbs.db
 
-# 环境变量
+# 敏感配置文件
 .env
 .env.local
 .env.*.local
-
-# 敏感配置文件
 config/comment_settings.json
+config/_default/comment_settings.json
 comments.json
 **/comments.json
 
@@ -41,3 +40,14 @@ WSwriter.exe
 .vscode/
 *.swp
 *.swo
+# 日志文件
+server-error.log
+server-output.log
+*.log
+
+# 备份和临时文件
+*.exe~
+*.bak
+test-*.ps1
+诊断报告.md
+_断断报告.md

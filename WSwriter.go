@@ -89,17 +89,18 @@ type APIResponse struct {
 
 // Comment represents a blog comment
 type Comment struct {
-	ID        string   `json:"id"`
-	Author    string   `json:"author"`
-	Email     string   `json:"email"`
-	Content   string   `json:"content"`
-	Timestamp string   `json:"timestamp"`
-	Approved  bool     `json:"approved"`
-	PostPath  string   `json:"post_path"`
-	IPAddress string   `json:"ip_address"`
-	UserAgent string   `json:"user_agent"`
-    ParentID  string   `json:"parent_id,omitempty"`
-    Images    []string `json:"images,omitempty"`
+	ID           string   `json:"id"`
+	Author       string   `json:"author"`
+	Email        string   `json:"email"`
+	Content      string   `json:"content"`
+	Timestamp    string   `json:"timestamp"`
+	Approved     bool     `json:"approved"`
+	PostPath     string   `json:"post_path"`
+	IPAddress    string   `json:"ip_address"`
+	UserAgent    string   `json:"user_agent"`
+    ParentID     string   `json:"parent_id,omitempty"`
+    Images       []string `json:"images,omitempty"`
+    IssueNumber  int      `json:"issue_number,omitempty"` // GitHub Issue编号，用于删除
 }
 
 // CommentSettings represents comment notification and blacklist settings
@@ -237,15 +238,23 @@ func isCommentBlacklisted(settings CommentSettings, ip, author, email, content s
 }
 
 func sendCommentNotification(settings CommentSettings, comment Comment, postTitle string) error {
-    if !settings.SMTPEnabled || !settings.NotifyOnPending {
+    if !settings.SMTPEnabled {
+        log.Printf("[DEBUG] SMTP未启用，跳过邮件发送")
         return nil
     }
+    if !settings.NotifyOnPending {
+        log.Printf("[DEBUG] 通知功能未启用，跳过邮件发送")
+        return nil
+    }
+    
+    log.Printf("[DEBUG] 准备发送邮件: 主机=%s 端口=%d 用户=%s 收件人=%v", settings.SMTPHost, settings.SMTPPort, settings.SMTPUser, settings.SMTPTo)
 
     from := settings.SMTPFrom
     if from == "" {
         from = settings.SMTPUser
     }
     if from == "" || len(settings.SMTPTo) == 0 || settings.SMTPHost == "" || settings.SMTPPort == 0 {
+        log.Printf("[WARN] SMTP配置不完整: from=%s to=%v host=%s port=%d", from, settings.SMTPTo, settings.SMTPHost, settings.SMTPPort)
         return nil
     }
 
@@ -331,40 +340,62 @@ func sendCommentNotification(settings CommentSettings, comment Comment, postTitl
         return w.Close()
     } else {
         // 标准SMTP + STARTTLS (端口587)
+        log.Printf("[DEBUG] 连接到SMTP服务器: %s", addr)
         client, err := smtp.Dial(addr)
         if err != nil {
-            return err
+            log.Printf("[ERROR] SMTP连接失败: %v", err)
+            return fmt.Errorf("SMTP连接失败: %w", err)
         }
         defer client.Close()
         
         // 升级到TLS
+        log.Printf("[DEBUG] 启动TLS加密...")
         if err := client.StartTLS(&tls.Config{ServerName: settings.SMTPHost}); err != nil {
-            return err
+            log.Printf("[ERROR] TLS启动失败: %v", err)
+            return fmt.Errorf("TLS启动失败: %w", err)
         }
         
+        // 认证
+        log.Printf("[DEBUG] 进行SMTP认证...")
         if err := client.Auth(auth); err != nil {
-            return err
+            log.Printf("[ERROR] SMTP认证失败: %v", err)
+            return fmt.Errorf("SMTP认证失败: %w", err)
         }
         
+        // 设置发件人
+        log.Printf("[DEBUG] 设置发件人: %s", from)
         if err := client.Mail(from); err != nil {
-            return err
+            log.Printf("[ERROR] 设置发件人失败: %v", err)
+            return fmt.Errorf("设置发件人失败: %w", err)
         }
         
         for _, to := range settings.SMTPTo {
+            log.Printf("[DEBUG] 添加收件人: %s", to)
             if err := client.Rcpt(to); err != nil {
-                return err
+                log.Printf("[ERROR] 添加收件人失败: %v", err)
+                return fmt.Errorf("添加收件人失败: %w", err)
             }
         }
         
+        log.Printf("[DEBUG] 准备发送邮件数据...")
         w, err := client.Data()
         if err != nil {
-            return err
+            log.Printf("[ERROR] 启动数据传输失败: %v", err)
+            return fmt.Errorf("启动数据传输失败: %w", err)
         }
         _, err = w.Write(msg.Bytes())
         if err != nil {
-            return err
+            log.Printf("[ERROR] 写入邮件内容失败: %v", err)
+            return fmt.Errorf("写入邮件内容失败: %w", err)
         }
-        return w.Close()
+        
+        if err := w.Close(); err != nil {
+            log.Printf("[ERROR] 完成邮件发送失败: %v", err)
+            return fmt.Errorf("完成邮件发送失败: %w", err)
+        }
+        
+        log.Printf("[INFO] ✅ 邮件发送成功！收件人: %v", settings.SMTPTo)
+        return nil
     }
 }
 
@@ -761,22 +792,31 @@ func verifyAdminCredentials(username, password string) bool {
         adminUser = "admin"
     }
     if username != adminUser {
+        log.Printf("[DEBUG] Username mismatch: got '%s', expected '%s'", username, adminUser)
         return false
     }
 	
     passwordEnv := os.Getenv("ADMIN_PASSWORD")
     passwordHash := strings.ToLower(strings.TrimSpace(os.Getenv("ADMIN_PASSWORD_HASH")))
+    
+    log.Printf("[DEBUG] Auth check - Has password: %v, Has hash: %v", passwordEnv != "", passwordHash != "")
+    
     if passwordEnv == "" && passwordHash == "" {
+        log.Printf("[ERROR] No password configured!")
         return false
     }
 	
     if passwordHash != "" {
         sum := sha256.Sum256([]byte(password))
         calc := hex.EncodeToString(sum[:])
-        return subtle.ConstantTimeCompare([]byte(calc), []byte(passwordHash)) == 1
+        result := subtle.ConstantTimeCompare([]byte(calc), []byte(passwordHash)) == 1
+        log.Printf("[DEBUG] Hash auth result: %v", result)
+        return result
     }
 	
-    return subtle.ConstantTimeCompare([]byte(password), []byte(passwordEnv)) == 1
+    result := subtle.ConstantTimeCompare([]byte(password), []byte(passwordEnv)) == 1
+    log.Printf("[DEBUG] Plain auth result: %v", result)
+    return result
 }
 
 func extractBearerToken(r *http.Request) string {
@@ -1250,6 +1290,23 @@ func parseFrontmatter(content string) Frontmatter {
 	return fm
 }
 
+// extractPostTitle 从文章路径提取标题
+func extractPostTitle(postPath string) string {
+	fullPath := filepath.Join(hugoPath, postPath)
+	content, err := os.ReadFile(fullPath)
+	if err != nil {
+		// 如果无法读取文件，返回路径作为标题
+		return filepath.Base(postPath)
+	}
+	
+	fm := parseFrontmatter(string(content))
+	if fm.Title != "" && fm.Title != "Untitled" {
+		return fm.Title
+	}
+	
+	return filepath.Base(postPath)
+}
+
 // getGitStatus returns git status map
 func getGitStatus() map[string]string {
 	status := make(map[string]string)
@@ -1534,6 +1591,160 @@ func approveComment(postPath, commentID string) error {
 	return saveComments(postPath, comments)
 }
 
+// deleteGitHubIssue 删除或关闭GitHub Issue
+func deleteGitHubIssue(issueNumber int, repo, token string) error {
+	if issueNumber == 0 {
+		return fmt.Errorf("invalid issue number")
+	}
+	
+	// 使用PATCH请求关闭Issue（GitHub不支持真正删除Issue）
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/issues/%d", repo, issueNumber)
+	
+	// 创建关闭Issue的请求体
+	reqBody := map[string]string{
+		"state": "closed",
+	}
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		return err
+	}
+	
+	req, err := http.NewRequest("PATCH", apiURL, bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return err
+	}
+	
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "WSwriter")
+	req.Header.Set("Content-Type", "application/json")
+	
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	
+	bodyBytes, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return fmt.Errorf("failed to read response: %v", readErr)
+	}
+	
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("GitHub API returned status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+	
+	// 解析响应确认状态
+	var result map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &result); err == nil {
+		log.Printf("[INFO] GitHub Issue #%d closed - Response state: %v", issueNumber, result["state"])
+	} else {
+		log.Printf("[INFO] GitHub Issue #%d closed (response parse failed)", issueNumber)
+	}
+	return nil
+}
+
+// updateGitHubIssueLabels 更新GitHub Issue的标签
+func updateGitHubIssueLabels(issueNumber int, repo, token string, labels []string) error {
+	if issueNumber == 0 {
+		return fmt.Errorf("invalid issue number")
+	}
+	
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/issues/%d", repo, issueNumber)
+	
+	// 创建更新标签的请求体
+	reqBody := map[string]interface{}{
+		"labels": labels,
+	}
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		return err
+	}
+	
+	req, err := http.NewRequest("PATCH", apiURL, bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return err
+	}
+	
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "WSwriter")
+	req.Header.Set("Content-Type", "application/json")
+	
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != 200 {
+		bodyText, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("GitHub API returned status %d: %s", resp.StatusCode, string(bodyText))
+	}
+	
+	log.Printf("[INFO] GitHub Issue #%d labels updated to: %v", issueNumber, labels)
+	return nil
+}
+
+// updateGitHubIssue 更新GitHub Issue的内容
+func updateGitHubIssue(issueNumber int, repo, token string, comment Comment) error {
+	if issueNumber == 0 {
+		return fmt.Errorf("invalid issue number")
+	}
+	
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/issues/%d", repo, issueNumber)
+	
+	// 构建Issue body
+	body := fmt.Sprintf(`**Author:** %s
+**Email:** %s
+**Post:** %s
+**Timestamp:** %s
+
+**Content:**
+%s`,
+		comment.Author,
+		comment.Email,
+		comment.PostPath,
+		comment.Timestamp,
+		comment.Content)
+	
+	// 创建更新请求体
+	reqBody := map[string]interface{}{
+		"body": body,
+	}
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		return err
+	}
+	
+	req, err := http.NewRequest("PATCH", apiURL, bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return err
+	}
+	
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "WSwriter")
+	req.Header.Set("Content-Type", "application/json")
+	
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != 200 {
+		bodyText, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("GitHub API returned status %d: %s", resp.StatusCode, string(bodyText))
+	}
+	
+	log.Printf("[INFO] GitHub Issue #%d updated successfully", issueNumber)
+	return nil
+}
+
 // deleteComment deletes a comment
 func deleteComment(postPath, commentID string) error {
 	comments, err := getComments(postPath)
@@ -1757,12 +1968,16 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
         Password string `json:"password"`
     }
     if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+        log.Printf("[ERROR] Login request decode failed: %v", err)
         respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
         return
     }
     data.Username = strings.TrimSpace(data.Username)
+    
+    log.Printf("[DEBUG] Login attempt - Username: %s", data.Username)
 
     if !verifyAdminCredentials(data.Username, data.Password) {
+        log.Printf("[WARN] Login failed - Invalid credentials for user: %s", data.Username)
         writeAuditLog("login_failed", r, map[string]interface{}{"username": data.Username})
         respondJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "用户名或密码错误"})
         return
@@ -1771,6 +1986,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
     // 生成访问令牌 (短期)
     accessToken, err := createJWT(data.Username, "access")
     if err != nil {
+        log.Printf("[ERROR] Failed to create access token: %v", err)
         writeAuditLog("login_error", r, map[string]interface{}{"username": data.Username, "error": err.Error()})
         respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "生成令牌失败"})
         return
@@ -1779,6 +1995,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
     // 生成刷新令牌 (长期)
     refreshToken, err := createJWT(data.Username, "refresh")
     if err != nil {
+        log.Printf("[ERROR] Failed to create refresh token: %v", err)
         writeAuditLog("login_error", r, map[string]interface{}{"username": data.Username, "error": err.Error()})
         respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "生成刷新令牌失败"})
         return
@@ -1786,6 +2003,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
     accessExpiresAt := time.Now().Add(getJWTExpiry()).Format(time.RFC3339)
     refreshExpiresAt := time.Now().Add(30 * 24 * time.Hour).Format(time.RFC3339)
+    log.Printf("[INFO] Login successful - User: %s", data.Username)
     writeAuditLog("login_success", r, map[string]interface{}{"username": data.Username})
     respondJSON(w, http.StatusOK, map[string]interface{}{
         "success":              true,
@@ -1919,8 +2137,8 @@ func handleDeletePost(w http.ResponseWriter, r *http.Request) {
 
 // getCommentsFromGitHub 从GitHub Issues获取评论
 func getCommentsFromGitHub(postPath, repo, token string) ([]Comment, error) {
-	// 构建GitHub API URL
-	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/issues?state=all&labels=comment&per_page=100", repo)
+	// 构建GitHub API URL - 只获取open状态的Issues
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/issues?state=open&labels=comment&per_page=100", repo)
 	
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
@@ -1983,14 +2201,24 @@ func getCommentsFromGitHub(postPath, repo, token string) ([]Comment, error) {
 		}
 		
 		comment := Comment{
-			ID:        fmt.Sprintf("%d", issue.ID),
-			Author:    extractField(body, "Author"),
-			Email:     extractField(body, "Email"),
-			Content:   extractContent(body),
-			Timestamp: issue.CreatedAt,
-			Approved:  approved,
-			PostPath:  issuePostPath,
+			ID:          fmt.Sprintf("%d", issue.ID),
+			Author:      extractField(body, "Author"),
+			Email:       extractField(body, "Email"),
+			Content:     extractContent(body),
+			Timestamp:   issue.CreatedAt,
+			Approved:    approved,
+			PostPath:    issuePostPath,
+			IssueNumber: issue.Number, // 保存Issue编号用于删除
 		}
+		
+		// 调试日志：输出Issue body原始内容
+		log.Printf("[DEBUG] GitHub Issue #%d body (first 500 chars): %s", issue.Number, func() string {
+			if len(body) > 500 {
+				return body[:500] + "..."
+			}
+			return body
+		}())
+		log.Printf("[DEBUG] Extracted comment - Author: %s, Email: %s, Content length: %d", comment.Author, comment.Email, len(comment.Content))
 		
 		comments = append(comments, comment)
 	}
@@ -2024,11 +2252,31 @@ func extractContent(body string) string {
 	var contentLines []string
 	
 	for _, line := range lines {
-		if strings.TrimSpace(line) == "Content:" {
+		trimmed := strings.TrimSpace(line)
+		
+		// 检查是否是元数据字段（Post, Author, Email, Timestamp等）
+		if strings.HasPrefix(trimmed, "**Post:**") || 
+		   strings.HasPrefix(trimmed, "**Author:**") || 
+		   strings.HasPrefix(trimmed, "**Email:**") || 
+		   strings.HasPrefix(trimmed, "**Timestamp:**") ||
+		   strings.HasPrefix(trimmed, "Post:") || 
+		   strings.HasPrefix(trimmed, "Author:") || 
+		   strings.HasPrefix(trimmed, "Email:") || 
+		   strings.HasPrefix(trimmed, "Timestamp:") {
+			continue
+		}
+		
+		// 支持两种格式: "Content:" 和 "**Content:**"
+		if trimmed == "Content:" || trimmed == "**Content:**" {
 			inContent = true
 			continue
 		}
-		if inContent {
+		
+		// 如果已经找到Content标记，或者是空行之后的内容（说明元数据结束了）
+		if inContent || (trimmed != "" && len(contentLines) == 0 && !strings.Contains(trimmed, ":**")) {
+			inContent = true
+			contentLines = append(contentLines, line)
+		} else if inContent || len(contentLines) > 0 {
 			contentLines = append(contentLines, line)
 		}
 	}
@@ -2186,13 +2434,19 @@ func handleAddComment(w http.ResponseWriter, r *http.Request) {
 
     // 发送邮件通知（不阻塞主流程）
     go func() {
+        log.Printf("[DEBUG] 准备发送新评论通知邮件...")
         postTitle := ""
         fullPath := filepath.Join(hugoPath, data.PostPath)
         if content, err := os.ReadFile(fullPath); err == nil {
             fm := parseFrontmatter(string(content))
             postTitle = fm.Title
         }
-        _ = sendCommentNotification(settings, comment, postTitle)
+        log.Printf("[DEBUG] 文章标题: %s", postTitle)
+        if err := sendCommentNotification(settings, comment, postTitle); err != nil {
+            log.Printf("[ERROR] 新评论通知邮件发送失败: %v", err)
+        } else {
+            log.Printf("[INFO] 新评论通知邮件已发送")
+        }
     }()
 
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "评论已提交，等待审核"})
@@ -2321,8 +2575,9 @@ func handleApproveComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var data struct {
-		PostPath  string `json:"post_path"`
-		CommentID string `json:"comment_id"`
+		PostPath    string `json:"post_path"`
+		CommentID   string `json:"comment_id"`
+		IssueNumber int    `json:"issue_number,omitempty"` // GitHub Issue编号
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
@@ -2330,11 +2585,47 @@ func handleApproveComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := approveComment(data.PostPath, data.CommentID); err != nil {
-		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
-		return
+	// 如果有IssueNumber，说明是从GitHub Issues批准
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	githubRepo := "w2343419-del/WangScape"
+	
+	if data.IssueNumber > 0 && githubToken != "" && githubRepo != "" {
+		log.Printf("[DEBUG] 批准GitHub Issue #%d", data.IssueNumber)
+		// 将pending标签改为approved
+		if err := updateGitHubIssueLabels(data.IssueNumber, githubRepo, githubToken, []string{"approved", "comment"}); err != nil {
+			log.Printf("[ERROR] 更新GitHub Issue标签失败: %v", err)
+			respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "更新GitHub Issue失败: " + err.Error()})
+			return
+		}
+		log.Printf("[INFO] 成功批准GitHub Issue #%d", data.IssueNumber)
+	} else {
+		// 否则从本地文件批准
+		log.Printf("[DEBUG] 从本地文件批准评论: %s", data.CommentID)
+		if err := approveComment(data.PostPath, data.CommentID); err != nil {
+			respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
+			return
+		}
 	}
-    writeAuditLog("approve_comment", r, map[string]interface{}{ "post_path": data.PostPath, "comment_id": data.CommentID })
+	
+	// 发送邮件通知（审批操作）- 静默发送，不显示给访客
+	go func() {
+		settings := loadCommentSettings()
+		postTitle := extractPostTitle(data.PostPath)
+		comment := Comment{
+			Author:    "管理员",
+			Email:     "admin@system",
+			Content:   fmt.Sprintf("评论 #%s 已被批准", data.CommentID),
+			PostPath:  data.PostPath,
+			Timestamp: time.Now().Format("2006-01-02 15:04:05"),
+		}
+		if err := sendCommentNotification(settings, comment, "[批准] "+postTitle); err != nil {
+			log.Printf("[DEBUG] 批准通知邮件发送失败: %v", err)
+		} else {
+			log.Printf("[DEBUG] 批准通知邮件已发送")
+		}
+	}()
+	
+    writeAuditLog("approve_comment", r, map[string]interface{}{ "post_path": data.PostPath, "comment_id": data.CommentID, "issue_number": data.IssueNumber })
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "评论已批准"})
 }
 
@@ -2345,8 +2636,9 @@ func handleDeleteComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var data struct {
-		PostPath  string `json:"post_path"`
-		CommentID string `json:"comment_id"`
+		PostPath    string `json:"post_path"`
+		CommentID   string `json:"comment_id"`
+		IssueNumber int    `json:"issue_number,omitempty"` // GitHub Issue编号
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
@@ -2354,12 +2646,111 @@ func handleDeleteComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := deleteComment(data.PostPath, data.CommentID); err != nil {
-		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
+	// 如果有IssueNumber，说明是从GitHub Issues删除
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	githubRepo := "w2343419-del/WangScape"
+	
+	if data.IssueNumber > 0 && githubToken != "" && githubRepo != "" {
+		log.Printf("[DEBUG] 删除GitHub Issue #%d", data.IssueNumber)
+		if err := deleteGitHubIssue(data.IssueNumber, githubRepo, githubToken); err != nil {
+			log.Printf("[ERROR] 删除GitHub Issue失败: %v", err)
+			respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "删除GitHub Issue失败: " + err.Error()})
+			return
+		}
+		log.Printf("[INFO] 成功删除GitHub Issue #%d", data.IssueNumber)
+	} else {
+		// 否则从本地文件删除
+		log.Printf("[DEBUG] 从本地文件删除评论: %s", data.CommentID)
+		if err := deleteComment(data.PostPath, data.CommentID); err != nil {
+			respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: err.Error()})
+			return
+		}
+	}
+	
+	// 发送邮件通知（删除操作）- 静默发送，不显示给访客
+	go func() {
+		settings := loadCommentSettings()
+		postTitle := extractPostTitle(data.PostPath)
+		comment := Comment{
+			Author:    "管理员",
+			Email:     "admin@system",
+			Content:   fmt.Sprintf("评论 #%s 已被删除", data.CommentID),
+			PostPath:  data.PostPath,
+			Timestamp: time.Now().Format("2006-01-02 15:04:05"),
+		}
+		if err := sendCommentNotification(settings, comment, "[删除] "+postTitle); err != nil {
+			log.Printf("[DEBUG] 删除通知邮件发送失败: %v", err)
+		} else {
+			log.Printf("[DEBUG] 删除通知邮件已发送")
+		}
+	}()
+	
+    writeAuditLog("delete_comment", r, map[string]interface{}{ "post_path": data.PostPath, "comment_id": data.CommentID, "issue_number": data.IssueNumber })
+	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "评论已删除"})
+}
+
+func handleUpdateComment(w http.ResponseWriter, r *http.Request) {
+	// 仅允许本地访问敏感操作
+	if !requireLocal(w, r) {
 		return
 	}
-    writeAuditLog("delete_comment", r, map[string]interface{}{ "post_path": data.PostPath, "comment_id": data.CommentID })
-	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "评论已删除"})
+
+	var data struct {
+		PostPath    string `json:"post_path"`
+		CommentID   string `json:"comment_id"`
+		IssueNumber int    `json:"issue_number,omitempty"`
+		Author      string `json:"author"`
+		Email       string `json:"email"`
+		Content     string `json:"content"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+		return
+	}
+
+	// 如果有IssueNumber，说明是GitHub Issues评论
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	githubRepo := "w2343419-del/WangScape"
+	
+	if data.IssueNumber > 0 && githubToken != "" && githubRepo != "" {
+		log.Printf("[DEBUG] 更新GitHub Issue #%d", data.IssueNumber)
+		
+		// 构建更新的评论对象
+		updatedComment := Comment{
+			Author:    data.Author,
+			Email:     data.Email,
+			Content:   data.Content,
+			PostPath:  data.PostPath,
+			Timestamp: time.Now().Format(time.RFC3339),
+		}
+		
+		if err := updateGitHubIssue(data.IssueNumber, githubRepo, githubToken, updatedComment); err != nil {
+			log.Printf("[ERROR] 更新GitHub Issue失败: %v", err)
+			respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "更新GitHub Issue失败: " + err.Error()})
+			return
+		}
+		log.Printf("[INFO] 成功更新GitHub Issue #%d", data.IssueNumber)
+		
+		// 发送邮件通知（编辑操作）- 静默发送，不显示给访客
+		go func() {
+			settings := loadCommentSettings()
+			postTitle := extractPostTitle(data.PostPath)
+			if err := sendCommentNotification(settings, updatedComment, "[编辑] "+postTitle); err != nil {
+				log.Printf("[DEBUG] 编辑通知邮件发送失败: %v", err)
+			} else {
+				log.Printf("[DEBUG] 编辑通知邮件已发送")
+			}
+		}()
+	} else {
+		// 本地文件的更新逻辑（如果需要）
+		log.Printf("[DEBUG] 本地评论更新功能尚未实现")
+		respondJSON(w, http.StatusNotImplemented, APIResponse{Success: false, Message: "本地评论更新功能尚未实现"})
+		return
+	}
+	
+	writeAuditLog("update_comment", r, map[string]interface{}{ "post_path": data.PostPath, "comment_id": data.CommentID, "issue_number": data.IssueNumber })
+	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "评论已更新"})
 }
 
 func handleGetAllComments(w http.ResponseWriter, r *http.Request) {
@@ -2487,7 +2878,7 @@ func handleGetPendingComments(w http.ResponseWriter, r *http.Request) {
 	
 	if githubToken != "" && githubRepo != "" {
 		log.Printf("[DEBUG] 从GitHub获取待审核评论")
-		apiURL := fmt.Sprintf("https://api.github.com/repos/%s/issues?state=all&labels=pending,comment&per_page=100", githubRepo)
+		apiURL := fmt.Sprintf("https://api.github.com/repos/%s/issues?state=open&labels=pending,comment&per_page=100", githubRepo)
 		
 		req, err := http.NewRequest("GET", apiURL, nil)
 		if err == nil {
@@ -2506,6 +2897,7 @@ func handleGetPendingComments(w http.ResponseWriter, r *http.Request) {
 						Number int    `json:"number"`
 						Title  string `json:"title"`
 						Body   string `json:"body"`
+						State  string `json:"state"`
 						CreatedAt string `json:"created_at"`
 						Labels []struct {
 							Name string `json:"name"`
@@ -2515,11 +2907,23 @@ func handleGetPendingComments(w http.ResponseWriter, r *http.Request) {
 					if json.NewDecoder(resp.Body).Decode(&issues) == nil {
 						log.Printf("[DEBUG] GitHub返回 %d 条待审核Issues", len(issues))
 						for _, issue := range issues {
+							log.Printf("[DEBUG] Issue #%d - state: %s", issue.Number, issue.State)
+						}
+						for _, issue := range issues {
 							body := issue.Body
 							postPath := extractField(body, "Post")
 							author := extractField(body, "Author")
 							email := extractField(body, "Email")
 							content := extractContent(body)
+							
+							// 调试日志
+							log.Printf("[DEBUG] GitHub Issue #%d - Author: %s, Content length: %d", issue.Number, author, len(content))
+							log.Printf("[DEBUG] Issue body preview: %s...", func() string {
+								if len(body) > 200 {
+									return body[:200]
+								}
+								return body
+							}())
 							
 							// 检查是否有pending标签
 							isPending := false
@@ -2532,13 +2936,14 @@ func handleGetPendingComments(w http.ResponseWriter, r *http.Request) {
 							
 							if isPending {
 								comment := Comment{
-									ID:        fmt.Sprintf("%d", issue.ID),
-									Author:    author,
-									Email:     email,
-									Content:   content,
-									Timestamp: issue.CreatedAt,
-									Approved:  false,
-									PostPath:  postPath,
+									ID:          fmt.Sprintf("%d", issue.ID),
+									Author:      author,
+									Email:       email,
+									Content:     content,
+									Timestamp:   issue.CreatedAt,
+									Approved:    false,
+									PostPath:    postPath,
+									IssueNumber: issue.Number, // 保存Issue编号用于删除
 								}
 								
 								pendingComments = append(pendingComments, CommentWithPost{
@@ -2609,6 +3014,68 @@ func handleGetCommentSettings(w http.ResponseWriter, r *http.Request) {
     respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: settings})
 }
 
+func handleTestMail(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        respondJSON(w, http.StatusMethodNotAllowed, APIResponse{Success: false, Message: "Method not allowed"})
+        return
+    }
+
+    // 仅允许本地访问
+    if !requireLocal(w, r) {
+        return
+    }
+
+    var data struct {
+        SMTPHost string `json:"smtp_host"`
+        SMTPPort int    `json:"smtp_port"`
+        SMTPUser string `json:"smtp_user"`
+        SMTPPass string `json:"smtp_pass"`
+        SMTPFrom string `json:"smtp_from"`
+        SMTPTo   string `json:"smtp_to"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+        return
+    }
+
+    // 验证必要字段
+    if data.SMTPHost == "" || data.SMTPPort == 0 || data.SMTPUser == "" || data.SMTPPass == "" || data.SMTPTo == "" {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "缺少必要的SMTP配置参数"})
+        return
+    }
+
+    // 创建临时配置用于测试
+    testSettings := CommentSettings{
+        SMTPEnabled: true,
+        SMTPHost:    data.SMTPHost,
+        SMTPPort:    data.SMTPPort,
+        SMTPUser:    data.SMTPUser,
+        SMTPPass:    data.SMTPPass,
+        SMTPFrom:    data.SMTPFrom,
+        SMTPTo:      []string{data.SMTPTo},
+    }
+
+    // 创建测试邮件
+    testComment := Comment{
+        Author:    "测试用户",
+        Email:     "test@example.com",
+        Content:   "这是一封测试邮件，说明您的SMTP配置正确。",
+        Timestamp: time.Now().Format("2006-01-02 15:04:05"),
+        IPAddress: "127.0.0.1",
+    }
+
+    // 发送测试邮件
+    if err := sendCommentNotification(testSettings, testComment, "测试文章"); err != nil {
+        respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "邮件发送失败: " + err.Error()})
+        log.Printf("[ERROR] Test email failed: %v", err)
+        return
+    }
+
+    writeAuditLog("test_mail", r, map[string]interface{}{"smtp_host": data.SMTPHost})
+    respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "测试邮件已发送，请检查收件箱"})
+}
+
 func handleSaveCommentSettings(w http.ResponseWriter, r *http.Request) {
     // 仅允许本地访问敏感配置
     if !requireLocal(w, r) {
@@ -2638,8 +3105,9 @@ func handleBulkComments(w http.ResponseWriter, r *http.Request) {
     var data struct {
         Action string `json:"action"`
         Items  []struct {
-            PostPath  string `json:"post_path"`
-            CommentID string `json:"comment_id"`
+            PostPath    string `json:"post_path"`
+            CommentID   string `json:"comment_id"`
+            IssueNumber int    `json:"issue_number,omitempty"`
         } `json:"items"`
     }
 
@@ -2653,15 +3121,57 @@ func handleBulkComments(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    githubToken := os.Getenv("GITHUB_TOKEN")
+    githubRepo := "w2343419-del/WangScape"
+    successCount := 0
+    failCount := 0
+
     for _, item := range data.Items {
-        if data.Action == "approve" {
-            _ = approveComment(item.PostPath, item.CommentID)
+        if item.IssueNumber > 0 && githubToken != "" && githubRepo != "" {
+            // 使用GitHub API批量操作
+            if data.Action == "approve" {
+                if err := updateGitHubIssueLabels(item.IssueNumber, githubRepo, githubToken, []string{"approved", "comment"}); err != nil {
+                    log.Printf("[ERROR] 批量批准Issue #%d失败: %v", item.IssueNumber, err)
+                    failCount++
+                } else {
+                    successCount++
+                }
+            } else {
+                if err := deleteGitHubIssue(item.IssueNumber, githubRepo, githubToken); err != nil {
+                    log.Printf("[ERROR] 批量删除Issue #%d失败: %v", item.IssueNumber, err)
+                    failCount++
+                } else {
+                    successCount++
+                }
+            }
         } else {
-            _ = deleteComment(item.PostPath, item.CommentID)
+            // 本地文件操作
+            if data.Action == "approve" {
+                if err := approveComment(item.PostPath, item.CommentID); err != nil {
+                    failCount++
+                } else {
+                    successCount++
+                }
+            } else {
+                if err := deleteComment(item.PostPath, item.CommentID); err != nil {
+                    failCount++
+                } else {
+                    successCount++
+                }
+            }
         }
     }
-    writeAuditLog("bulk_comments", r, map[string]interface{}{"action": data.Action, "count": len(data.Items)})
-    respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "OK"})
+    
+    writeAuditLog("bulk_comments", r, map[string]interface{}{"action": data.Action, "count": len(data.Items), "success": successCount, "fail": failCount})
+    
+    var message string
+    if failCount > 0 {
+        message = fmt.Sprintf("批量操作完成：成功 %d 条，失败 %d 条", successCount, failCount)
+    } else {
+        message = fmt.Sprintf("批量操作成功：%d 条", successCount)
+    }
+    
+    respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: message})
 }
 
 func handleExportComments(w http.ResponseWriter, r *http.Request) {
@@ -3188,6 +3698,23 @@ func handleUnlikePost(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleGetLikes returns likes data for all posts or a specific post
+func handleLikeCount(w http.ResponseWriter, r *http.Request) {
+    postPath := r.URL.Query().Get("path")
+    
+    if postPath == "" {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Post path required"})
+        return
+    }
+    
+    // Get likes count for specific post
+    likes := getPostLikes(postPath)
+    
+    respondJSON(w, http.StatusOK, APIResponse{
+        Success: true,
+        Data:    map[string]int{"count": likes.Likes},
+    })
+}
+
 func handleGetLikes(w http.ResponseWriter, r *http.Request) {
     postPath := r.URL.Query().Get("path")
     
@@ -3343,15 +3870,18 @@ func main() {
     rootMux.HandleFunc("/api/upload_comment_image", withCORS(limitRequestBody(handleUploadCommentImage, 12<<20)))
     rootMux.HandleFunc("/api/approve_comment", withCORS(withAuth(limitRequestBody(handleApproveComment, 512))))
     rootMux.HandleFunc("/api/delete_comment", withCORS(withAuth(limitRequestBody(handleDeleteComment, 512))))
+    rootMux.HandleFunc("/api/update_comment", withCORS(withAuth(limitRequestBody(handleUpdateComment, 2<<20))))
     rootMux.HandleFunc("/api/all_comments", withCORS(withAuth(handleGetAllComments)))
     rootMux.HandleFunc("/api/comment_stats", withCORS(withAuth(handleCommentStats)))
     rootMux.HandleFunc("/api/pending_comments", withCORS(withAuth(handleGetPendingComments)))
     rootMux.HandleFunc("/api/comment_settings", withCORS(withAuth(handleGetCommentSettings)))
     rootMux.HandleFunc("/api/save_comment_settings", withCORS(withAuth(limitRequestBody(handleSaveCommentSettings, 1<<20))))
+    rootMux.HandleFunc("/api/test_mail", withCORS(withAuth(limitRequestBody(handleTestMail, 1<<20))))
     rootMux.HandleFunc("/api/bulk_comments", withCORS(withAuth(limitRequestBody(handleBulkComments, 1<<20))))
     rootMux.HandleFunc("/api/export_comments", withCORS(withAuth(handleExportComments)))
     rootMux.HandleFunc("/api/like_post", withCORS(limitRequestBody(handleLikePost, 512)))
     rootMux.HandleFunc("/api/unlike_post", withCORS(limitRequestBody(handleUnlikePost, 512)))
+    rootMux.HandleFunc("/api/like_count", withCORS(handleLikeCount))
     rootMux.HandleFunc("/api/get_likes", withCORS(handleGetLikes))
 
 	// 启动审计日志轮转
@@ -4015,8 +4545,8 @@ var htmlTemplate = `<!DOCTYPE html>
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
             display: none;
             align-items: center;
             justify-content: center;
@@ -4024,25 +4554,44 @@ var htmlTemplate = `<!DOCTYPE html>
         }
 
         .modal-card {
-            background: #1a1a1a;
-            color: white;
+            background: white;
+            color: #0f172a;
             width: 500px;
             padding: 30px;
             border-radius: 16px;
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.3);
+        }
+
+        .modal-card h2 {
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .modal-card label {
+            color: #475569;
+            font-weight: 500;
+            font-size: 14px;
         }
 
         .modal-card input {
             width: 100%;
             padding: 12px;
-            background: #000;
-            border: 1px solid rgba(255,255,255,0.2);
-            color: white;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            color: #0f172a;
             border-radius: 8px;
             margin-top: 8px;
             margin-bottom: 20px;
             box-sizing: border-box;
+            transition: all 0.2s;
+        }
+
+        .modal-card input:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
         }
 
         .modal-card button {
@@ -4050,19 +4599,31 @@ var htmlTemplate = `<!DOCTYPE html>
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
+            transition: all 0.2s;
+            border: none;
         }
 
         .btn-confirm {
-            background: var(--dash-accent);
-            color: black;
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
             border: none;
         }
 
         .btn-cancel {
-            background: transparent;
-            color: #ccc;
-            border: 1px solid #555;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
             margin-right: 10px;
+        }
+
+        .btn-cancel:hover {
+            background: #e2e8f0;
+            border-color: #94a3b8;
+        }
+
+        .btn-confirm:hover {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
         }
 
         #editor-textarea {
@@ -4271,6 +4832,25 @@ var htmlTemplate = `<!DOCTYPE html>
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
         }
         
+        .btn-edit {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25);
+        }
+        
+        .btn-edit:hover {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.35);
+        }
+        
         .btn-delete {
             padding: 10px 20px;
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
@@ -4306,13 +4886,52 @@ var htmlTemplate = `<!DOCTYPE html>
         .pending-toolbar {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 12px;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            padding: 16px 20px;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
 
         .pending-toolbar label {
             font-size: 13px;
             color: var(--dash-text);
+        }
+        
+        .btn-approve-bulk, .btn-delete-bulk {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-approve-bulk {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .btn-approve-bulk:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn-delete-bulk {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+        
+        .btn-delete-bulk:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
         }
 
         .settings-panel {
@@ -4375,7 +4994,7 @@ var htmlTemplate = `<!DOCTYPE html>
                 <div style="font-size: 12px; color: #4f46e5; font-weight: 700; margin-bottom: 8px;">🔐 登录状态</div>
                 <div id="auth-status" style="font-size: 12px; color: var(--dash-text); margin-bottom: 10px;">未登录</div>
                 <div style="display:flex; gap:8px;">
-                    <button id="login-btn" class="dash-btn" style="flex:1;" onclick="openLoginModal()">登录</button>
+                    <button id="login-btn" class="dash-btn" style="flex:1;" onclick="console.log('Login button clicked!'); openLoginModal();">登录</button>
                     <button id="logout-btn" class="dash-btn" style="flex:1; display:none;" onclick="logout()">退出</button>
                 </div>
             </div>
@@ -4402,7 +5021,7 @@ var htmlTemplate = `<!DOCTYPE html>
                 <div style="font-size: 12px; color: #4f46e5; font-weight: 700; margin-bottom: 8px;">🔐 登录状态</div>
                 <div id="auth-status-pending" style="font-size: 12px; color: var(--dash-text); margin-bottom: 10px;">未登录</div>
                 <div style="display:flex; gap:8px;">
-                    <button id="login-btn-pending" class="dash-btn" style="flex:1;" onclick="openLoginModal()">登录</button>
+                    <button id="login-btn-pending" class="dash-btn" style="flex:1;" onclick="console.log('Login button clicked!'); openLoginModal();">登录</button>
                     <button id="logout-btn-pending" class="dash-btn" style="flex:1; display:none;" onclick="logout()">退出</button>
                 </div>
             </div>
@@ -4433,6 +5052,9 @@ var htmlTemplate = `<!DOCTYPE html>
                 <div class="settings-row">
                     <label><input type="checkbox" id="notify-pending" /> 新评论提醒</label>
                 </div>
+                <div class="settings-row">
+                    <button class="dash-btn" onclick="testMailConnection()" style="background:#3b82f6;">✉️ 发送测试邮件</button>
+                </div>
 
                 <div class="settings-title">⛔ 黑名单</div>
                 <div class="settings-row">
@@ -4450,13 +5072,29 @@ var htmlTemplate = `<!DOCTYPE html>
             </div>
         </div>
         <div class="dash-main">
-            <h1 class="dash-header">待审核评论列表</h1>
-            <div class="pending-toolbar">
-                <label><input type="checkbox" id="pending-select-all" onchange="toggleSelectAllPending()" /> 全选</label>
-                <button class="btn-approve" onclick="bulkApprovePending()">✅ 批量批准</button>
-                <button class="btn-delete" onclick="bulkDeletePending()">🗑 批量删除</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h1 class="dash-header" style="margin: 0;">📬 待审核评论</h1>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span id="pending-total-count-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; box-shadow: 0 2px 8px rgba(102,126,234,0.3);">0 条待审核</span>
+                    <button onclick="loadPendingComments()" style="background: white; border: 1px solid #e5e7eb; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; transition: all 0.2s;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">🔄 刷新</button>
+                </div>
             </div>
-            <div id="pending-comments-list" style="display:flex; flex-direction:column; gap:20px;"></div>
+            
+            <div class="pending-toolbar">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px; background: #f9fafb; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='#f9fafb'">
+                        <input type="checkbox" id="pending-select-all" onchange="toggleSelectAllPending()" style="width: 16px; height: 16px; cursor: pointer;" /> 
+                        <span style="font-weight: 500; font-size: 14px;">全选</span>
+                    </label>
+                    <span id="selected-count" style="color: #6b7280; font-size: 13px; margin-left: 5px;">未选择</span>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-approve-bulk" onclick="bulkApprovePending()">✅ 批量批准</button>
+                    <button class="btn-delete-bulk" onclick="bulkDeletePending()">🗑 批量删除</button>
+                </div>
+            </div>
+            
+            <div id="pending-comments-list" style="display:flex; flex-direction:column; gap:16px;"></div>
         </div>
     </div>
 
@@ -4692,7 +5330,9 @@ var htmlTemplate = `<!DOCTYPE html>
 
         async function authFetch(url, options = {}) {
             const headers = Object.assign({}, options.headers || {}, getAuthHeaders());
+            console.log('[DEBUG] authFetch:', { url, headers, authToken: authToken ? '***' : 'NONE' });
             const response = await fetch(url, Object.assign({}, options, { headers }));
+            console.log('[DEBUG] Response status:', response.status);
             if (response.status === 401) {
                 openLoginModal('需要登录才能继续操作');
             }
@@ -4700,8 +5340,18 @@ var htmlTemplate = `<!DOCTYPE html>
         }
 
         function openLoginModal(message) {
+            console.log('openLoginModal called with message:', message);
             const modal = document.getElementById('login-modal');
             const hint = document.getElementById('login-hint');
+            
+            if (!modal) {
+                console.error('login-modal element not found!');
+                alert('错误：登录窗口未找到，请刷新页面重试');
+                return;
+            }
+            
+            console.log('Modal element found, displaying...');
+            
             if (message) {
                 hint.textContent = message;
                 hint.style.display = 'block';
@@ -4709,11 +5359,15 @@ var htmlTemplate = `<!DOCTYPE html>
                 hint.style.display = 'none';
             }
             modal.style.display = 'flex';
+            
+            console.log('Modal display set to flex');
         }
 
         function closeLoginModal() {
             const modal = document.getElementById('login-modal');
-            modal.style.display = 'none';
+            if (modal) {
+                modal.style.display = 'none';
+            }
         }
 
         async function performLogin() {
@@ -4723,17 +5377,35 @@ var htmlTemplate = `<!DOCTYPE html>
                 openLoginModal('请输入用户名和密码');
                 return;
             }
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            const data = await res.json();
-            if (data && data.access_token) {
-                setAuthToken(data.access_token);
-                closeLoginModal();
-            } else {
-                openLoginModal(data.message || '登录失败');
+            
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({ message: '服务器错误' }));
+                    openLoginModal(data.message || '登录失败: ' + res.status);
+                    console.error('登录失败:', res.status, data);
+                    return;
+                }
+                
+                const data = await res.json();
+                console.log('登录响应:', data);
+                
+                if (data && data.access_token) {
+                    setAuthToken(data.access_token);
+                    closeLoginModal();
+                    updateAuthStatus();
+                    alert('✅ 登录成功！');
+                } else {
+                    openLoginModal(data.message || '登录失败：未返回令牌');
+                }
+            } catch (e) {
+                console.error('登录错误:', e);
+                openLoginModal('网络错误: ' + e.message);
             }
         }
 
@@ -5615,6 +6287,8 @@ var htmlTemplate = `<!DOCTYPE html>
                 
                 if (data.success && data.data) {
                     const comments = data.data;
+                    console.log('[DEBUG] 加载了', comments.length, '条待审核评论');
+                    console.log('[DEBUG] 第一条评论数据:', comments[0]);
                     
                     if (comments.length === 0) {
                         listEl.innerHTML = '<div style="text-align:center; padding:60px; color:#999; font-size:16px;">🎉 没有待审核的评论</div>';
@@ -5623,6 +6297,10 @@ var htmlTemplate = `<!DOCTYPE html>
                     }
                     
                     countEl.textContent = comments.length + ' 条待审核';
+                    const headerCountEl = document.getElementById('pending-total-count-header');
+                    if (headerCountEl) {
+                        headerCountEl.textContent = comments.length + ' 条待审核';
+                    }
                     
                     let html = '';
                     comments.forEach((item, index) => {
@@ -5651,7 +6329,7 @@ var htmlTemplate = `<!DOCTYPE html>
                         html += '<div class="pending-comment-card">' +
                             '<div class="comment-header">' +
                             '<div class="comment-number">#' + commentNum + '</div>' +
-                            '<input type="checkbox" class="pending-select" data-post="' + c.post_path.replace(/\\/g, '\\\\') + '" data-id="' + c.id + '" />' +
+                            '<input type="checkbox" class="pending-select" onchange="updateSelectedCount()" data-post="' + c.post_path.replace(/\\/g, '\\\\') + '" data-id="' + c.id + '" data-issue-number="' + (c.issue_number || '') + '" />' +
                             '</div>' +
                             '<div class="comment-post-title">' +
                             '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z"></path></svg>' +
@@ -5673,13 +6351,39 @@ var htmlTemplate = `<!DOCTYPE html>
                             '<div class="tech-item tech-ua"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8z"></path></svg> <strong>UA:</strong> ' + (c.user_agent ? escapeHtml(c.user_agent.length > 80 ? c.user_agent.substring(0, 80) + '...' : c.user_agent) : '未记录') + '</div>' +
                             '</div>' +
                             '<div class="comment-actions">' +
-                            '<button class="btn-approve" onclick="approvePendingComment(\'' + c.post_path.replace(/\\/g, '\\\\') + '\', \'' + c.id + '\')">✅ 批准</button>' +
-                            '<button class="btn-delete" onclick="deletePendingComment(\'' + c.post_path.replace(/\\/g, '\\\\') + '\', \'' + c.id + '\')">🗑 删除</button>' +
+                            '<button class="btn-approve" data-action="approve" data-post-path="' + c.post_path + '" data-comment-id="' + c.id + '" data-issue-number="' + (c.issue_number || '') + '">✅ 批准</button>' +
+                            '<button class="btn-edit" data-action="edit" data-post-path="' + c.post_path + '" data-comment-id="' + c.id + '" data-issue-number="' + (c.issue_number || '') + '" data-author="' + (c.author || '') + '" data-email="' + (c.email || '') + '" data-content="' + (c.content || '').replace(/"/g, '&quot;') + '">✏️ 编辑</button>' +
+                            '<button class="btn-delete" data-action="delete" data-post-path="' + c.post_path + '" data-comment-id="' + c.id + '" data-issue-number="' + (c.issue_number || '') + '">🗑 删除</button>' +
                             '</div>' +
                             '</div>';
                     });
                     
                     listEl.innerHTML = html;
+                    
+                    // 添加按钮点击事件监听
+                    listEl.querySelectorAll('.comment-actions button').forEach(btn => {
+                        btn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            const action = this.getAttribute('data-action');
+                            const postPath = this.getAttribute('data-post-path');
+                            const commentId = this.getAttribute('data-comment-id');
+                            const issueNumberStr = this.getAttribute('data-issue-number');
+                            const issueNumber = issueNumberStr ? parseInt(issueNumberStr) : null;
+                            
+                            console.log('[DEBUG] 按钮点击:', { action, postPath, commentId, issueNumber, issueNumberStr });
+                            
+                            if (action === 'approve') {
+                                approvePendingComment(postPath, commentId, issueNumber);
+                            } else if (action === 'edit') {
+                                const author = this.getAttribute('data-author');
+                                const email = this.getAttribute('data-email');
+                                const content = this.getAttribute('data-content');
+                                editPendingComment(postPath, commentId, issueNumber, author, email, content);
+                            } else if (action === 'delete') {
+                                deletePendingComment(postPath, commentId, issueNumber);
+                            }
+                        });
+                    });
                 } else {
                     listEl.innerHTML = '<div style="text-align:center; padding:40px; color:red;">加载失败</div>';
                 }
@@ -5692,10 +6396,16 @@ var htmlTemplate = `<!DOCTYPE html>
             const checks = document.querySelectorAll('.pending-select:checked');
             const items = [];
             checks.forEach(ch => {
-                items.push({
+                const item = {
                     post_path: ch.getAttribute('data-post'),
                     comment_id: ch.getAttribute('data-id')
-                });
+                };
+                // 添加issue_number如果存在
+                const issueNumber = ch.getAttribute('data-issue-number');
+                if (issueNumber) {
+                    item.issue_number = parseInt(issueNumber);
+                }
+                items.push(item);
             });
             return items;
         }
@@ -5704,6 +6414,22 @@ var htmlTemplate = `<!DOCTYPE html>
             const selectAll = document.getElementById('pending-select-all');
             const checks = document.querySelectorAll('.pending-select');
             checks.forEach(ch => ch.checked = selectAll.checked);
+            updateSelectedCount();
+        }
+        
+        function updateSelectedCount() {
+            const checks = document.querySelectorAll('.pending-select:checked');
+            const countEl = document.getElementById('selected-count');
+            if (countEl) {
+                if (checks.length === 0) {
+                    countEl.textContent = '未选择';
+                    countEl.style.color = '#6b7280';
+                } else {
+                    countEl.textContent = '已选择 ' + checks.length + ' 条';
+                    countEl.style.color = '#059669';
+                    countEl.style.fontWeight = '600';
+                }
+            }
         }
 
         async function bulkApprovePending() {
@@ -5798,6 +6524,43 @@ var htmlTemplate = `<!DOCTYPE html>
             }
         }
 
+        async function testMailConnection() {
+            const smtpHost = document.getElementById('smtp-host').value.trim();
+            const smtpPort = parseInt(document.getElementById('smtp-port').value || '587', 10);
+            const smtpUser = document.getElementById('smtp-user').value.trim();
+            const smtpPass = document.getElementById('smtp-pass').value.trim();
+            const smtpFrom = document.getElementById('smtp-from').value.trim();
+            const smtpTo = document.getElementById('smtp-to').value.trim();
+
+            if (!smtpHost || !smtpPort || !smtpUser || !smtpPass || !smtpTo) {
+                alert('❌ 请填写所有SMTP配置字段');
+                return;
+            }
+
+            try {
+                const res = await authFetch('/api/test_mail', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        smtp_host: smtpHost,
+                        smtp_port: smtpPort,
+                        smtp_user: smtpUser,
+                        smtp_pass: smtpPass,
+                        smtp_from: smtpFrom || smtpUser,
+                        smtp_to: smtpTo
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                } else {
+                    alert('❌ 测试失败: ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ 错误: ' + e);
+            }
+        }
+
         async function saveCommentSettings() {
             const payload = {
                 smtp_enabled: document.getElementById('smtp-enabled').checked,
@@ -5829,12 +6592,23 @@ var htmlTemplate = `<!DOCTYPE html>
             }
         }
         
-        async function approvePendingComment(postPath, commentId) {
+        async function approvePendingComment(postPath, commentId, issueNumber) {
+            console.log('[DEBUG] approvePendingComment called:', { postPath, commentId, issueNumber });
             try {
+                const payload = {
+                    post_path: postPath,
+                    comment_id: commentId
+                };
+                
+                // 如果有issue_number，添加到请求中
+                if (issueNumber) {
+                    payload.issue_number = parseInt(issueNumber);
+                }
+                
                 const res = await authFetch('/api/approve_comment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ post_path: postPath, comment_id: commentId })
+                    body: JSON.stringify(payload)
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -5849,20 +6623,103 @@ var htmlTemplate = `<!DOCTYPE html>
             }
         }
         
-        function deletePendingComment(postPath, commentId) {
-            if (confirm('确定要删除这条评论吗？此操作不可恢复。')) {
-                deletePendingCommentAction(postPath, commentId);
+        function editPendingComment(postPath, commentId, issueNumber, currentAuthor, currentEmail, currentContent) {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = 
+                '<div class="modal-card" style="max-width: 600px;">' +
+                    '<h2 style="margin-top: 0;">✏️ 编辑评论</h2>' +
+                    '<div style="margin-bottom: 15px;">' +
+                        '<label style="display: block; margin-bottom: 5px; font-weight: bold;">作者名称：</label>' +
+                        '<input type="text" id="edit-author" value="' + escapeHtml(currentAuthor) + '" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;" />' +
+                    '</div>' +
+                    '<div style="margin-bottom: 15px;">' +
+                        '<label style="display: block; margin-bottom: 5px; font-weight: bold;">邮箱：</label>' +
+                        '<input type="email" id="edit-email" value="' + escapeHtml(currentEmail) + '" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;" />' +
+                    '</div>' +
+                    '<div style="margin-bottom: 15px;">' +
+                        '<label style="display: block; margin-bottom: 5px; font-weight: bold;">评论内容：</label>' +
+                        '<textarea id="edit-content" rows="6" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px; resize: vertical;">' + escapeHtml(currentContent) + '</textarea>' +
+                    '</div>' +
+                    '<div style="display: flex; gap: 10px; justify-content: flex-end;">' +
+                        '<button onclick="this.closest(\'.modal-overlay\').remove()" style="padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">取消</button>' +
+                        '<button onclick="saveEditedComment(\'' + postPath.replace(/\\/g, '\\\\') + '\', \'' + commentId + '\', ' + (issueNumber || 'null') + ')" style="padding: 8px 16px; background: #0ea5e9; color: white; border: none; border-radius: 4px; cursor: pointer;">💾 保存</button>' +
+                    '</div>' +
+                '</div>';
+            document.body.appendChild(modal);
+            modal.style.display = 'flex';
+        }
+        
+        async function saveEditedComment(postPath, commentId, issueNumber) {
+            console.log('[DEBUG] saveEditedComment called:', { postPath, commentId, issueNumber });
+            const author = document.getElementById('edit-author').value.trim();
+            const email = document.getElementById('edit-email').value.trim();
+            const content = document.getElementById('edit-content').value.trim();
+            
+            if (!author || !email || !content) {
+                alert('请填写所有字段');
+                return;
+            }
+            
+            try {
+                const payload = {
+                    post_path: postPath,
+                    comment_id: commentId,
+                    author: author,
+                    email: email,
+                    content: content
+                };
+                
+                if (issueNumber) {
+                    payload.issue_number = parseInt(issueNumber);
+                }
+                
+                const res = await authFetch('/api/update_comment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ 评论已更新');
+                    document.querySelector('.modal-overlay').remove();
+                    addOperationHistory('comment', 'edit', postPath, '评论ID: ' + commentId);
+                    loadPendingComments();
+                } else {
+                    alert('❌ 更新失败: ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ 错误: ' + e);
             }
         }
         
-        async function deletePendingCommentAction(postPath, commentId) {
+        function deletePendingComment(postPath, commentId, issueNumber) {
+            if (confirm('确定要删除这条评论吗？此操作不可恢复。')) {
+                deletePendingCommentAction(postPath, commentId, issueNumber);
+            }
+        }
+        
+        async function deletePendingCommentAction(postPath, commentId, issueNumber) {
+            console.log('[DEBUG] deletePendingCommentAction called:', { postPath, commentId, issueNumber });
             try {
+                const payload = { 
+                    post_path: postPath, 
+                    comment_id: commentId
+                };
+                
+                // 如果有issue_number，添加到请求中
+                if (issueNumber) {
+                    payload.issue_number = parseInt(issueNumber);
+                }
+                
                 const res = await authFetch('/api/delete_comment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ post_path: postPath, comment_id: commentId })
+                    body: JSON.stringify(payload)
                 });
+                console.log('[DEBUG] deletePendingCommentAction response status:', res.status);
                 const data = await res.json();
+                console.log('[DEBUG] deletePendingCommentAction response data:', data);
                 if (data.success) {
                     alert('✅ 评论已删除');
                     addOperationHistory('comment', 'delete', postPath, '评论ID: ' + commentId);
@@ -6151,6 +7008,6 @@ var htmlTemplate = `<!DOCTYPE html>
 
         // 初始化历史记录
         loadOperationHistory();
-
+    </script>
 </body>
 </html>`
