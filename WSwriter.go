@@ -2952,7 +2952,56 @@ func limitRequestBody(h http.HandlerFunc, maxSize int64) http.HandlerFunc {
 	}
 }
 
+// loadEnvFile 从.env文件加载环境变量
+func loadEnvFile(filename string) {
+	content, err := os.ReadFile(filename)
+	if err != nil {
+		// .env文件不存在时忽略，使用系统环境变量
+		return
+	}
+
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		
+		// 跳过空行和注释
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		
+		// 解析 KEY=VALUE 格式
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		
+		// 移除引号（如果有）
+		if (strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`)) ||
+			(strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'")) {
+			value = value[1 : len(value)-1]
+		}
+		
+		// 设置环境变量（仅当未设置时）
+		if os.Getenv(key) == "" {
+			os.Setenv(key, value)
+		}
+	}
+}
+
 func main() {
+	// 加载.env文件
+	loadEnvFile(".env")
+	
+	// 调试：打印加载的凭据
+	adminUser := os.Getenv("ADMIN_USERNAME")
+	adminPass := os.Getenv("ADMIN_PASSWORD")
+	if adminUser != "" || adminPass != "" {
+		log.Printf("[AUTH] 凭据已加载 - User: %s, Password: %s", adminUser, "***")
+	}
+	
 	// ==================== 安全中间件设置 ====================
 	
 	// 添加HSTS和其他安全头
@@ -4143,8 +4192,8 @@ var htmlTemplate = `<!DOCTYPE html>
                 body: JSON.stringify({ username, password })
             });
             const data = await res.json();
-            if (data && data.token) {
-                setAuthToken(data.token);
+            if (data && data.access_token) {
+                setAuthToken(data.access_token);
                 closeLoginModal();
             } else {
                 openLoginModal(data.message || '登录失败');

@@ -2,16 +2,16 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <channel>
         <title>Posts on WangScape</title>
-        <link>https://w2343419-del.github.io/WangScape/en/post/</link>
+        <link>http://localhost:1313/WangScape/en/post/</link>
         <description>Recent content in Posts on WangScape</description>
         <generator>Hugo -- gohugo.io</generator>
         <language>en</language>
-        <lastBuildDate>Tue, 03 Feb 2026 13:28:00 +0800</lastBuildDate><atom:link href="https://w2343419-del.github.io/WangScape/en/post/index.xml" rel="self" type="application/rss+xml" /><item>
+        <lastBuildDate>Tue, 03 Feb 2026 13:28:00 +0800</lastBuildDate><atom:link href="http://localhost:1313/WangScape/en/post/index.xml" rel="self" type="application/rss+xml" /><item>
         <title>Hello and welcome to my blog</title>
-        <link>https://w2343419-del.github.io/WangScape/en/p/hello-and-welcome-to-my-blog/</link>
+        <link>http://localhost:1313/WangScape/en/p/hello-and-welcome-to-my-blog/</link>
         <pubDate>Tue, 03 Feb 2026 13:28:00 +0800</pubDate>
         
-        <guid>https://w2343419-del.github.io/WangScape/en/p/hello-and-welcome-to-my-blog/</guid>
+        <guid>http://localhost:1313/WangScape/en/p/hello-and-welcome-to-my-blog/</guid>
         <description>&lt;p&gt;After nearly a day of half a day of self-doubt, half a day of fighting with AI (doge), and a whole day of using your head and table harder than anyone else&amp;hellip;&lt;/p&gt;
 &lt;p&gt;January 21, 2026 finally became an extraordinary day for me.&lt;/p&gt;
 &lt;p&gt;My personal blog is finally live!!!&lt;/p&gt;
@@ -30,10 +30,10 @@
         </item>
         <item>
         <title>Site Repair Summary</title>
-        <link>https://w2343419-del.github.io/WangScape/en/p/site-repair-summary/</link>
+        <link>http://localhost:1313/WangScape/en/p/site-repair-summary/</link>
         <pubDate>Mon, 02 Feb 2026 12:14:00 +0800</pubDate>
         
-        <guid>https://w2343419-del.github.io/WangScape/en/p/site-repair-summary/</guid>
+        <guid>http://localhost:1313/WangScape/en/p/site-repair-summary/</guid>
         <description>&lt;ol&gt;
 &lt;li&gt;
 &lt;p&gt;Fixed the animation carton problem in the lower left column;&lt;/p&gt;
