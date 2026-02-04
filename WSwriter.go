@@ -1998,14 +1998,20 @@ func getCommentsFromGitHub(postPath, repo, token string) ([]Comment, error) {
 	return comments, nil
 }
 
-// extractField 从Issue body提取字段
+// extractField 从Issue body提取字段（支持Markdown格式）
 func extractField(body, field string) string {
 	lines := strings.Split(body, "\n")
-	prefix := field + ":"
+	// 支持两种格式: "Field: value" 和 "**Field:** value"
+	prefix1 := field + ":"
+	prefix2 := "**" + field + ":**"
+	
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, prefix) {
-			return strings.TrimSpace(strings.TrimPrefix(line, prefix))
+		if strings.HasPrefix(line, prefix2) {
+			return strings.TrimSpace(strings.TrimPrefix(line, prefix2))
+		}
+		if strings.HasPrefix(line, prefix1) {
+			return strings.TrimSpace(strings.TrimPrefix(line, prefix1))
 		}
 	}
 	return ""
@@ -2041,12 +2047,17 @@ func handleGetComments(w http.ResponseWriter, r *http.Request) {
 	githubToken := os.Getenv("GITHUB_TOKEN")
 	githubRepo := "w2343419-del/WangScape" // 从配置读取
 	
+	log.Printf("[DEBUG] GITHUB_TOKEN存在: %v, 长度: %d", githubToken != "", len(githubToken))
+	
 	if githubToken != "" && githubRepo != "" {
+		log.Printf("[DEBUG] 尝试从GitHub获取评论: repo=%s, post=%s", githubRepo, postPath)
 		comments, err := getCommentsFromGitHub(postPath, githubRepo, githubToken)
 		if err == nil {
+			log.Printf("[DEBUG] GitHub评论获取成功，数量: %d", len(comments))
 			respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: comments})
 			return
 		}
+		log.Printf("[DEBUG] GitHub评论获取失败: %v，降级到本地存储", err)
 		// 如果GitHub失败，继续使用本地存储
 	}
 
@@ -2469,8 +2480,85 @@ func handleGetPendingComments(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var pendingComments []CommentWithPost
+	
+	// 优先从GitHub Issues获取待审核评论
+	githubToken := os.Getenv("GITHUB_TOKEN")
+	githubRepo := "w2343419-del/WangScape"
+	
+	if githubToken != "" && githubRepo != "" {
+		log.Printf("[DEBUG] 从GitHub获取待审核评论")
+		apiURL := fmt.Sprintf("https://api.github.com/repos/%s/issues?state=all&labels=pending,comment&per_page=100", githubRepo)
+		
+		req, err := http.NewRequest("GET", apiURL, nil)
+		if err == nil {
+			req.Header.Set("Authorization", "Bearer "+githubToken)
+			req.Header.Set("Accept", "application/vnd.github+json")
+			req.Header.Set("User-Agent", "WSwriter")
+			
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Do(req)
+			if err == nil {
+				defer resp.Body.Close()
+				
+				if resp.StatusCode == 200 {
+					var issues []struct {
+						ID     int    `json:"id"`
+						Number int    `json:"number"`
+						Title  string `json:"title"`
+						Body   string `json:"body"`
+						CreatedAt string `json:"created_at"`
+						Labels []struct {
+							Name string `json:"name"`
+						} `json:"labels"`
+					}
+					
+					if json.NewDecoder(resp.Body).Decode(&issues) == nil {
+						log.Printf("[DEBUG] GitHub返回 %d 条待审核Issues", len(issues))
+						for _, issue := range issues {
+							body := issue.Body
+							postPath := extractField(body, "Post")
+							author := extractField(body, "Author")
+							email := extractField(body, "Email")
+							content := extractContent(body)
+							
+							// 检查是否有pending标签
+							isPending := false
+							for _, label := range issue.Labels {
+								if label.Name == "pending" {
+									isPending = true
+									break
+								}
+							}
+							
+							if isPending {
+								comment := Comment{
+									ID:        fmt.Sprintf("%d", issue.ID),
+									Author:    author,
+									Email:     email,
+									Content:   content,
+									Timestamp: issue.CreatedAt,
+									Approved:  false,
+									PostPath:  postPath,
+								}
+								
+								pendingComments = append(pendingComments, CommentWithPost{
+									Comment:   comment,
+									PostTitle: issue.Title,
+								})
+							}
+						}
+						
+						log.Printf("[DEBUG] 解析出 %d 条待审核评论", len(pendingComments))
+						respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: pendingComments})
+						return
+					}
+				}
+			}
+		}
+		log.Printf("[DEBUG] GitHub获取失败，降级到本地存储")
+	}
 
-	// 遍历所有文章，收集未审核评论
+	// 降级：从本地comments.json读取
 	contentRoot := filepath.Join(hugoPath, "content")
 	filepath.Walk(contentRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil || !info.IsDir() {
@@ -3203,8 +3291,14 @@ func main() {
 	// 调试：打印加载的凭据
 	adminUser := os.Getenv("ADMIN_USERNAME")
 	adminPass := os.Getenv("ADMIN_PASSWORD")
+	githubToken := os.Getenv("GITHUB_TOKEN")
 	if adminUser != "" || adminPass != "" {
 		log.Printf("[AUTH] 凭据已加载 - User: %s, Password: %s", adminUser, "***")
+	}
+	if githubToken != "" {
+		log.Printf("[AUTH] GITHUB_TOKEN已加载，长度: %d", len(githubToken))
+	} else {
+		log.Printf("[WARN] GITHUB_TOKEN未设置，无法从GitHub读取评论")
 	}
 	
 	// ==================== 安全中间件设置 ====================
@@ -3315,25 +3409,49 @@ var htmlTemplate = `<!DOCTYPE html>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sitka+Small&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --dash-bg: #f7f8fb;
-            --dash-sidebar: #0f172a;
+            --dash-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --dash-sidebar: #1e293b;
             --dash-text: #0f172a;
             --dash-text-dim: #64748b;
-            --dash-accent: #4f46e5;
+            --dash-accent: #6366f1;
             --dash-border: #e2e8f0;
-            --word-bg: #eef2f7;
-            --word-blue: #2563eb;
+            --word-bg: #f1f5f9;
+            --word-blue: #3b82f6;
             --word-paper: #ffffff;
             --word-text: #0f172a;
             --word-border: #e2e8f0;
-            --font-main: 'Inter', 'Noto Sans SC', sans-serif;
+            --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
         }
 
+        * {
+            box-sizing: border-box;
+        }
+        
         body {
             margin: 0;
             font-family: var(--font-main);
             overflow: hidden;
             height: 100vh;
+            background: #f8fafc;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         .view-section {
@@ -3352,16 +3470,31 @@ var htmlTemplate = `<!DOCTYPE html>
         }
 
         .dash-sidebar {
-            width: 300px;
-            background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
-            border-right: 1px solid rgba(255,255,255,0.08);
-            padding: 28px;
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid #e2e8f0;
+            padding: 32px 24px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            box-shadow: 6px 0 18px rgba(15, 23, 42, 0.18);
-            --dash-text: #e2e8f0;
-            --dash-text-dim: #94a3b8;
+            gap: 16px;
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.06);
+            --dash-text: #0f172a;
+            --dash-text-dim: #64748b;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .dash-sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            background: linear-gradient(180deg, rgba(99, 102, 241, 0.05) 0%, transparent 100%);
+            pointer-events: none;
         }
 
         .dash-logo {
@@ -3379,39 +3512,80 @@ var htmlTemplate = `<!DOCTYPE html>
         }
 
         .dash-btn {
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.08);
-            color: #e2e8f0;
-            padding: 12px 14px;
-            border-radius: 12px;
+            background: rgba(99, 102, 241, 0.05);
+            border: 1px solid #e2e8f0;
+            color: #0f172a;
+            padding: 12px 16px;
+            border-radius: 10px;
             cursor: pointer;
             text-align: left;
             font-size: 14px;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .dash-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        
+        .dash-btn:hover::before {
+            left: 100%;
         }
 
         .dash-btn:hover {
-            border-color: rgba(165, 180, 252, 0.4);
-            background: rgba(79, 70, 229, 0.18);
-            color: #c7d2fe;
+            border-color: #c7d2fe;
+            background: rgba(99, 102, 241, 0.12);
+            color: #4338ca;
+            transform: translateX(4px);
+        }
+        
+        .dash-btn:active {
+            transform: scale(0.98);
         }
 
         .dash-btn.primary {
-            background: linear-gradient(135deg, #a5b4fc 0%, #4f46e5 100%);
-            color: #0f172a;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: #ffffff;
             border: none;
-            font-weight: 700;
-            box-shadow: 0 8px 18px rgba(79, 70, 229, 0.35);
-            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        
+        .dash-btn.primary::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .dash-btn.primary:hover::after {
+            width: 300px;
+            height: 300px;
         }
 
         .dash-btn.primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 24px rgba(79, 70, 229, 0.45);
+            transform: translateY(-2px) translateX(0);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255,255,255,0.3);
         }
 
         .dash-main {
@@ -3435,13 +3609,15 @@ var htmlTemplate = `<!DOCTYPE html>
             border-radius: 16px;
             border: 1px solid #e2e8f0;
             overflow: hidden;
-            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
-            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeIn 0.5s ease;
         }
 
         .post-list-card:hover {
-            box-shadow: 0 18px 32px rgba(15, 23, 42, 0.1);
-            border-color: #cbd5f5;
+            box-shadow: 0 12px 40px rgba(99, 102, 241, 0.15);
+            border-color: #a5b4fc;
+            transform: translateY(-4px);
         }
 
         .dash-post-item {
@@ -3924,48 +4100,151 @@ var htmlTemplate = `<!DOCTYPE html>
         }
         
         .pending-comment-card {
-            background: var(--dash-sidebar);
-            border: 1px solid var(--dash-border);
-            border-left: 4px solid #ff9800;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-left: 4px solid #f59e0b;
             border-radius: 12px;
-            padding: 25px;
-            transition: all 0.3s ease;
+            padding: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            margin-bottom: 16px;
+            overflow: hidden;
         }
         
         .pending-comment-card:hover {
-            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.2);
-            border-left-color: #ff5722;
+            box-shadow: 0 8px 24px rgba(245, 158, 11, 0.15);
+            border-left-color: #f97316;
+            transform: translateY(-2px);
+        }
+        
+        .comment-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-bottom: 1px solid #fde047;
+        }
+        
+        .comment-number {
+            font-size: 14px;
+            font-weight: 700;
+            color: #92400e;
+            background: #fbbf24;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        
+        .pending-select {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
         }
         
         .comment-post-title {
             font-size: 14px;
-            color: #4a90e2;
-            margin-bottom: 10px;
+            color: #6366f1;
+            margin: 0;
+            padding: 16px 20px 12px;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .comment-user-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 0 20px 16px;
+        }
+        
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
+        
+        .user-details {
+            flex: 1;
+            min-width: 0;
         }
         
         .comment-meta {
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 15px;
-            font-size: 13px;
-            color: var(--dash-text-dim);
+            gap: 12px;
+            margin-top: 4px;
+            font-size: 12px;
+            color: #9ca3af;
+            flex-wrap: wrap;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
         
         .comment-author {
-            font-weight: 600;
-            color: var(--dash-text);
+            font-weight: 700;
+            color: #111827;
+            font-size: 16px;
+            margin-bottom: 4px;
         }
         
-        .comment-content {
-            color: var(--dash-text);
-            line-height: 1.6;
-            margin-bottom: 15px;
-            padding: 15px;
-            background: rgba(255, 152, 0, 0.05);
-            border-radius: 8px;
-            word-break: break-word;
+        .comment-content-preview {
+            color: #374151;
+            line-height: 1.7;
+            margin: 0;
+            padding: 20px;
+            background: #f9fafb;
+            font-size: 14px;
+            border-top: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
+            min-height: 60px;
+        }
+        
+        .comment-tech-info {
+            font-size: 12px;
+            color: #6b7280;
+            padding: 16px 20px;
+            background: #fafafa;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        
+        .tech-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1.5;
+        }
+        
+        .tech-item strong {
+            color: #374151;
+            min-width: 30px;
+        }
+        
+        .tech-ua {
+            word-break: break-all;
+        }
+        
+        .comment-actions {
+            display: flex;
+            gap: 10px;
+            padding: 16px 20px;
+            background: #ffffff;
         }
         
         .comment-actions {
@@ -3974,45 +4253,54 @@ var htmlTemplate = `<!DOCTYPE html>
         }
         
         .btn-approve {
-            padding: 8px 16px;
-            background: #4CAF50;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 13px;
             font-weight: 600;
-            transition: all 0.2s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
         }
         
         .btn-approve:hover {
-            background: #45a049;
-            transform: translateY(-1px);
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
         }
         
         .btn-delete {
-            padding: 8px 16px;
-            background: #f44336;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 13px;
             font-weight: 600;
-            transition: all 0.2s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
         }
         
         .btn-delete:hover {
-            background: #da190b;
-            transform: translateY(-1px);
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
         }
         
         .comment-tech-info {
-            font-size: 11px;
-            color: #999;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid #e5e7eb;
+            line-height: 1.6;
+        }
+        
+        .comment-tech-info div {
+            margin: 4px 0;
         }
 
         .pending-toolbar {
@@ -4072,6 +4360,7 @@ var htmlTemplate = `<!DOCTYPE html>
             <button class="dash-btn" onclick="runCommand('preview')">🌍 启动实时预览</button>
             <button class="dash-btn" onclick="runCommand('deploy')">🚀 一键提交推送</button>
             <button class="dash-btn" onclick="switchView('pending-comments')">💬 未审核评论</button>
+            <button class="dash-btn" onclick="switchView('history')">📊 操作历史</button>
             <button class="dash-btn" onclick="location.reload()">🔄 刷新列表</button>
             
             <div id="comment-stats-box" style="background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.3); border-radius: 12px; padding: 15px; margin-top: 20px; display: none;">
@@ -4168,6 +4457,49 @@ var htmlTemplate = `<!DOCTYPE html>
                 <button class="btn-delete" onclick="bulkDeletePending()">🗑 批量删除</button>
             </div>
             <div id="pending-comments-list" style="display:flex; flex-direction:column; gap:20px;"></div>
+        </div>
+    </div>
+
+    <div id="history-view" class="view-section">
+        <div class="dash-sidebar">
+            <div class="dash-logo">📊 操作历史</div>
+            <button class="dash-btn" onclick="switchView('dashboard')">← 返回主面板</button>
+            <button class="dash-btn" onclick="loadOperationHistory()">🔄 刷新</button>
+            <button class="dash-btn" onclick="exportHistoryCsv()">📥 导出CSV</button>
+            
+            <div class="settings-panel">
+                <div class="settings-title">📁 筛选类型</div>
+                <label style="display:block; margin:8px 0;">
+                    <input type="checkbox" id="filter-comments" checked onchange="loadOperationHistory()" /> 评论操作
+                </label>
+                <label style="display:block; margin:8px 0;">
+                    <input type="checkbox" id="filter-posts" checked onchange="loadOperationHistory()" /> 文章操作
+                </label>
+            </div>
+
+            <div class="settings-panel">
+                <div class="settings-title">🕐 日期范围</div>
+                <input type="date" id="history-date-from" style="width:100%; padding:8px; margin:5px 0; border:1px solid #d1d5db; border-radius:6px;" onchange="loadOperationHistory()" />
+                <input type="date" id="history-date-to" style="width:100%; padding:8px; margin:5px 0; border:1px solid #d1d5db; border-radius:6px;" onchange="loadOperationHistory()" />
+            </div>
+        </div>
+        <div class="dash-main">
+            <h1 class="dash-header">操作历史记录</h1>
+            <div class="history-stats" style="display:grid; grid-template-columns:repeat(3,1fr); gap:15px; margin-bottom:20px;">
+                <div style="background:rgba(79,70,229,0.1); padding:15px; border-radius:8px; border-left:4px solid #4f46e5;">
+                    <div style="font-size:12px; color:#6366f1; font-weight:600; margin-bottom:5px;">总操作数</div>
+                    <div style="font-size:24px; font-weight:700; color:#4f46e5;" id="total-ops">0</div>
+                </div>
+                <div style="background:rgba(34,197,94,0.1); padding:15px; border-radius:8px; border-left:4px solid #22c55e;">
+                    <div style="font-size:12px; color:#16a34a; font-weight:600; margin-bottom:5px;">评论操作</div>
+                    <div style="font-size:24px; font-weight:700; color:#22c55e;" id="total-comment-ops">0</div>
+                </div>
+                <div style="background:rgba(59,130,246,0.1); padding:15px; border-radius:8px; border-left:4px solid #3b82f6;">
+                    <div style="font-size:12px; color:#1d4ed8; font-weight:600; margin-bottom:5px;">文章操作</div>
+                    <div style="font-size:24px; font-weight:700; color:#3b82f6;" id="total-post-ops">0</div>
+                </div>
+            </div>
+            <div id="history-list" style="display:flex; flex-direction:column; gap:12px;"></div>
         </div>
     </div>
 
@@ -4447,6 +4779,8 @@ var htmlTemplate = `<!DOCTYPE html>
             } else if (view === 'pending-comments') {
                 loadPendingComments();
                 loadCommentSettings();
+            } else if (view === 'history') {
+                loadOperationHistory();
             }
         }
 
@@ -4974,6 +5308,11 @@ var htmlTemplate = `<!DOCTYPE html>
                     // 更新字数统计
                     updateWordCount();
                     
+                    // 记录文章操作历史
+                    const docName = document.getElementById('current-doc-name').textContent.trim();
+                    const isNew = docName.includes('新建');
+                    addOperationHistory('post', isNew ? 'create' : 'edit', currentDocPath, '字数: ' + content.length);
+                    
                     // 如果是中文版本，自动同步翻译到英文版本
                     if(currentDocPath.includes('zh-cn')) {
                         statusEl.textContent = "⏳ 正在翻译英文版本...";
@@ -5025,6 +5364,7 @@ var htmlTemplate = `<!DOCTYPE html>
                 const data = await res.json();
                 if(data.success) {
                     alert('✅ 文章已删除');
+                    addOperationHistory('post', 'delete', path, '文章删除');
                     fetchPosts();
                 } else {
                     alert("删除失败: " + data.message);
@@ -5285,22 +5625,52 @@ var htmlTemplate = `<!DOCTYPE html>
                     countEl.textContent = comments.length + ' 条待审核';
                     
                     let html = '';
-                    comments.forEach(item => {
+                    comments.forEach((item, index) => {
                         const c = item;
+                        const commentNum = comments.length - index;
+                        const truncatedContent = c.content ? (c.content.length > 150 ? c.content.substring(0, 150) + '...' : c.content) : '无内容';
+                        
+                        let formattedTime = '刚刚';
+                        if (c.timestamp) {
+                            try {
+                                const date = new Date(c.timestamp);
+                                if (!isNaN(date.getTime())) {
+                                    formattedTime = date.toLocaleString('zh-CN', { 
+                                        year: 'numeric',
+                                        month: '2-digit',
+                                        day: '2-digit',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    });
+                                }
+                            } catch(e) {
+                                formattedTime = c.timestamp.substring(0, 19);
+                            }
+                        }
+                        
                         html += '<div class="pending-comment-card">' +
-                            '<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">' +
+                            '<div class="comment-header">' +
+                            '<div class="comment-number">#' + commentNum + '</div>' +
                             '<input type="checkbox" class="pending-select" data-post="' + c.post_path.replace(/\\/g, '\\\\') + '" data-id="' + c.id + '" />' +
-                            '<div class="comment-post-title">📝 ' + escapeHtml(c.post_title) + '</div>' +
                             '</div>' +
+                            '<div class="comment-post-title">' +
+                            '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z"></path></svg>' +
+                            escapeHtml(c.post_title || '未知文章') +
+                            '</div>' +
+                            '<div class="comment-user-info">' +
+                            '<div class="user-avatar">' + (c.author ? c.author.substring(0, 1).toUpperCase() : 'U') + '</div>' +
+                            '<div class="user-details">' +
+                            '<div class="comment-author">' + escapeHtml(c.author || '匿名') + '</div>' +
                             '<div class="comment-meta">' +
-                            '<span class="comment-author">👤 ' + escapeHtml(c.author) + '</span>' +
-                            '<span>📧 ' + escapeHtml(c.email) + '</span>' +
-                            '<span>🕐 ' + c.timestamp + '</span>' +
+                            '<span class="meta-item"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 2A1.75 1.75 0 003.5 3.75v8.5A1.75 1.75 0 001.75 14h-1.5A.25.25 0 010 13.75v-12A.25.25 0 01.25 1.5h1.5zM11 2a1 1 0 00-1 1v10a1 1 0 001 1h3a1 1 0 001-1V3a1 1 0 00-1-1h-3z"></path></svg> ' + escapeHtml(c.email || '未提供') + '</span>' +
+                            '<span class="meta-item"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 8a6.5 6.5 0 1113 0 6.5 6.5 0 01-13 0zM8 0a8 8 0 100 16A8 8 0 008 0zm.5 4.75a.75.75 0 00-1.5 0v3.5a.75.75 0 00.471.696l2.5 1a.75.75 0 00.557-1.392L8.5 7.742V4.75z"></path></svg> ' + formattedTime + '</span>' +
                             '</div>' +
-                            '<div class="comment-content">' + escapeHtml(c.content) + '</div>' +
+                            '</div>' +
+                            '</div>' +
+                            '<div class="comment-content-preview">' + escapeHtml(truncatedContent) + '</div>' +
                             '<div class="comment-tech-info">' +
-                            '<div>🌐 IP: ' + escapeHtml(c.ip_address || '未记录') + '</div>' +
-                            '<div>💻 ' + escapeHtml(c.user_agent || '未记录') + '</div>' +
+                            '<div class="tech-item"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 110 16A8 8 0 018 0zM1.5 8a6.5 6.5 0 1013 0 6.5 6.5 0 00-13 0zm9.78-2.22a.75.75 0 00-1.06-1.06L6.75 8.19 5.28 6.72a.75.75 0 00-1.06 1.06l2 2a.75.75 0 001.06 0l3.5-3.5z"></path></svg> <strong>IP:</strong> ' + escapeHtml(c.ip_address || '未记录') + '</div>' +
+                            '<div class="tech-item tech-ua"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8z"></path></svg> <strong>UA:</strong> ' + (c.user_agent ? escapeHtml(c.user_agent.length > 80 ? c.user_agent.substring(0, 80) + '...' : c.user_agent) : '未记录') + '</div>' +
                             '</div>' +
                             '<div class="comment-actions">' +
                             '<button class="btn-approve" onclick="approvePendingComment(\'' + c.post_path.replace(/\\/g, '\\\\') + '\', \'' + c.id + '\')">✅ 批准</button>' +
@@ -5469,6 +5839,7 @@ var htmlTemplate = `<!DOCTYPE html>
                 const data = await res.json();
                 if (data.success) {
                     alert('✅ 评论已批准');
+                    addOperationHistory('comment', 'approve', postPath, '评论ID: ' + commentId);
                     loadPendingComments();
                 } else {
                     alert('❌ 批准失败: ' + data.message);
@@ -5494,6 +5865,8 @@ var htmlTemplate = `<!DOCTYPE html>
                 const data = await res.json();
                 if (data.success) {
                     alert('✅ 评论已删除');
+                    addOperationHistory('comment', 'delete', postPath, '评论ID: ' + commentId);
+
                     loadPendingComments();
                 } else {
                     alert('❌ 删除失败: ' + data.message);
@@ -5623,6 +5996,161 @@ var htmlTemplate = `<!DOCTYPE html>
                 insertMarkdown(backtick, backtick);
             }
         });
-    </script>
+
+        // ===== 操作历史管理 =====
+        let operationHistory = [];
+
+        function loadOperationHistory() {
+            const stored = localStorage.getItem('operationHistory');
+            operationHistory = stored ? JSON.parse(stored) : [];
+            
+            const filterComments = document.getElementById('filter-comments')?.checked ?? true;
+            const filterPosts = document.getElementById('filter-posts')?.checked ?? true;
+            const dateFrom = document.getElementById('history-date-from')?.value;
+            const dateTo = document.getElementById('history-date-to')?.value;
+            
+            let filtered = operationHistory.filter(op => {
+                let typeMatch = (op.type === 'comment' && filterComments) || (op.type === 'post' && filterPosts);
+                let dateMatch = true;
+                if (dateFrom) {
+                    dateMatch = dateMatch && new Date(op.timestamp) >= new Date(dateFrom);
+                }
+                if (dateTo) {
+                    const nextDay = new Date(dateTo);
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    dateMatch = dateMatch && new Date(op.timestamp) < nextDay;
+                }
+                return typeMatch && dateMatch;
+            });
+            
+            // 按时间倒序排列
+            filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            // 更新统计
+            document.getElementById('total-ops').textContent = filtered.length;
+            document.getElementById('total-comment-ops').textContent = filtered.filter(op => op.type === 'comment').length;
+            document.getElementById('total-post-ops').textContent = filtered.filter(op => op.type === 'post').length;
+            
+            // 渲染列表
+            const historyList = document.getElementById('history-list');
+            historyList.innerHTML = filtered.length === 0 
+                ? '<div style="text-align:center; padding:40px 20px; color:#999; font-size:14px;">暂无操作记录</div>'
+                : filtered.map(op => renderHistoryItem(op)).join('');
+        }
+
+        function renderHistoryItem(op) {
+            const date = new Date(op.timestamp);
+            const timeStr = date.toLocaleString('zh-CN', {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'});
+            const icon = getOperationIcon(op.action);
+            const color = getOperationColor(op.action);
+            const actionText = getOperationText(op.action);
+            const typeText = op.type === 'comment' ? '💬评论' : '📝文章';
+            const opTypeText = op.type === 'comment' ? '评论操作' : '文章操作';
+            const titleDisplay = op.title ? ' - ' + escapeHtml(op.title.substring(0, 50)) : '';
+            const detailsHtml = op.details ? '<div style="font-size:12px; color:#6b7280; padding:8px; background:#f9fafb; border-radius:4px; margin-top:8px;">' + escapeHtml(op.details) + '</div>' : '';
+            
+            let html = '<div style="background:white; padding:15px; border-radius:8px; border-left:4px solid ' + color + '; box-shadow:0 1px 3px rgba(0,0,0,0.1);">' +
+                '<div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">' +
+                '<div style="display:flex; align-items:center; gap:10px; flex:1;">' +
+                '<span style="font-size:24px;">' + icon + '</span>' +
+                '<div style="flex:1;">' +
+                '<div style="font-weight:600; color:#1f2937;">' +
+                '[' + typeText + '] ' + actionText + titleDisplay +
+                '</div>' +
+                '<div style="font-size:12px; color:#6b7280; margin-top:4px;">' + timeStr + '</div>' +
+                '</div>' +
+                '</div>' +
+                '<div style="text-align:right;">' +
+                '<span style="display:inline-block; padding:4px 8px; background:' + color + '20; color:' + color + '; border-radius:4px; font-size:12px; font-weight:600;">' +
+                opTypeText +
+                '</span>' +
+                '</div>' +
+                '</div>' +
+                detailsHtml +
+                '</div>';
+            return html;
+        }
+
+        function getOperationIcon(action) {
+            const icons = {
+                'approve': '✅',
+                'reject': '❌',
+                'delete': '🗑️',
+                'publish': '📤',
+                'create': '✨',
+                'edit': '✏️',
+                'unpublish': '🔒'
+            };
+            return icons[action] || '📌';
+        }
+
+        function getOperationColor(action) {
+            const colors = {
+                'approve': '#22c55e',
+                'reject': '#ef4444',
+                'delete': '#f97316',
+                'publish': '#3b82f6',
+                'create': '#8b5cf6',
+                'edit': '#f59e0b',
+                'unpublish': '#6b7280'
+            };
+            return colors[action] || '#6b7280';
+        }
+
+        function getOperationText(action) {
+            const texts = {
+                'approve': '已批准',
+                'reject': '已拒绝',
+                'delete': '已删除',
+                'publish': '已发布',
+                'create': '新建文章',
+                'edit': '编辑文章',
+                'unpublish': '已下架'
+            };
+            return texts[action] || action;
+        }
+
+        function addOperationHistory(type, action, title = '', details = '') {
+            operationHistory.push({
+                type: type, // 'comment' 或 'post'
+                action: action, // 'approve', 'reject', 'delete', 'publish', 'create', 'edit', 'unpublish'
+                title: title,
+                details: details,
+                timestamp: new Date().toISOString()
+            });
+            localStorage.setItem('operationHistory', JSON.stringify(operationHistory));
+        }
+
+        function exportHistoryCsv() {
+            if (operationHistory.length === 0) {
+                alert('没有操作记录可导出');
+                return;
+            }
+            
+            const headers = ['操作类型', '操作', '标题', '详情', '时间'];
+            const rows = operationHistory.map(op => [
+                op.type === 'comment' ? '评论' : '文章',
+                getOperationText(op.action),
+                op.title || '-',
+                op.details || '-',
+                new Date(op.timestamp).toLocaleString('zh-CN')
+            ]);
+            
+            const csv = [headers, ...rows].map(row => 
+                row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"')
+                   .join(',')
+            ).join('\n');
+            
+            const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            const dateStr = new Date().toISOString().split('T')[0];
+            link.download = '操作历史_' + dateStr + '.csv';
+            link.click();
+        }
+
+        // 初始化历史记录
+        loadOperationHistory();
+
 </body>
 </html>`
