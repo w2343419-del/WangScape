@@ -589,6 +589,12 @@
                 body: JSON.stringify(commentData)
             });
             
+            // 先检查响应状态
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
+            }
+            
             const data = await response.json();
             
             if (data.success) {
