@@ -122,25 +122,11 @@ type CommentsFile struct {
 	Comments []Comment `json:"comments"`
 }
 
-// PostLikes represents likes data for a post
-type PostLikes struct {
-	PostPath string   `json:"post_path"`
-	Likes    int      `json:"likes"`
-	LikedIPs []string `json:"liked_ips"`
-}
-
-// LikesFile represents all posts likes data
-type LikesFile struct {
-	Likes []PostLikes `json:"likes"`
-}
 
 func getCommentSettingsPath() string {
     return filepath.Join(hugoPath, "config", "comment_settings.json")
 }
 
-func getLikesPath() string {
-    return filepath.Join(hugoPath, "config", "post_likes.json")
-}
 
 func loadCommentSettings() CommentSettings {
     path := getCommentSettingsPath()
@@ -178,44 +164,6 @@ func saveCommentSettings(settings CommentSettings) error {
     return os.WriteFile(path, data, 0644)
 }
 
-func loadPostLikes() LikesFile {
-    path := getLikesPath()
-    likesFile := LikesFile{Likes: []PostLikes{}}
-    
-    if _, err := os.Stat(path); os.IsNotExist(err) {
-        return likesFile
-    }
-    
-    content, err := os.ReadFile(path)
-    if err != nil {
-        return likesFile
-    }
-    
-    if err := json.Unmarshal(content, &likesFile); err != nil {
-        return likesFile
-    }
-    
-    return likesFile
-}
-
-func savePostLikes(likesFile LikesFile) error {
-    path := getLikesPath()
-    data, err := json.MarshalIndent(likesFile, "", "  ")
-    if err != nil {
-        return err
-    }
-    return os.WriteFile(path, data, 0644)
-}
-
-func getPostLikes(postPath string) PostLikes {
-    likesFile := loadPostLikes()
-    for _, pl := range likesFile.Likes {
-        if pl.PostPath == postPath {
-            return pl
-        }
-    }
-    return PostLikes{PostPath: postPath, Likes: 0, LikedIPs: []string{}}
-}
 
 func isCommentBlacklisted(settings CommentSettings, ip, author, email, content string) bool {
     ip = strings.TrimSpace(strings.ToLower(ip))
@@ -792,17 +740,14 @@ func verifyAdminCredentials(username, password string) bool {
         adminUser = "admin"
     }
     if username != adminUser {
-        log.Printf("[DEBUG] Username mismatch: got '%s', expected '%s'", username, adminUser)
         return false
     }
 	
     passwordEnv := os.Getenv("ADMIN_PASSWORD")
     passwordHash := strings.ToLower(strings.TrimSpace(os.Getenv("ADMIN_PASSWORD_HASH")))
-    
-    log.Printf("[DEBUG] Auth check - Has password: %v, Has hash: %v", passwordEnv != "", passwordHash != "")
-    
+
     if passwordEnv == "" && passwordHash == "" {
-        log.Printf("[ERROR] No password configured!")
+        log.Printf("[ERROR] Admin password not configured")
         return false
     }
 	
@@ -810,12 +755,10 @@ func verifyAdminCredentials(username, password string) bool {
         sum := sha256.Sum256([]byte(password))
         calc := hex.EncodeToString(sum[:])
         result := subtle.ConstantTimeCompare([]byte(calc), []byte(passwordHash)) == 1
-        log.Printf("[DEBUG] Hash auth result: %v", result)
         return result
     }
 	
     result := subtle.ConstantTimeCompare([]byte(password), []byte(passwordEnv)) == 1
-    log.Printf("[DEBUG] Plain auth result: %v", result)
     return result
 }
 
@@ -1957,6 +1900,11 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    if !isLocalRequest(r) {
+        respondJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "仅允许本地登录"})
+        return
+    }
+
     ip := getRealClientIP(r)
     if !allowRequest("login:"+ip, 10, time.Minute) {
         respondJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: "请求过于频繁"})
@@ -1974,8 +1922,6 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
     }
     data.Username = strings.TrimSpace(data.Username)
     
-    log.Printf("[DEBUG] Login attempt - Username: %s", data.Username)
-
     if !verifyAdminCredentials(data.Username, data.Password) {
         log.Printf("[WARN] Login failed - Invalid credentials for user: %s", data.Username)
         writeAuditLog("login_failed", r, map[string]interface{}{"username": data.Username})
@@ -2018,6 +1964,11 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 func handleRefreshToken(w http.ResponseWriter, r *http.Request) {
     if r.Method != http.MethodPost {
         http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+
+    if !isLocalRequest(r) {
+        respondJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "仅允许本地刷新令牌"})
         return
     }
 
@@ -3540,249 +3491,6 @@ func allowRequest(key string, limit int, window time.Duration) bool {
 }
 
 // openBrowser opens the default browser
-// handleLikePost handles liking a post
-func handleLikePost(w http.ResponseWriter, r *http.Request) {
-    if r.Method != "POST" {
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
-
-    var data struct {
-        PostPath string `json:"post_path"`
-        Action   string `json:"action"`
-    }
-
-    if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
-        return
-    }
-
-    // Get client IP
-    ip := getRealClientIP(r)
-    if !allowRequest("like_post:"+ip, 20, time.Minute) {
-        respondJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: "请求过于频繁"})
-        return
-    }
-
-    // Load all likes
-    likesFile := loadPostLikes()
-    
-    // Find or create post likes
-    found := false
-    for i := range likesFile.Likes {
-        if likesFile.Likes[i].PostPath == data.PostPath {
-            // Check if IP already liked
-            ipIndex := -1
-            for idx, likedIP := range likesFile.Likes[i].LikedIPs {
-                if likedIP == ip {
-                    ipIndex = idx
-                    break
-                }
-            }
-            
-            // Handle unlike action
-            if data.Action == "unlike" && ipIndex >= 0 {
-                if likesFile.Likes[i].Likes > 0 {
-                    likesFile.Likes[i].Likes--
-                }
-                likesFile.Likes[i].LikedIPs = append(likesFile.Likes[i].LikedIPs[:ipIndex], likesFile.Likes[i].LikedIPs[ipIndex+1:]...)
-                found = true
-                
-                if err := savePostLikes(likesFile); err != nil {
-                    respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Failed to save"})
-                    return
-                }
-                
-                respondJSON(w, http.StatusOK, APIResponse{
-                    Success: true,
-                    Message: "Unliked",
-                    Data:    map[string]int{"likes": likesFile.Likes[i].Likes},
-                })
-                return
-            }
-            
-            // Handle like action
-            if ipIndex >= 0 {
-                respondJSON(w, http.StatusOK, APIResponse{
-                    Success: false,
-                    Message: "Already liked",
-                    Data:    map[string]int{"likes": likesFile.Likes[i].Likes},
-                })
-                return
-            }
-            
-            // Add like
-            likesFile.Likes[i].Likes++
-            likesFile.Likes[i].LikedIPs = append(likesFile.Likes[i].LikedIPs, ip)
-            found = true
-            
-            if err := savePostLikes(likesFile); err != nil {
-                respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Failed to save"})
-                return
-            }
-            
-            respondJSON(w, http.StatusOK, APIResponse{
-                Success: true,
-                Message: "Liked",
-                Data:    map[string]int{"likes": likesFile.Likes[i].Likes},
-            })
-            return
-        }
-    }
-
-    // If not found, create new
-    if !found {
-        newLikes := PostLikes{
-            PostPath: data.PostPath,
-            Likes:    1,
-            LikedIPs: []string{ip},
-        }
-        likesFile.Likes = append(likesFile.Likes, newLikes)
-        
-        if err := savePostLikes(likesFile); err != nil {
-            respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Failed to save"})
-            return
-        }
-        
-        respondJSON(w, http.StatusOK, APIResponse{
-            Success: true,
-            Message: "Liked",
-            Data:    map[string]int{"likes": 1},
-        })
-    }
-}
-
-// handleUnlikePost handles unliking a post
-func handleUnlikePost(w http.ResponseWriter, r *http.Request) {
-    if r.Method != "POST" {
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
-
-    var data struct {
-        PostPath string `json:"post_path"`
-    }
-
-    if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
-        return
-    }
-
-    // Get client IP
-    ip := getRealClientIP(r)
-    if !allowRequest("unlike_post:"+ip, 20, time.Minute) {
-        respondJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: "请求过于频繁"})
-        return
-    }
-
-    // Load all likes
-    likesFile := loadPostLikes()
-    
-    // Find post likes
-    for i := range likesFile.Likes {
-        if likesFile.Likes[i].PostPath == data.PostPath {
-            // Check if IP liked before
-            ipIndex := -1
-            for j, likedIP := range likesFile.Likes[i].LikedIPs {
-                if likedIP == ip {
-                    ipIndex = j
-                    break
-                }
-            }
-            
-            if ipIndex == -1 {
-                respondJSON(w, http.StatusOK, APIResponse{
-                    Success: false,
-                    Message: "Not liked yet",
-                    Data:    map[string]int{"likes": likesFile.Likes[i].Likes},
-                })
-                return
-            }
-            
-            // Remove like
-            if likesFile.Likes[i].Likes > 0 {
-                likesFile.Likes[i].Likes--
-            }
-            likesFile.Likes[i].LikedIPs = append(likesFile.Likes[i].LikedIPs[:ipIndex], likesFile.Likes[i].LikedIPs[ipIndex+1:]...)
-            
-            if err := savePostLikes(likesFile); err != nil {
-                respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Failed to save"})
-                return
-            }
-            
-            respondJSON(w, http.StatusOK, APIResponse{
-                Success: true,
-                Message: "Unliked",
-                Data:    map[string]int{"likes": likesFile.Likes[i].Likes},
-            })
-            return
-        }
-    }
-
-    respondJSON(w, http.StatusOK, APIResponse{
-        Success: false,
-        Message: "Post not found",
-        Data:    map[string]int{"likes": 0},
-    })
-}
-
-// handleGetLikes returns likes data for all posts or a specific post
-func handleLikeCount(w http.ResponseWriter, r *http.Request) {
-    postPath := r.URL.Query().Get("path")
-    
-    if postPath == "" {
-        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Post path required"})
-        return
-    }
-    
-    // Get likes count for specific post
-    likes := getPostLikes(postPath)
-    
-    respondJSON(w, http.StatusOK, APIResponse{
-        Success: true,
-        Data:    map[string]int{"count": likes.Likes},
-    })
-}
-
-func handleGetLikes(w http.ResponseWriter, r *http.Request) {
-    postPath := r.URL.Query().Get("path")
-    
-    if postPath != "" {
-        // Get likes for specific post
-        likes := getPostLikes(postPath)
-        
-        // Check if current IP liked
-        ip := r.RemoteAddr
-        if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-            ip = strings.Split(forwarded, ",")[0]
-        }
-        
-        liked := false
-        for _, likedIP := range likes.LikedIPs {
-            if likedIP == ip {
-                liked = true
-                break
-            }
-        }
-        
-        w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(map[string]interface{}{
-            "likes": likes.Likes,
-            "liked": liked,
-        })
-    } else {
-        // Get all likes
-        likesFile := loadPostLikes()
-        likesMap := make(map[string]int)
-        for _, likes := range likesFile.Likes {
-            likesMap[likes.PostPath] = likes.Likes
-        }
-        
-        w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(likesMap)
-    }
-}
-
 func openBrowser(url string) {
 	switch runtime.GOOS {
 	case "darwin":
@@ -3908,27 +3616,29 @@ func main() {
     rootMux.HandleFunc("/api/test_mail", withCORS(withAuth(limitRequestBody(handleTestMail, 1<<20))))
     rootMux.HandleFunc("/api/bulk_comments", withCORS(withAuth(limitRequestBody(handleBulkComments, 1<<20))))
     rootMux.HandleFunc("/api/export_comments", withCORS(withAuth(handleExportComments)))
-    rootMux.HandleFunc("/api/like_post", withCORS(limitRequestBody(handleLikePost, 512)))
-    rootMux.HandleFunc("/api/unlike_post", withCORS(limitRequestBody(handleUnlikePost, 512)))
-    rootMux.HandleFunc("/api/like_count", withCORS(handleLikeCount))
-    rootMux.HandleFunc("/api/get_likes", withCORS(handleGetLikes))
 
 	// 启动审计日志轮转
 	go rotateAuditLogPeriodically()
 
 	// 获取端口配置
+    httpHost := getEnv("HTTP_HOST", "127.0.0.1")
+    httpsHost := getEnv("HTTPS_HOST", httpHost)
 	httpPort := getEnv("HTTP_PORT", "8080")
 	httpsPort := getEnv("HTTPS_PORT", "443")
 	tlsCertFile := getEnv("TLS_CERT_FILE", "")
 	tlsKeyFile := getEnv("TLS_KEY_FILE", "")
 
 	// Start HTTP server
-	fmt.Printf("WangScape Writer Online: http://127.0.0.1:%s\n", httpPort)
-	openBrowser(fmt.Sprintf("http://127.0.0.1:%s", httpPort))
+    openHost := httpHost
+    if openHost == "0.0.0.0" || openHost == "::" {
+        openHost = "127.0.0.1"
+    }
+    fmt.Printf("WangScape Writer Online: http://%s:%s\n", openHost, httpPort)
+    openBrowser(fmt.Sprintf("http://%s:%s", openHost, httpPort))
 
 	// 启动HTTP监听
 	go func() {
-		httpAddr := fmt.Sprintf(":%s", httpPort)
+        httpAddr := fmt.Sprintf("%s:%s", httpHost, httpPort)
 		if err := http.ListenAndServe(httpAddr, wrappedMux); err != nil && err != http.ErrServerClosed {
 			fmt.Printf("[AUDIT] HTTP Server error: %v\n", err)
 		}
@@ -3939,7 +3649,7 @@ func main() {
 		if _, err := os.Stat(tlsCertFile); err == nil {
 			if _, err := os.Stat(tlsKeyFile); err == nil {
 				go func() {
-					httpsAddr := fmt.Sprintf(":%s", httpsPort)
+                    httpsAddr := fmt.Sprintf("%s:%s", httpsHost, httpsPort)
 					fmt.Printf("[AUDIT] HTTPS Server starting on %s\n", httpsAddr)
 					if err := http.ListenAndServeTLS(httpsAddr, tlsCertFile, tlsKeyFile, wrappedMux); err != nil && err != http.ErrServerClosed {
 						fmt.Printf("[AUDIT] HTTPS Server error: %v\n", err)
@@ -4208,21 +3918,6 @@ var htmlTemplate = `<!DOCTYPE html>
             font-size: 12px;
             color: #64748b;
             font-family: 'Inter', 'Noto Sans SC', sans-serif;
-        }
-
-        .like-btn {
-            transition: all 0.2s ease;
-        }
-
-        .like-btn:hover {
-            background: #fff0f3 !important;
-            border-color: #ff69b4 !important;
-            transform: scale(1.05);
-        }
-
-        .like-btn.liked {
-            background: #ffe7e7 !important;
-            border-color: #e91e63 !important;
         }
 
         #editor-view {
@@ -5339,7 +5034,6 @@ var htmlTemplate = `<!DOCTYPE html>
         let postsData = [];
         let currentDocPath = '';
         let commentStatsData = null;
-        let likesData = {};
         let authToken = localStorage.getItem('auth_token') || '';
 
         function setAuthToken(token) {
@@ -5476,7 +5170,6 @@ var htmlTemplate = `<!DOCTYPE html>
             if (view === 'dashboard') {
                 fetchPosts();
                 fetchCommentStats();
-                fetchLikesData();
             } else if (view === 'pending-comments') {
                 loadPendingComments();
                 loadCommentSettings();
@@ -5519,53 +5212,6 @@ var htmlTemplate = `<!DOCTYPE html>
             const res = await fetch('/api/posts');
             postsData = await res.json();
             renderDashboardList();
-        }
-
-        async function fetchLikesData() {
-            try {
-                const res = await fetch('/api/get_likes');
-                likesData = await res.json();
-                renderDashboardList();
-            } catch(e) {
-                console.error('获取点赞数据失败:', e);
-            }
-        }
-
-        async function toggleLike(postPath, event) {
-            event.stopPropagation();
-            
-            const btn = event.target;
-            const isLiked = btn.classList.contains('liked');
-            const endpoint = isLiked ? '/api/unlike_post' : '/api/like_post';
-            
-            try {
-                const res = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ post_path: postPath })
-                });
-                const data = await res.json();
-                
-                if (data.success || data.data) {
-                    // 更新本地数据
-                    likesData[postPath] = data.data.likes;
-                    
-                    // 更新按钮状态
-                    if (isLiked) {
-                        btn.classList.remove('liked');
-                        btn.innerHTML = '🤍 ' + (data.data.likes || 0);
-                    } else {
-                        btn.classList.add('liked');
-                        btn.innerHTML = '❤️ ' + (data.data.likes || 0);
-                    }
-                } else if (data.message === 'Already liked') {
-                    // 已经点赞过，更新UI
-                    btn.classList.add('liked');
-                    btn.innerHTML = '❤️ ' + (data.data.likes || 0);
-                }
-            } catch(e) {
-                console.error('点赞失败:', e);
-            }
         }
 
         function renderDashboardList() {
@@ -5627,15 +5273,10 @@ var htmlTemplate = `<!DOCTYPE html>
                     }
                 }
                 
-                // 显示点赞数
-                const likes = likesData[primaryVersion.path] || 0;
-                html += '<span style="font-size:9px; padding:2px 4px; background:#ffe7e7; color:#e91e63; border-radius:3px; margin-left:4px;">❤️ ' + likes + '</span>';
-                
                 html += '</div>' +
                     '<div class="dpi-meta">' + primaryVersion.date + ' · ' + primaryVersion.path + '</div>' +
                     '</div>' +
-                    '<div style="display:flex; gap:8px; align-items:center;">' +
-                    '<button onclick="toggleLike(\'' + escapedPath + '\', event)" class="like-btn" style="background:#fff; border:1px solid #ffc0cb; color:#e91e63; padding:4px 10px; border-radius:6px; font-size:11px; cursor:pointer; transition:all 0.2s;">🤍 ' + likes + '</button>';
+                    '<div style="display:flex; gap:8px; align-items:center;">';
                 
                 // 显示切换按钮
                 if (versions.zh && versions.en) {
@@ -6859,7 +6500,6 @@ var htmlTemplate = `<!DOCTYPE html>
 
         fetchPosts();
         fetchCommentStats();
-        fetchLikesData();
         updateAuthStatus();
         
         // 快捷键支持
