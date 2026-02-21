@@ -164,17 +164,21 @@ type CommentSettings struct {
     BlacklistWords  []string `json:"blacklist_keywords"` // 关键词黑名单（包含这些词自动拒绝）
 }
 
-// CommentsFile represents the comments data file structure
+// CommentsFile 代表评论数据文件的结构
+// 用于在comments.json文件中存储所有评论
 type CommentsFile struct {
-	Comments []Comment `json:"comments"`
+	Comments []Comment `json:"comments"` // 评论列表（切片）
 }
 
 
+// getCommentSettingsPath 获取评论配置文件的完整路径
+// Hugo的所有配置文件都存放在config目录下
 func getCommentSettingsPath() string {
     return filepath.Join(hugoPath, "config", "comment_settings.json")
 }
 
-
+// loadCommentSettings 从config/comment_settings.json加载评论设置
+// 如果文件不存在，返回默认配置；如果解析失败，也返回默认配置（容错处理）
 func loadCommentSettings() CommentSettings {
     path := getCommentSettingsPath()
     settings := CommentSettings{
@@ -202,6 +206,8 @@ func loadCommentSettings() CommentSettings {
     return settings
 }
 
+// saveCommentSettings 将评论设置保存到JSON文件
+// MarshalIndent用于格式化JSON输出，便于手动编辑配置文件
 func saveCommentSettings(settings CommentSettings) error {
     path := getCommentSettingsPath()
     data, err := json.MarshalIndent(settings, "", "  ")
@@ -211,7 +217,9 @@ func saveCommentSettings(settings CommentSettings) error {
     return os.WriteFile(path, data, 0644)
 }
 
-
+// isCommentBlacklisted 检查评论是否被黑名单拦截
+// 支持IP黑名单和关键词黑名单两种过滤方式
+// 所有检查都转换为小写以支持不区分大小写的匹配
 func isCommentBlacklisted(settings CommentSettings, ip, author, email, content string) bool {
     ip = strings.TrimSpace(strings.ToLower(ip))
     text := strings.ToLower(strings.Join([]string{author, email, content}, " "))
@@ -232,6 +240,8 @@ func isCommentBlacklisted(settings CommentSettings, ip, author, email, content s
     return false
 }
 
+// sendCommentNotification 发送新评论待审核的邮件通知给管理员
+// 使用SMTP协议，支持TLS加密（端口587）和SMTPS隐式加密（端口465）
 func sendCommentNotification(settings CommentSettings, comment Comment, postTitle string) error {
     if !settings.SMTPEnabled {
         log.Printf("[DEBUG] SMTP未启用，跳过邮件发送")
@@ -274,10 +284,10 @@ func sendCommentNotification(settings CommentSettings, comment Comment, postTitl
     msg.WriteString("\r\n")
     msg.WriteString(body)
 
-    // 使用新的密码获取函数（支持加密密码和环境变量）
+    // 使用新的密码获取函数（支持加密密码和环境变量，提升安全性）
     password, err := getSMTPPassword(settings)
     if err != nil {
-        log.Printf("[ERROR] Failed to get SMTP password: %v", err)
+        log.Printf("[ERROR] 获取SMTP密码失败: %v", err)
         return err
     }
 
@@ -399,6 +409,8 @@ type CommentWithPost struct {
     PostTitle string `json:"post_title"`
 }
 
+// collectAllComments 遍历所有文章并收集其评论
+// 返回包含文章标题的评论对象列表
 func collectAllComments() ([]CommentWithPost, error) {
     var results []CommentWithPost
     contentRoot := filepath.Join(hugoPath, "content")
@@ -747,7 +759,7 @@ func generateRandomString(length int) string {
     for i := range b {
         randByte := make([]byte, 1)
         if _, err := rand.Read(randByte); err != nil {
-            // fallback to sequential if rand fails
+            // 如果密码随机数生成失败，则回退到顺序方法
             b[i] = charset[i%len(charset)]
             continue
         }
@@ -1062,7 +1074,8 @@ func init() {
     adminToken = os.Getenv("ADMIN_TOKEN")
 }
 
-// translateText translates text using MyMemory API
+// translateText 使用MyMemory API翻译文本
+// 会使用一个东东的云翻译API来实现自动翻译
 func translateText(text, sourceLang, targetLang string) string {
 	escapedText := url.QueryEscape(text)
 	apiURL := fmt.Sprintf("https://api.mymemory.translated.net/get?q=%s&langpair=%s|%s",
@@ -1144,7 +1157,7 @@ func detectImageMIME(data []byte) (string, error) {
 		return "image/png", nil
 	}
 	
-	// JPEG: FF D8 FF
+    // JPEG: FF D8 FF 文件笆迹
 	if bytes.Equal(data[0:3], []byte{0xFF, 0xD8, 0xFF}) {
 		return "image/jpeg", nil
 	}
@@ -1154,7 +1167,7 @@ func detectImageMIME(data []byte) (string, error) {
 		return "image/gif", nil
 	}
 	
-	// WebP: RIFF ... WEBP
+	// WebP: RIFF ... WEBP 文件笆迹
 	if len(data) >= 12 && bytes.Equal(data[0:4], []byte{0x52, 0x49, 0x46, 0x46}) &&
 		bytes.Equal(data[8:12], []byte{0x57, 0x45, 0x42, 0x50}) {
 		return "image/webp", nil
@@ -1163,7 +1176,8 @@ func detectImageMIME(data []byte) (string, error) {
 	return "", fmt.Errorf("unsupported image format")
 }
 
-// getContent reads file content
+// getContent 读取文件内容
+// 应用: 自动会调用此函数读取Markdown文格物资料
 func getContent(relPath string) (string, error) {
 	// 验证路径安全性
 	fullPath, err := validatePath(relPath, hugoPath)
@@ -1184,7 +1198,8 @@ func getContent(relPath string) (string, error) {
 	return string(content), err
 }
 
-// saveContent saves file content
+// saveContent 保存文件内容
+// 会自动创建必要的父目录
 func saveContent(relPath, content string) error {
 	// 严格验证路径
 	fullPath, err := validatePath(relPath, hugoPath)
@@ -1204,18 +1219,19 @@ func saveContent(relPath, content string) error {
 	return os.WriteFile(fullPath, []byte(content), 0600)
 }
 
-// deletePost deletes a post file
+// deletePost 删除一篇文章文件
+// 需要严格的安全检查，仅不能删除Hugo预定之外的文件
 func deletePost(relPath string) error {
-	// Normalize path separators
+	// 规范化路径分隔符（Windows\\, Unix/）
 	relPath = strings.ReplaceAll(relPath, "/", string(os.PathSeparator))
 	fullPath := filepath.Join(hugoPath, relPath)
 
-	// Security check: must be .md file
+	// 安全检查: 必须是.md文件
 	if !strings.HasSuffix(strings.ToLower(relPath), ".md") {
 		return fmt.Errorf("only .md files can be deleted")
 	}
 
-	// Security check: must be within hugoPath
+	// 安全检查: 必须与hugoPath在同一新分支内
 	absPath, err := filepath.Abs(fullPath)
 	if err != nil {
 		return err
@@ -1230,7 +1246,7 @@ func deletePost(relPath string) error {
 		return fmt.Errorf("path security violation: file must be within hugo directory")
 	}
 
-	// Check if file exists before attempting delete
+	// 比较前检查文件是否存在
 	if _, err := os.Stat(fullPath); err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("file does not exist: %s", relPath)
@@ -1238,24 +1254,25 @@ func deletePost(relPath string) error {
 		return err
 	}
 
-	// Delete the file
+	// 删除文件
 	if err := os.Remove(fullPath); err != nil {
 		return fmt.Errorf("failed to delete file: %v", err)
 	}
 
-	// Try to remove empty parent directory
+	// 尝试删除空的上级目录
 	parentDir := filepath.Dir(fullPath)
 	entries, err := os.ReadDir(parentDir)
 	if err == nil && len(entries) == 0 {
-		if err := os.Remove(parentDir); err == nil {
-			// Successfully removed empty parent
+			// 成功删除了空的上级目录
 		}
 	}
 
 	return nil
 }
 
-// parseFrontmatter extracts metadata from markdown file
+// parseFrontmatter 从提供Markdown文件中提取YAML元数据
+// YAML格式: ---\n title: ...
+ draft: ...\n ---
 func parseFrontmatter(content string) Frontmatter {
 	fm := Frontmatter{Title: "Untitled", Draft: false, Date: time.Now().Format("2006-01-02")}
 
@@ -1314,7 +1331,8 @@ func extractPostTitle(postPath string) string {
 	return filepath.Base(postPath)
 }
 
-// getGitStatus returns git status map
+// getGitStatus 获取Git仓库的状态映射
+// 返回文件路径到英文管理状态（"M"、"A"等）
 func getGitStatus() map[string]string {
 	status := make(map[string]string)
 	cmd := exec.Command("git", "status", "--porcelain")
@@ -1337,8 +1355,8 @@ func getGitStatus() map[string]string {
 	return status
 }
 
-// getPosts returns list of posts
-func getPosts() []Post {
+// getPosts \u8fd4\u56de\u6587\u7ae0\u5217\u8868
+// \u4f1a\u904d\u5386Hugo\u5185\u5bb9\u76ee\u5f55\uff0c\u8f6c\u6362\u6210\u53ef\u5e8f\u5217\u5316\u7684Post\u5bf9\u8c61\nfunc getPosts() []Post {
 	var posts []Post
 	gitStatus := getGitStatus()
 
@@ -1355,7 +1373,7 @@ func getPosts() []Post {
 		relPath, _ := filepath.Rel(hugoPath, path)
 		pathParts := strings.Split(strings.ToLower(relPath), string(os.PathSeparator))
 
-		// Filter only posts
+		// 筛选仅仅是文章（post类型），不包含页面
 		hasPost := false
 		for _, part := range pathParts {
 			if part == "post" || part == "posts" {
@@ -1368,20 +1386,20 @@ func getPosts() []Post {
 			return nil
 		}
 
-		// Infer language
+		// 推批编程语言（根据路径邏辑）
 		lang := "en"
 		if len(pathParts) > 1 && (pathParts[1] == "zh-cn" || pathParts[1] == "zh") {
 			lang = pathParts[1]
 		}
 
-		// Get git status
+		// 获取git文件管算状态
 		gStatus := "clean"
 		normPath := strings.ReplaceAll(relPath, string(os.PathSeparator), "/")
 		if s, ok := gitStatus[normPath]; ok {
 			gStatus = s
 		}
 
-		// Read frontmatter
+		// 从文件中读取YAML整方体
 		content, _ := os.ReadFile(path)
 		fm := parseFrontmatter(string(content))
 
@@ -1390,7 +1408,7 @@ func getPosts() []Post {
 			dateStr = fm.Date
 		}
 
-		// Determine status
+		// 判断文章发布状态（辸稿/表轿/挚换）
 		status := "PUBLISHED"
 		color := "#22c55e"
 		if fm.Draft {
@@ -1429,7 +1447,8 @@ func getPosts() []Post {
 	return posts
 }
 
-// getCommentStats returns comment statistics for a post
+// getCommentStats 获取一篇文章的评论统计信息
+// 包含pending绑定并未笄准的评论数量
 func getCommentStats(postPath string) map[string]int {
 	stats := map[string]int{
 		"total":   0,
@@ -1451,7 +1470,8 @@ func getCommentStats(postPath string) map[string]int {
 	return stats
 }
 
-// getAllCommentsStats returns statistics for all posts
+// getAllCommentsStats 返回所有文章的评论统计信息
+// 包含pending绑定并未笄准的评论数量
 func getAllCommentsStats() map[string]interface{} {
 	totalPending := 0
 	totalComments := 0
@@ -1472,14 +1492,15 @@ func getAllCommentsStats() map[string]interface{} {
 	}
 }
 
-// createSyncPost creates bilingual post
+// createSyncPost 创建中英文平行 全文一起爲
+// 自动用hugo new命令卫文章，然后自动翻译第二文文本
 func createSyncPost(titleZh, categories string) (map[string]interface{}, error) {
 	titleEn := translateText(titleZh, "zh", "en")
 	filename := sanitizeFilename(titleEn)
 
 	results := make(map[string]interface{})
 
-	// Create zh-cn post
+	// 创建中文文犠
 	zhPath := fmt.Sprintf("content/zh-cn/post/%s/index.md", filename)
 	cmd := exec.Command("hugo", "new", zhPath)
 	cmd.Dir = hugoPath
@@ -1488,7 +1509,7 @@ func createSyncPost(titleZh, categories string) (map[string]interface{}, error) 
 		results["zh_path"] = zhPath
 	}
 
-	// Create en post
+	// 创建英文文犠
 	enPath := fmt.Sprintf("content/en/post/%s/index.md", filename)
 	cmd = exec.Command("hugo", "new", enPath)
 	cmd.Dir = hugoPath
@@ -1500,7 +1521,7 @@ func createSyncPost(titleZh, categories string) (map[string]interface{}, error) 
 	return results, nil
 }
 
-// sanitizeFilename converts title to URL-safe filename
+// sanitizeFilename 将标题且沛成URL安全的文件名
 func sanitizeFilename(title string) string {
 	reg := regexp.MustCompile("[^a-z0-9]+")
 	s := strings.ToLower(title)
@@ -1508,20 +1529,22 @@ func sanitizeFilename(title string) string {
 	return strings.Trim(s, "-")
 }
 
-// getCommentsPath returns the path to comments file for a post
+// getCommentsPath 计算评论文件的路径
+// postPath格式: content/zh-cn/post/example/index.md
+// 评论文件: content/zh-cn/post/example/comments.json
 func getCommentsPath(postPath string) string {
-	// postPath format: content/zh-cn/post/example/index.md
-	// comments file: content/zh-cn/post/example/comments.json
+	// postPath\u683c\u5f0f: content/zh-cn/post/example/index.md
+	// \u8bc4\u8bba\u6587\u4ef6: content/zh-cn/post/example/comments.json
 	dir := filepath.Dir(postPath)
 	return filepath.Join(dir, "comments.json")
 }
 
-// getComments reads comments for a post
+// getComments 从文件中读取一篇文章的所有评论
 func getComments(postPath string) ([]Comment, error) {
 	commentsPath := getCommentsPath(postPath)
 	fullPath := filepath.Join(hugoPath, commentsPath)
 	
-	// If file doesn't exist, return empty list
+	// 如果文件不存在，返回空序列
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 		return []Comment{}, nil
 	}
@@ -1539,7 +1562,7 @@ func getComments(postPath string) ([]Comment, error) {
 	return cf.Comments, nil
 }
 
-// saveComments saves comments to file
+// saveComments 个文件另存所有评论
 func saveComments(postPath string, comments []Comment) error {
 	commentsPath := getCommentsPath(postPath)
 	fullPath := filepath.Join(hugoPath, commentsPath)
@@ -1553,17 +1576,18 @@ func saveComments(postPath string, comments []Comment) error {
 	return os.WriteFile(fullPath, data, 0644)
 }
 
-// addComment adds a new comment to a post
+// addComment 为一篇文章添加新评论
+// 配置: IP地址、User-Agent、时间戳等信息用于审核
 func addComment(postPath, author, email, content, ipAddress, userAgent, parentID string) (Comment, error) {
 	comments, err := getComments(postPath)
 	if err != nil {
         return Comment{}, err
 	}
 	
-	// Generate unique ID
+	// 生成唯一ID（当前时间戳-评论个数）
 	id := fmt.Sprintf("%d-%d", time.Now().Unix(), len(comments))
 	
-	// Create new comment (not approved by default)
+	// 创建新的评论（默认未笄准，需要管理员仪审）
     comment := Comment{
 		ID:        id,
 		Author:    author,
@@ -1581,8 +1605,7 @@ func addComment(postPath, author, email, content, ipAddress, userAgent, parentID
     return comment, saveComments(postPath, comments)
 }
 
-// approveComment approves a comment
-func approveComment(postPath, commentID string) error {
+// approveComment \u7ec5\u51c6\u6bcf\u6761\u8bc4\u8bba\n// \u5b83\u4f1a\u67e5\u627e\u6587\u7ae0\u4e2d\u6307\u5b9a\u7c7b\u4f55\u7684\u8bc4\u8bba\uff0c\u7136\u540e\u5c06Approved\u9690\u5165True\nfunc approveComment(postPath, commentID string) error {
 	comments, err := getComments(postPath)
 	if err != nil {
 		return err
@@ -1752,7 +1775,8 @@ func updateGitHubIssue(issueNumber int, repo, token string, comment Comment) err
 	return nil
 }
 
-// deleteComment deletes a comment
+// deleteComment 撤回一条评论
+// 只有管理员才能执行此操作
 func deleteComment(postPath, commentID string) error {
 	comments, err := getComments(postPath)
 	if err != nil {
@@ -1769,7 +1793,8 @@ func deleteComment(postPath, commentID string) error {
 	return saveComments(postPath, filtered)
 }
 
-// updateFrontmatter updates post metadata
+// updateFrontmatter 更新文章的YAML元数据（标题、分类等）
+// 仅是更新敶月抱月等特定字段，不是Draft状态
 func updateFrontmatter(relPath, title, categories string) error {
 	fullPath := filepath.Join(hugoPath, relPath)
 	content, err := os.ReadFile(fullPath)
@@ -1801,7 +1826,8 @@ func updateFrontmatter(relPath, title, categories string) error {
 	return os.WriteFile(fullPath, []byte(strings.Join(newLines, "\n")), 0644)
 }
 
-// handleCommand executes system commands
+// handleCommand 执行系统命令（hugo, git等）
+// 主要用于Build站点或push代码到Git业务
 func handleCommand(cmd string) (map[string]interface{}, error) {
 	// 使用带超时的命令执行
 	timeout := 5 * time.Minute // 默认5分钟超时
@@ -1922,7 +1948,7 @@ func handleCommand(cmd string) (map[string]interface{}, error) {
 	}
 }
 
-// HTTP Handlers
+// ==================== HTTP API处理函数 ====================
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -2346,7 +2372,7 @@ func handleGetComments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return only approved comments for public view
+	// 仅返回对公众可见的笄准评论
 	var approved []Comment
 	for _, c := range comments {
 		if c.Approved {
@@ -2384,7 +2410,7 @@ func handleAddComment(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Get User-Agent
+    // 获取User-Agent（浏览器信息）
     userAgent := r.Header.Get("User-Agent")
 
     data.Author = strings.TrimSpace(data.Author)
@@ -3301,7 +3327,8 @@ func handleCommandAPI(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: result})
 }
 
-// handleSyncTranslate translates markdown content and syncs to English version
+// handleSyncTranslate 先将中文markdown翻译为英文，然后同步到英文版本文章
+// 接收中文文章和英文文章两个路径，翻译内容并同步格式
 func handleSyncTranslate(w http.ResponseWriter, r *http.Request) {
 	var data struct {
 		ZhPath  string `json:"zhPath"`
@@ -3356,7 +3383,7 @@ func handleSyncTranslate(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Content translated and synced"})
 }
 
-// translateMarkdownContent translates markdown body while preserving code blocks
+// translateMarkdownContent 翻译Markdown体体制保“代码一块”不被翻译
 func translateMarkdownContent(content, sourceLang, targetLang string) string {
 	// 临时替换代码块
 	codeBlocks := []string{}
@@ -3605,7 +3632,7 @@ func allowRequest(key string, limit int, window time.Duration) bool {
     return true
 }
 
-// openBrowser opens the default browser
+// openBrowser 打开系统默认浏览器
 func openBrowser(url string) {
 	switch runtime.GOOS {
 	case "darwin":
@@ -3701,7 +3728,7 @@ func main() {
 			w.Header().Set("X-Frame-Options", "DENY")
 			// 限制特性权限
 			w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
-			// Content Security Policy
+			// 内容安全策略（防XSS和点击劫持）
 			w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com")
 			
 			next.ServeHTTP(w, r)
@@ -3712,7 +3739,7 @@ func main() {
 	rootMux := http.NewServeMux()
 	wrappedMux := hstsMiddleware(rootMux)
 	
-	// Setup routes
+	// 注册所有API路由
 	rootMux.HandleFunc("/", handleIndex)
     rootMux.HandleFunc("/api/login", withCORS(limitRequestBody(handleLogin, 4<<10)))
     rootMux.HandleFunc("/api/refresh-token", withCORS(limitRequestBody(handleRefreshToken, 4<<10)))
@@ -3749,7 +3776,7 @@ func main() {
 	tlsCertFile := getEnv("TLS_CERT_FILE", "")
 	tlsKeyFile := getEnv("TLS_KEY_FILE", "")
 
-	// Start HTTP server
+	// 启动HTTP服务器监听
     openHost := httpHost
     if openHost == "0.0.0.0" || openHost == "::" {
         openHost = "127.0.0.1"
