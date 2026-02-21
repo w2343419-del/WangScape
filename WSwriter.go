@@ -1,4 +1,25 @@
-// ==================== WangScape Writer - Go学习项目 ====================\n// 这是一个完整的生产级Go应用，适合初学者学习\n// \n// 学习路线：\n// 1. 包（package）& 导入（import）：第1-50行\n// 2. 数据结构（struct）& 类型定义（type）：第60-150行\n// 3. 函数定义与参数：handleLogin, verifyJWT等\n// 4. HTTP处理：http.HandlerFunc, w http.ResponseWriter, r *http.Request\n// 5. 错误处理：Go的 err != nil 模式\n// 6. 并发：sync.Mutex, goroutine (go func)\n// 7. 文件操作：os.Open, os.WriteFile等\n// 8. JSON处理：json.Marshal, json.Unmarshal\n// 9. 密码学：crypto包的使用\n// 10. 中间件模式：withCORS, withAuth, limitRequestBody\n//\n// 关键Go概念在本文件中的应用：\n// - nil在Go中表示零值（地址为nil的指针）\n// - error是interface而不是异常\n// - defer用于确保资源清理\n// - goroutine轻量级绿色线程\n// - interface{} 是空接口，可接受任何类型\n// - 大写首字母表示exported（public），小写表示unexported（private）\n\npackage main
+// ==================== WangScape Writer - Go学习项目 ====================
+// 这是一个完整的生产级Go应用，适合初学者学习
+//
+// 学习路线：
+// 1. 包（package）& 导入（import）：第1-50行
+// 2. 数据结构（struct）& 类型定义（type）：第60-150行
+// 3. 函数定义与参数：handleLogin, verifyJWT等
+// 4. HTTP处理：http.HandlerFunc, w http.ResponseWriter, r *http.Request
+// 5. 错误处理：Go的 err != nil 模式
+// 6. 并发：sync.Mutex, goroutine (go func)
+// 7. 文件操作：os.Open, os.WriteFile等
+// 8. JSON处理：json.Marshal, json.Unmarshal
+// 9. 密码学：crypto包的使用
+// 10. 中间件模式：withCORS, withAuth, limitRequestBody
+//
+// 关键Go概念在本文件中的应用：
+// - nil在Go中表示零值（地址为nil的指针）
+// - error是interface而不是异常
+// - defer用于确保资源清理
+// - goroutine轻量级绿色线程
+// - interface{} 是空接口，可接受任何类型
+// - 大写首字母表示exported（public），小写表示unexported（private）\n\npackage main
 
 // ==================== 标准库导入详解 ====================
 // Go的标准库提供了丰富的功能，大多数应用只需要标准库
