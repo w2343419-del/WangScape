@@ -1,39 +1,52 @@
-package main
+// ==================== WangScape Writer - Go学习项目 ====================\n// 这是一个完整的生产级Go应用，适合初学者学习\n// \n// 学习路线：\n// 1. 包（package）& 导入（import）：第1-50行\n// 2. 数据结构（struct）& 类型定义（type）：第60-150行\n// 3. 函数定义与参数：handleLogin, verifyJWT等\n// 4. HTTP处理：http.HandlerFunc, w http.ResponseWriter, r *http.Request\n// 5. 错误处理：Go的 err != nil 模式\n// 6. 并发：sync.Mutex, goroutine (go func)\n// 7. 文件操作：os.Open, os.WriteFile等\n// 8. JSON处理：json.Marshal, json.Unmarshal\n// 9. 密码学：crypto包的使用\n// 10. 中间件模式：withCORS, withAuth, limitRequestBody\n//\n// 关键Go概念在本文件中的应用：\n// - nil在Go中表示零值（地址为nil的指针）\n// - error是interface而不是异常\n// - defer用于确保资源清理\n// - goroutine轻量级绿色线程\n// - interface{} 是空接口，可接受任何类型\n// - 大写首字母表示exported（public），小写表示unexported（private）\n\npackage main
+
+// ==================== 标准库导入详解 ====================
+// Go的标准库提供了丰富的功能，大多数应用只需要标准库
+// 这里按功能分组显示（实际代码中通常不这样注释）:
 
 import (
-    "bytes"
-    "context"
-    "compress/gzip"
-    "crypto/aes"
-    "crypto/cipher"
-    "crypto/hmac"
-    "crypto/rand"
-    "crypto/sha256"
-    "crypto/subtle"
-    "crypto/tls"
-    "encoding/base64"
-    "encoding/csv"
-    "encoding/hex"
-    "encoding/json"
-    "fmt"
-    "html"
-    "io"
-    "log"
-    "net"
-    "net/mail"
-    "net/http"
-    "net/smtp"
-    "net/url"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "regexp"
-    "runtime"
-    "sort"
-    "strconv"
-    "strings"
-    "sync"
-    "time"
+    // ===== 数据处理 =====
+    "bytes"           // 字节缓冲区操作
+    "encoding/base64" // Base64编码/解码
+    "encoding/csv"    // CSV文件处理
+    "encoding/hex"    // 十六进制编码
+    "encoding/json"   // JSON序列化/反序列化（最常用）
+    "strconv"         // 字符串与其他类型转换
+    "strings"         // 字符串操作（Split, Contains等）
+    
+    // ===== 密码学和安全（crypto包是Go安全的核心）=====
+    "crypto/aes"      // AES加密算法
+    "crypto/cipher"   // 加密密码模式（CBC, GCM等）
+    "crypto/hmac"     // HMAC认证
+    "crypto/rand"     // 密码学安全随机数
+    "crypto/sha256"   // SHA256哈希算法
+    "crypto/subtle"   // 恒定时间比较（防时序攻击）
+    "crypto/tls"      // TLS/SSL支持
+    
+    // ===== 网络和HTTP（Web应用的核心）=====
+    "context"         // 上下文（超时、取消、deadline）
+    "net"             // 底层网络操作
+    "net/http"        // HTTP客户端和服务器
+    "net/mail"        // 邮箱地址解析
+    "net/smtp"        // SMTP协议实现（发送邮件）
+    "net/url"         // URL解析和编码
+    
+    // ===== 文件和I/O =====
+    "compress/gzip"   // gzip压缩/解压
+    "fmt"             // 格式化输出（Printf等）
+    "html"            // HTML特殊字符转义（防XSS）
+    "io"              // I/O接口
+    "log"             // 日志记录
+    "os"              // 操作系统接口（文件、环境变量等）
+    "os/exec"         // 执行外部命令
+    "path/filepath"   // 文件路径操作
+    
+    // ===== 程序和工具 =====
+    "regexp"          // 正则表达式
+    "runtime"         // Go运行时信息
+    "sort"            // 排序算法
+    "sync"            // 并发原语（Mutex, WaitGroup等）
+    "time"            // 时间处理
 )
 
 const (
@@ -59,62 +72,73 @@ var (
     }{records: make(map[string][]time.Time)}
 )
 
-// Post represents a blog post
+// ==================== 数据结构定义 ====================
+// Go中的struct是简单、高效的类型聚合方式
+// struct定义了包含多个字段的数据类型，可混合不同类型的字段
+
+// Post 代表博客文章的元数据
+// struct后面的 `json:"fieldname"` 被称为struct tag，用于JSON序列化/反序列化
+// 使用tag可以自动映射JSON字段，"omitempty"表示字段为空时不序列化
 type Post struct {
-	Title       string `json:"title"`
-	Lang        string `json:"lang"`
-	Path        string `json:"path"`
-	Date        string `json:"date"`
-	Status      string `json:"status"`
-	StatusColor string `json:"status_color"`
-	Pinned      bool   `json:"pinned"`
+	Title       string `json:"title"`          // 文章标题
+	Lang        string `json:"lang"`          // 语言代码（如zh-cn, en）
+	Path        string `json:"path"`          // 文件路径
+	Date        string `json:"date"`          // 发布日期
+	Status      string `json:"status"`        // 发布状态（draft/published）
+	StatusColor string `json:"status_color"` // 状态颜色（用于前端UI）
+	Pinned      bool   `json:"pinned"`        // 是否置顶
 }
 
-// Frontmatter represents post metadata
+// Frontmatter 代表Markdown文件的YAML前置元数据
+// Hugo使用这种格式存储文章元数据（位于文件开头的---|---之间）
 type Frontmatter struct {
-	Title      string
-	Draft      bool
-	Date       string
-	Categories []string
-	Pinned     bool
+	Title      string   // 文章标题
+	Draft      bool     // 是否为草稿
+	Date       string   // 文章发布日期
+	Categories []string // 文章分类列表（切片 slice 类型，动态数组）
+	Pinned     bool     // 是否为置顶文章
 }
 
-// APIResponse is a generic API response
+// APIResponse 是标准化的API响应结构
+// 所有API端点都应返回这种格式，便于前端统一处理
+// interface{} 是Go的通用类型，可存储任何类型的值（类似Python的Any）
 type APIResponse struct {
-	Success bool        `json:"success"`
-	Message string      `json:"message,omitempty"`
-	Content string      `json:"content,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
+	Success bool        `json:"success"`           // 操作是否成功
+	Message string      `json:"message,omitempty"` // 返回消息或错误提示
+	Content string      `json:"content,omitempty"` // 返回的文本内容
+	Data    interface{} `json:"data,omitempty"`    // 返回的数据（任意类型）
 }
 
-// Comment represents a blog comment
+// Comment 代表博客评论数据
+// 这是一个完整的评论对象，包含发布者信息、内容和审核状态
 type Comment struct {
-	ID           string   `json:"id"`
-	Author       string   `json:"author"`
-	Email        string   `json:"email"`
-	Content      string   `json:"content"`
-	Timestamp    string   `json:"timestamp"`
-	Approved     bool     `json:"approved"`
-	PostPath     string   `json:"post_path"`
-	IPAddress    string   `json:"ip_address"`
-	UserAgent    string   `json:"user_agent"`
-    ParentID     string   `json:"parent_id,omitempty"`
-    Images       []string `json:"images,omitempty"`
-    IssueNumber  int      `json:"issue_number,omitempty"` // GitHub Issue编号，用于删除
+	ID           string   `json:"id"`             // 唯一ID（由时间戳和随机数生成）
+	Author       string   `json:"author"`         // 评论者名字
+	Email        string   `json:"email"`          // 评论者邮箱（用于后续联系）
+	Content      string   `json:"content"`        // 评论正文
+	Timestamp    string   `json:"timestamp"`      // 评论发布时间戳
+	Approved     bool     `json:"approved"`       // 是否已被版主批准
+	PostPath     string   `json:"post_path"`      // 所属文章的路径
+	IPAddress    string   `json:"ip_address"`     // 评论者IP地址（用于审核和防滥用）
+	UserAgent    string   `json:"user_agent"`     // 浏览器信息（调试和审核用）
+	ParentID     string   `json:"parent_id,omitempty"` // 父评论ID（支持嵌套回复）
+	Images       []string `json:"images,omitempty"`    // 评论附带的图片URL列表
+	IssueNumber  int      `json:"issue_number,omitempty"` // GitHub Issue编号（用于从GitHub读取评论）
 }
 
-// CommentSettings represents comment notification and blacklist settings
+// CommentSettings 代表评论审核和邮件通知的配置
+// 这个结构体存储在config/comment_settings.json中，管理员可以动态修改配置
 type CommentSettings struct {
-    SMTPEnabled     bool     `json:"smtp_enabled"`
-    SMTPHost        string   `json:"smtp_host"`
-    SMTPPort        int      `json:"smtp_port"`
-    SMTPUser        string   `json:"smtp_user"`
-    SMTPPass        string   `json:"smtp_pass"`
-    SMTPFrom        string   `json:"smtp_from"`
-    SMTPTo          []string `json:"smtp_to"`
-    NotifyOnPending bool     `json:"notify_on_pending"`
-    BlacklistIPs    []string `json:"blacklist_ips"`
-    BlacklistWords  []string `json:"blacklist_keywords"`
+    SMTPEnabled     bool     `json:"smtp_enabled"`      // 是否启用邮件通知功能
+    SMTPHost        string   `json:"smtp_host"`         // SMTP服务器地址（如mail.google.com）
+    SMTPPort        int      `json:"smtp_port"`         // SMTP端口（587用STARTTLS，465用SMTPS隐式加密）
+    SMTPUser        string   `json:"smtp_user"`         // SMTP登录用户名
+    SMTPPass        string   `json:"smtp_pass"`         // SMTP密码（可加密存储）
+    SMTPFrom        string   `json:"smtp_from"`         // 邮件发件人（不设置则用SMTPUser）
+    SMTPTo          []string `json:"smtp_to"`           // 接收通知的邮箱地址列表
+    NotifyOnPending bool     `json:"notify_on_pending"` // 新评论需审核时是否通知
+    BlacklistIPs    []string `json:"blacklist_ips"`     // IP黑名单（拦截这些IP的评论）
+    BlacklistWords  []string `json:"blacklist_keywords"` // 关键词黑名单（包含这些词自动拒绝）
 }
 
 // CommentsFile represents the comments data file structure
@@ -392,17 +416,23 @@ func collectAllComments() ([]CommentWithPost, error) {
 }
 
 // ==================== 安全工具函数 ====================
+// 这些函数演示了Web应用的重要安全概念
 
-// escapeHTML 安全地转义HTML特殊字符
+// escapeHTML 安全地转义HTML特殊字符，防止XSS（跨站脚本）攻击
+// XSS攻击：攻击者在评论中注入 <img src=x onerror=\"alert('xss')\">
+// 如果直接显示在页面上，浏览器会执行这段JavaScript代码
+// escapeHTML将<变成&lt;，>变成&gt;，使其不被解析为代码标签
+// 这是保护应用和用户最重要的防护措施之一
 func escapeHTML(s string) string {
 	return html.EscapeString(s)
 }
 
-// validateEmail 验证邮箱格式
+// validateEmail 验证邮箱地址格式
+// 使用Go标准库的RFC 5322解析器，比正则表达式更准确
+// 正则表达式很难覆盖邮箱的所有合法格式，而标准库已经处理了许多边界情况
 func validateEmail(email string) bool {
 	_, err := mail.ParseAddress(email)
-	return err == nil
-}
+	return err == nil // 成功解析表示格式有效
 
 // validatePath 严格验证路径，防止目录遍历
 func validatePath(relPath, basePath string) (string, error) {
@@ -635,39 +665,50 @@ func signJWT(headerPayload string) string {
     return base64URLEncode(h.Sum(nil))
 }
 
+// ==================== JWT令牌生成 ====================
+// createJWT 创建JSON Web Token用于用户身份认证
+// 支持两种令牌类型：
+//   1. access: 用于API请求认证，短期有效（默认8小时，可通过JWT_TTL_HOURS环境变量配置）
+//   2. refresh: 用于刷新access令牌，长期有效（30天）
+// 令牌采用HMAC-SHA256签名，存有唯一ID(jti)支持令牌轮转机制
 func createJWT(username string, tokenType string) (string, error) {
     if len(jwtSecret) == 0 {
         return "", fmt.Errorf("JWT secret not initialized")
     }
 	
+    // JWT头部：指定算法和令牌类型
     header := base64URLEncode([]byte(`{"alg":"HS256","typ":"JWT"}`))
+    // 生成唯一的令牌ID，用于令牌轮转和撤销机制
     jti := fmt.Sprintf("%s-%d-%s", username, time.Now().UnixNano(), generateRandomString(8))
     
+    // 计算令牌过期时间
     var expiry time.Duration
     if tokenType == "refresh" {
-        expiry = 30 * 24 * time.Hour // 刷新令牌有效期30天
+        expiry = 30 * 24 * time.Hour // 刷新令牌有效期：30天（用于长期离线场景）
     } else {
-        expiry = getJWTExpiry() // 访问令牌有效期从环境变量读取
+        expiry = getJWTExpiry() // 访问令牌有效期：从环境变量JWT_TTL_HOURS读取，默认8小时
     }
     
+    // JWT负载内容：标准声明
     claims := jwtClaims{
-        Sub: username,
-        Iat: time.Now().Unix(),
-        Exp: time.Now().Add(expiry).Unix(),
-        Jti: jti,
-        Typ: tokenType,
+        Sub: username,                            // Subject: 令牌主体（用户名）
+        Iat: time.Now().Unix(),                   // Issued At: 令牌颁发时间
+        Exp: time.Now().Add(expiry).Unix(),       // Expiration: 令牌过期时间
+        Jti: jti,                                 // JWT ID: 令牌唯一标识（用于轮转）
+        Typ: tokenType,                           // Type: 令牌类型（access或refresh）
     }
     claimsJSON, err := json.Marshal(claims)
     if err != nil {
         return "", err
     }
 	
+    // JWT签名过程：header.payload.signature
     payload := base64URLEncode(claimsJSON)
     unsigned := header + "." + payload
-    signature := signJWT(unsigned)
+    signature := signJWT(unsigned)  // 使用HMAC-SHA256签名
     token := unsigned + "." + signature
     
-    // 存储刷新令牌以支持令牌轮转
+    // 将刷新令牌存储到内存中，用于后续验证时检查令牌是否被撤销
     if tokenType == "refresh" {
         refreshTokenMutex.Lock()
         refreshTokenStore[jti] = time.Now().Add(expiry).Unix()
@@ -692,13 +733,25 @@ func generateRandomString(length int) string {
     return string(b)
 }
 
+// ==================== JWT令牌验证 ====================
+// verifyJWT 验证JWT令牌的有效性和完整性
+// 检查项目：
+//   1. 令牌格式（必须有3个'.'分隔的部分）
+//   2. 签名有效性（使用恒定时间比较防止时序攻击）
+//   3. 负载内容的有效性（JSON格式）
+//   4. 令牌是否过期
+//   5. 令牌签发时间是否合理
+//   6. 刷新令牌是否被撤销
 func verifyJWT(token string) (*jwtClaims, error) {
+    // 分解JWT为三部分：header.payload.signature
     parts := strings.Split(token, ".")
     if len(parts) != 3 {
         return nil, fmt.Errorf("invalid token format")
     }
+    // 验证签名：重新计算header.payload的签名，与原签名比较
     unsigned := parts[0] + "." + parts[1]
     expectedSig := signJWT(unsigned)
+    // 使用恒定时间比较防止时序攻击（即使签名错误也不会通过耗时分析比对长度）
     if subtle.ConstantTimeCompare([]byte(expectedSig), []byte(parts[2])) != 1 {
         return nil, fmt.Errorf("invalid token signature")
     }
@@ -712,15 +765,16 @@ func verifyJWT(token string) (*jwtClaims, error) {
         return nil, fmt.Errorf("invalid token claims")
     }
 	
+    // 检查令牌有效期
     now := time.Now().Unix()
     if claims.Exp <= now {
-        return nil, fmt.Errorf("token expired")
+        return nil, fmt.Errorf("token expired")  // 令牌已过期
     }
     if claims.Iat > now+60 {
-        return nil, fmt.Errorf("token issued in the future")
+        return nil, fmt.Errorf("token issued in the future")  // 防止时钟偏差（允许60秒误差）
     }
     
-    // 检查刷新令牌是否被撤销
+    // 刷新令牌的额外验证：检查是否在撤销列表中
     if claims.Typ == "refresh" {
         refreshTokenMutex.RLock()
         expiry, exists := refreshTokenStore[claims.Jti]
@@ -811,6 +865,13 @@ func requireAuth(w http.ResponseWriter, r *http.Request) bool {
     return false
 }
 
+// ==================== 中间件：认证保护 ====================
+// withAuth 是一个中间件工厂函数，用于保护API端点
+// 它验证请求是否通过了认证，未认证的请求将被拒绝
+// 支持以下认证方式：
+//   1. X-Admin-Token 头（旧版本，兼容性）
+//   2. Bearer Token (JWT)，支持access令牌类型
+//   3. 本地未配置认证时，仅允许127.0.0.1访问
 func withAuth(handler http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         if !requireAuth(w, r) {
@@ -820,38 +881,7 @@ func withAuth(handler http.HandlerFunc) http.HandlerFunc {
     }
 }
 
-var auditLogMu sync.Mutex
-
-func writeAuditLog(action string, r *http.Request, details map[string]interface{}) {
-    auditLogMu.Lock()
-    defer auditLogMu.Unlock()
-	
-    entry := map[string]interface{}{
-        "ts":     time.Now().Format(time.RFC3339),
-        "action": action,
-        "ip":     getRealClientIP(r),
-        "ua":     r.UserAgent(),
-    }
-    for k, v := range details {
-        entry[k] = v
-    }
-	
-    data, err := json.Marshal(entry)
-    if err != nil {
-        log.Printf("[WARN] Failed to marshal audit log: %v", err)
-        return
-    }
-	
-    logPath := filepath.Join(hugoPath, "config", "audit.log")
-    file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-    if err != nil {
-        log.Printf("[WARN] Failed to open audit log: %v", err)
-        return
-    }
-    defer file.Close()
-	
-    _, _ = file.Write(append(data, '\n'))
-}
+// ==================== Go并发安全和资源管理 ====================\n// sync.Mutex（互斥锁）是Go的基本同步原语\n// 保护对共享资源（日志文件）的访问，防止数据竞争\nvar auditLogMu sync.Mutex\n\n// writeAuditLog 安全地将审计日志写入文件\n// 演示Go的关键特性：\n//   1. sync.Mutex实现并发控制\n//   2. defer确保资源清理（RAII模式）\n//   3. 早期return简化错误处理流程\nfunc writeAuditLog(action string, r *http.Request, details map[string]interface{}) {\n    // ======= 获取互斥锁 =======\n    // Lock()阻塞直到获得锁，防止其他goroutine同时写入\n    auditLogMu.Lock()\n    // defer延迟执行，保证函数返回前Unlock()一定被调用\n    // 这防止了死锁（代码量多时容易遗漏unlock）\n    defer auditLogMu.Unlock()\n\t\n    // ======= 组装日志数据 =======\n    // map[string]interface{} 是Go的通用字典类型\n    // interface{} 可存储任意类型（灵活但需类型断言）\n    entry := map[string]interface{}{\n        \"ts\":     time.Now().Format(time.RFC3339), // ISO 8601格式\n        \"action\": action,                         // 操作\n        \"ip\":     getRealClientIP(r),             // IP\n        \"ua\":     r.UserAgent(),                  // 浏览器标识\n    }\n    // for-range遍历map，顺序随机（Go的设计特性）\n    for k, v := range details {\n        entry[k] = v\n    }\n\t\n    // ======= JSON序列化 =======\n    data, err := json.Marshal(entry)\n    if err != nil {\n        log.Printf(\"[WARN] Failed to marshal audit log: %v\", err)\n        return\n    }\n\t\n    // ======= 文件操作 =======\n    logPath := filepath.Join(hugoPath, \"config\", \"audit.log\")\n    // 位标志：O_APPEND(追加)|O_CREATE(创建)|O_WRONLY(只写)\n    // 0600权限：仅owner可读写\n    file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)\n    if err != nil {\n        log.Printf(\"[WARN] Failed to open audit log: %v\", err)\n        return\n    }\n    // defer file.Close()实现RAII模式：资源一定会清理\n    defer file.Close()\n\t\n    // ======= 写入日志 =======\n    // append(data, '\\n')添加换行符\n    _, _ = file.Write(append(data, '\\n'))\n}
 
 // 定期轮转审计日志 (每天午夜或文件超过100MB时)
 func rotateAuditLogPeriodically() {
@@ -946,6 +976,12 @@ func cleanupOldAuditLogs(logDir string) {
 // ==================== IP欺骗防护 ====================
 
 // getRealClientIP 获取真实客户端IP，防止IP欺骗
+// ==================== IP地址获取 ====================
+// getRealClientIP 安全地获取客户端的真实IP地址
+// 支持代理环境下的IP获取，但不容易被伪造
+// 优先级：
+//   1. 在代理下：检查X-Forwarded-For的最后IP(直接接入代理IP) -> X-Real-IP
+//   2. 不在代理下：直接使用连接时的RemoteAddr
 func getRealClientIP(r *http.Request) string {
 	// 优先检查可信代理的X-Forwarded-For头（仅在生产环境使用代理时）
 	// 在开发环境，直接使用RemoteAddr
@@ -965,14 +1001,14 @@ func getRealClientIP(r *http.Request) string {
 			}
 		}
 		
-		// 检查X-Real-IP
+		// 检查X-Real-IP（查好阿本欺阻子优先為縮統欺巿象）
 		realIP := r.Header.Get("X-Real-IP")
 		if realIP != "" && isValidIP(realIP) {
 			return realIP
 		}
 	}
 	
-	// 使用直接连接IP
+	// 使用直接连接时的IP（不作异IP欺骗）
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr
@@ -986,15 +1022,20 @@ func isValidIP(ip string) bool {
 	return net.ParseIP(ip) != nil
 }
 
+// ==================== 初始化函数 ====================
+// init 是程序启动时自动执行的字段初始化函数，执行各项必要的前置准备
 func init() {
 	var err error
+	// 获取当前Hugo项目的根目录（通常是程序执行目录）
 	hugoPath, err = os.Getwd()
 	if err != nil {
 		panic(err)
 	}
 	
-	// 初始化JWT密钥
+	// 重要：从环境变量JWT_SECRET或文件中读取JWT密钥
+	// 应用会根据密钥签名和验证JWT令牌以确保应用重启后token不会失效
 	initJWTSecret()
+    // 从环境变量读取管理员令牌（旧版本字段）
     adminToken = os.Getenv("ADMIN_TOKEN")
 }
 
@@ -1894,34 +1935,48 @@ func handleGetContent(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"content": content})
 }
 
+// ==================== 登录API处理函数 ====================
+// handleLogin 处理用户登录请求，验证凭证并生成JWT令牌对
+// 演示了Go HTTP处理函数的典型模式：验证 -> 认证 -> 业务逻辑 -> 响应
 func handleLogin(w http.ResponseWriter, r *http.Request) {
+    // ======= Step 1: 验证HTTP方法 =======
+    // 登录操作应使用POST方法（创建会话），而不是GET（仅读取）
     if r.Method != http.MethodPost {
         http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
+        return // 早期返回（early return）是Go的推荐模式，避免深层嵌套
     }
 
+    // ======= Step 2: 安全检查 =======
     if !isLocalRequest(r) {
         respondJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "仅允许本地登录"})
         return
     }
 
+    // ======= Step 3: 限流防护 =======
+    // 防止暴力破解：同一IP每分钟最多10次尝试
     ip := getRealClientIP(r)
     if !allowRequest("login:"+ip, 10, time.Minute) {
         respondJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: "请求过于频繁"})
         return
     }
 
+    // ======= Step 4: 解析JSON请求体 =======
+    // 在Go中，匿名struct用于一次性的临时数据结构
+    // 无需为仅使用一次的结构创建顶级type
     var data struct {
-        Username string `json:"username"`
+        Username string `json:"username"` // 标签（tag）指定JSON字段映射
         Password string `json:"password"`
     }
+    // json.NewDecoder从流式input解析，比ioutil.ReadAll + json.Unmarshal更高效
     if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
         log.Printf("[ERROR] Login request decode failed: %v", err)
         respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
-        return
+        return // Go使用err != nil检查错误，而不是try/catch异常机制
     }
+    // 清理用户输入：移除前后空白字符，防止隐藏的空格导致认证失败
     data.Username = strings.TrimSpace(data.Username)
     
+    // ======= Step 5: 验证管理员凭证 =======
     if !verifyAdminCredentials(data.Username, data.Password) {
         log.Printf("[WARN] Login failed - Invalid credentials for user: %s", data.Username)
         writeAuditLog("login_failed", r, map[string]interface{}{"username": data.Username})
@@ -1929,7 +1984,8 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // 生成访问令牌 (短期)
+    // ======= Step 6: 生成JWT令牌对 =======
+    // 访问令牌（access token）：短期有效（8小时），用于一般API请求认证
     accessToken, err := createJWT(data.Username, "access")
     if err != nil {
         log.Printf("[ERROR] Failed to create access token: %v", err)
@@ -1938,7 +1994,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // 生成刷新令牌 (长期)
+    // 刷新令牌（refresh token）：长期有效（30天），用于获取新的访问令牌
     refreshToken, err := createJWT(data.Username, "refresh")
     if err != nil {
         log.Printf("[ERROR] Failed to create refresh token: %v", err)
@@ -3305,16 +3361,28 @@ func translateMarkdownContent(content, sourceLang, targetLang string) string {
 	return content
 }
 
+// ==================== 标准化JSON响应 ====================
+// respondJSON 返回标准化的JSON响应
+// 会自动设置 Content-Type: application/json 头
 func respondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(data)
 }
 
+// ==================== 中间件：CORS跨域资源共享 ====================
+// withCORS 为API端点添加CORS支持，支持跨域请求
+// 实现了严格的安全策略：
+//   1. Origin白名单验证（防止未授权网站访问）
+//   2. 只允许本地访问和BASE_URL配置的domain
+//   3. 预检请求(OPTIONS)自动处理
+//   4. 返回多个安全响应头防止XSS和点击劫持
 func withCORS(handler http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
+        // 获取请求来源域名
         origin := r.Header.Get("Origin")
         if origin != "" {
+            // 检查该源是否在白名单中
             if !isAllowedOrigin(origin, r) {
                 // 拒绝不信任的origin，不暴露任何信息
                 w.Header().Set("X-Frame-Options", "DENY")
@@ -3333,14 +3401,14 @@ func withCORS(handler http.HandlerFunc) http.HandlerFunc {
             w.Header().Set("Access-Control-Expose-Headers", "Content-Length")
         }
         
-        // 安全响应头
-        w.Header().Set("X-Content-Type-Options", "nosniff")
-        w.Header().Set("X-Frame-Options", "DENY")
-        w.Header().Set("X-XSS-Protection", "1; mode=block")
-        w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
-        w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'")
+        // 安全响应头：防止浏览器安全漏洞
+        w.Header().Set("X-Content-Type-Options", "nosniff")          // 防止MIME嗅探攻击
+        w.Header().Set("X-Frame-Options", "DENY")                    // 禁止iframe嵌入
+        w.Header().Set("X-XSS-Protection", "1; mode=block")          // XSS防护
+        w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin") // 限制referrer信息
+        w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'") // 内容安全策略
         
-        // 处理预检请求
+        // 处理浏览器的跨域预检请求(CORS preflight)
         if r.Method == http.MethodOptions {
             w.WriteHeader(http.StatusNoContent)
             return
@@ -3350,19 +3418,27 @@ func withCORS(handler http.HandlerFunc) http.HandlerFunc {
     }
 }
 
+// ==================== CORS白名单验证 ====================
+// isAllowedOrigin 检查请求源是否在CORS白名单中
+// 支持多种配置方式：
+//   1. 硬编码的本地开发地址
+//   2. 当前请求的Host（防止同源策略问题）
+//   3. BASE_URL环境变量配置的主地址
+//   4. ALLOWED_ORIGINS环境变量的自定义列表（逗号分隔）
 func isAllowedOrigin(origin string, r *http.Request) bool {
+    // 本地开发白名单（Hugo预览和本应用）
     allowed := map[string]bool{
-        "http://localhost:1313":  true,
-        "http://127.0.0.1:1313": true,
-        "http://localhost:8080":  true,
-        "http://127.0.0.1:8080": true,
-        "https://localhost:1313":  true,
-        "https://127.0.0.1:1313": true,
-        "https://localhost:8080":  true,
-        "https://127.0.0.1:8080": true,
+        "http://localhost:1313":  true,  // Hugo本地预览（开发）
+        "http://127.0.0.1:1313": true,   // Hugo本地预览（回环地址）
+        "http://localhost:8080":  true,  // 本应用（开发）
+        "http://127.0.0.1:8080": true,   // 本应用（回环地址）
+        "https://localhost:1313":  true, // Hugo本地预览（HTTPS）
+        "https://127.0.0.1:1313": true,  // Hugo本地预览（HTTPS回环）
+        "https://localhost:8080":  true, // 本应用（HTTPS）
+        "https://127.0.0.1:8080": true,  // 本应用（HTTPS回环）
     }
 
-    // 允许与当前Host一致的来源
+    // 动态添加：允许与当前Host一致的来源（支持任意端口和域名）
     if r != nil {
         hostOriginHTTP := "http://" + r.Host
         hostOriginHTTPS := "https://" + r.Host
@@ -3404,8 +3480,12 @@ func getClientIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 
+// ==================== 客户端住址判断 ====================
+// isLocalRequest 判断是否是本地请求
+// 本地请求可有更高的权限（如直接访问API而不需要认证）
 func isLocalRequest(r *http.Request) bool {
     ip := getRealClientIP(r)
+	// 判断是否是代办地址：127.0.0.1、localhost或IPv6的::1
 	return ip == "127.0.0.1" || ip == "localhost" || ip == "::1"
 }
 
@@ -3418,11 +3498,15 @@ func getEnv(key, defaultValue string) string {
     return value
 }
 
+// ==================== 本地或认证管理 ====================
+// requireLocal 检查是否允许本地或已认证的授权访问
+// 用于保卸一些敏感操作，户菲超管也不能访问
 func requireLocal(w http.ResponseWriter, r *http.Request) bool {
+    // 优先检查是否是本地请求
     if isLocalRequest(r) {
         return true
     }
-    // 允许通过认证的远程访问
+    // 仅胖陞超圣避坤不能陷忿对弟，也是可以非子搞得谈杭仪拦允许的朝代
     if requireAuth(w, r) {
         return true
     }
@@ -3437,20 +3521,28 @@ func requireAdminToken(r *http.Request) bool {
 	return token == adminToken
 }
 
+// ==================== 中间件：请求限流 ====================
+// allowRequest 实现了基于时间窗口的请求限流（令牌桶算法的简化版本）
+// 用于防止API被滥用或遭受DDoS攻击
+// 参数说明：
+//   key: 限流键，通常是 "操作:IP地址" 的组合，用于区分不同用户
+//   limit: 时间窗口内允许的最大请求数
+//   window: 时间窗口大小（如1分钟)
+// 返回值：true表示请求被允许，false表示超过限流阈值
 func allowRequest(key string, limit int, window time.Duration) bool {
     if limit <= 0 {
-        return true
+        return true  // 如果limit未配置或为0，不进行限流
     }
     
     now := time.Now()
-    cutoff := now.Add(-window)
+    cutoff := now.Add(-window)  // 计算时间窗口的起始时刻
 
     rateLimiter.Lock()
     defer rateLimiter.Unlock()
 
     items := rateLimiter.records[key]
     
-    // 过滤掉超时的记录（时间窗口外的请求）
+    // 过滤掉超时的记录，只保留在时间窗口内的请求记录
     filtered := items[:0]
     for _, t := range items {
         if t.After(cutoff) {
@@ -3502,8 +3594,12 @@ func openBrowser(url string) {
 	}
 }
 
+// ==================== 请求体大小限制 ====================
+// limitRequestBody 中间件工厂：限制HTTP请求体大小，防止攻击者突破服务器
+// 当做手为中离砲嗎者超过限制时，直接中断连接，防止客户端继续虚送数据
 func limitRequestBody(h http.HandlerFunc, maxSize int64) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// 设置http.MaxBytesReader限制请求体大小（不是仅什么可以算了）
 		r.Body = http.MaxBytesReader(w, r.Body, maxSize)
 		h(w, r)
 	}
@@ -3548,8 +3644,10 @@ func loadEnvFile(filename string) {
 	}
 }
 
+// ==================== 程序入口点 ====================
+// main 是应用程序的主函数，负责初始化配置、设置路由和启动HTTP/HTTPS服务器
 func main() {
-	// 加载.env文件
+	// 加载.env文件中的环境变量（用于开发环境配置）
 	loadEnvFile(".env")
 	
 	// 调试：打印加载的凭据
