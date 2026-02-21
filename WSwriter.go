@@ -19,7 +19,9 @@
 // - defer用于确保资源清理
 // - goroutine轻量级绿色线程
 // - interface{} 是空接口，可接受任何类型
-// - 大写首字母表示exported（public），小写表示unexported（private）\n\npackage main
+// - 大写首字母表示exported（public），小写表示unexported（private）
+
+package main
 
 // ==================== 标准库导入详解 ====================
 // Go的标准库提供了丰富的功能，大多数应用只需要标准库
