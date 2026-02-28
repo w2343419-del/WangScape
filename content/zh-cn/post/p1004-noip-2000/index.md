@@ -113,6 +113,7 @@ int main() {
 
     dp[2][1][1] = map[1][1];
 
+    // 动态规划主循环
     for (int k = 2; k < 2 * N; k++) {
         for (int x1 = 1; x1 <= N; x1++) {
             int y1 = k - x1;
@@ -123,21 +124,26 @@ int main() {
                 if (y2 < 1 || y2 > N) continue;
                 if (dp[k][x1][x2] < 0) continue;
 
+                // 尝试所有4种移动组合
                 for (int m1 = 0; m1 <= 1; m1++) {
                     for (int m2 = 0; m2 <= 1; m2++) {
-                        int nx1 = x1 + m1,     ny1 = y1 + (1 - m1);
-                        int nx2 = x2 + m2,     ny2 = y2 + (1 - m2);
+                        int nx1 = x1 + m1,  ny1 = y1 + (1 - m1);
+                        int nx2 = x2 + m2,  ny2 = y2 + (1 - m2);
 
                         if (nx1 > N || ny1 > N) continue;
                         if (nx2 > N || ny2 > N) continue;
 
+                        // 计算当前步收益
                         int gain = map[nx1][ny1];
                         if (nx1 != nx2) gain += map[nx2][ny2];
 
-                        // 规范化，令 nx1 <= nx2
+                        // 规范化：保证 a <= b
                         int a = nx1, b = nx2;
-                        if (a > b) { int t = a; a = b; b = t; }
+                        if (a > b) {
+                            int t = a; a = b; b = t;
+                        }
 
+                        // 更新状态
                         int newval = dp[k][x1][x2] + gain;
                         if (newval > dp[k + 1][a][b])
                             dp[k + 1][a][b] = newval;
@@ -166,17 +172,19 @@ int main() {
 
 int N;
 int map[10][10];
-int memo[20][10][10]; // 记忆化数组
+int memo[20][10][10];    // 记忆化数组
 int visited[20][10][10]; // 标记是否计算过
 
+// DFS + 记忆化搜索
 int dfs(int k, int x1, int x2) {
-    // 终点：两人都到达(N, N)
+    // 终点条件
     if (x1 == N && x2 == N) return 0;
 
-    // 查记忆化
+    // 查询记忆化
     if (visited[k][x1][x2]) return memo[k][x1][x2];
     visited[k][x1][x2] = 1;
 
+    // 推导当前位置
     int y1 = k - x1;
     int y2 = k - x2;
     int best = -1; // -1表示无效状态
@@ -187,20 +195,25 @@ int dfs(int k, int x1, int x2) {
             int nx1 = x1 + m1,  ny1 = y1 + (1 - m1);
             int nx2 = x2 + m2,  ny2 = y2 + (1 - m2);
 
+            // 越界检查
             if (nx1 > N || ny1 > N) continue;
             if (nx2 > N || ny2 > N) continue;
 
-            // 规范化
+            // 规范化：保证 a <= b
             int a = nx1, b = nx2;
-            if (a > b) { int t = a; a = b; b = t; }
+            if (a > b) {
+                int t = a; a = b; b = t;
+            }
 
+            // 递归求解子状态
             int sub = dfs(k + 1, a, b);
             if (sub < 0) continue; // 子状态不可达
 
-            // 当前步两人取得的值
+            // 计算当前步收益
             int gain = map[nx1][ny1];
             if (nx1 != nx2) gain += map[nx2][ny2];
 
+            // 更新最优值
             if (gain + sub > best) best = gain + sub;
         }
     }
@@ -212,13 +225,15 @@ int dfs(int k, int x1, int x2) {
 int main() {
     scanf("%d", &N);
 
+    // 读入格子值
     int x, y, v;
     while (scanf("%d %d %d", &x, &y, &v) && (x || y || v))
         map[x][y] = v;
 
+    // 初始化
     memset(visited, 0, sizeof(visited));
 
-    // 两人同时从(1,1)出发，起点格只取一次
+    // 起点只取一次
     int start_val = map[1][1];
     int result = dfs(2, 1, 1);
 
@@ -265,7 +280,7 @@ in(i,j) ===============> out(i,j)
 #define MAXE 10000
 #define INF  0x3f3f3f3f
 
-// ========== 链式前向星 ==========
+// ========== 链式前向星数据结构 ==========
 int head[MAXN], nxt[MAXE], to[MAXE], cap[MAXE], cost[MAXE], tot;
 
 void init() {
@@ -278,7 +293,7 @@ void add_edge(int u, int v, int c, int w) {
     to[tot] = u; cap[tot] = 0; cost[tot] = -w; nxt[tot] = head[v]; head[v] = tot++;
 }
 
-// ========== SPFA + 增广（MCMF）==========
+// ========== SPFA算法 ==========
 int dist[MAXN], in_queue[MAXN], prevv[MAXN], preve[MAXN];
 int queue[MAXN * 100];
 
@@ -286,17 +301,23 @@ int spfa(int s, int t, int n) {
     memset(dist, 0x3f, sizeof(int) * (n + 1));
     memset(in_queue, 0, sizeof(int) * (n + 1));
     dist[s] = 0;
+
     int front = 0, rear = 0;
     queue[rear++] = s;
     in_queue[s] = 1;
+
+    // SPFA主循环
     while (front != rear) {
         int u = queue[front++];
         in_queue[u] = 0;
+
+        // 松弛边
         for (int e = head[u]; e != -1; e = nxt[e]) {
             if (cap[e] > 0 && dist[to[e]] > dist[u] + cost[e]) {
                 dist[to[e]] = dist[u] + cost[e];
                 prevv[to[e]] = u;
                 preve[to[e]] = e;
+
                 if (!in_queue[to[e]]) {
                     queue[rear++] = to[e];
                     in_queue[to[e]] = 1;
@@ -304,75 +325,87 @@ int spfa(int s, int t, int n) {
             }
         }
     }
+
     return dist[t] < INF;
 }
 
+// ========== 最小费用最大流 ==========
 int mcmf(int s, int t, int n) {
     int total_cost = 0;
+
     while (spfa(s, t, n)) {
-        // 找最小可增广量（这里每次增广1单位即可）
+        // 找最小可增广量
         int flow = INF;
         for (int v = t; v != s; v = prevv[v])
             if (cap[preve[v]] < flow) flow = cap[preve[v]];
-        // 增广
+
+        // 沿路径增广
         for (int v = t; v != s; v = prevv[v]) {
             cap[preve[v]] -= flow;
             cap[preve[v] ^ 1] += flow;
         }
+
         total_cost += dist[t] * flow;
     }
+
     return total_cost;
 }
 
-// ========== 建图 ==========
-// 节点编号：(i,j) 的 in  = (i-1)*N+j
-//           (i,j) 的 out = N*N + (i-1)*N+j
+// ========== 主程序 ==========
+// 节点编号：
+// (i,j) 的 in  = (i-1)*N+j
+// (i,j) 的 out = N*N + (i-1)*N+j
 // 源点 S = 2*N*N+1，汇点 T = 2*N*N+2
 
 int main() {
     int N;
     scanf("%d", &N);
 
+    // 读入格子值
     int map[10][10] = {0};
     int x, y, v;
     while (scanf("%d %d %d", &x, &y, &v) && (x || y || v))
         map[x][y] = v;
 
+    // 初始化
     init();
 
     int S = 2 * N * N + 1;
     int T = 2 * N * N + 2;
     int total_nodes = T;
 
-#define IN(i,j)  ((i-1)*N+(j))
-#define OUT(i,j) (N*N+(i-1)*N+(j))
+    #define IN(i,j)  ((i-1)*N+(j))
+    #define OUT(i,j) (N*N+(i-1)*N+(j))
 
     // 拆点建边
     for (int i = 1; i <= N; i++) {
         for (int j = 1; j <= N; j++) {
             if (map[i][j] > 0) {
-                // 第一单位流：取走数字，费用为负（求最小费用）
+                // 第一单位流：取走数字
                 add_edge(IN(i,j), OUT(i,j), 1, -map[i][j]);
                 // 第二单位流：不取数字
                 add_edge(IN(i,j), OUT(i,j), 1, 0);
             } else {
+                // 无值格子：两单位流都可通过
                 add_edge(IN(i,j), OUT(i,j), 2, 0);
             }
+
             // 向右、向下连边
             if (j + 1 <= N) add_edge(OUT(i,j), IN(i,j+1), 2, 0);
             if (i + 1 <= N) add_edge(OUT(i,j), IN(i+1,j), 2, 0);
         }
     }
 
-    // 源汇
+    // 连接源汇
     add_edge(S, IN(1,1), 2, 0);
     add_edge(OUT(N,N), T, 2, 0);
 
+    // 求解
     int ans = -mcmf(S, T, total_nodes);
     printf("%d\n", ans);
     return 0;
 }
-时间复杂度：O(E · SPFA)
+```
 
 优势：可轻松扩展到 K 条路径。
 
