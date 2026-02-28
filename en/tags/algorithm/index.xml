@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <channel>
-        <title>Home on WangScape</title>
-        <link>https://w2343419-del.github.io/WangScape/en/</link>
-        <description>Recent content in Home on WangScape</description>
+        <title>Algorithm on WangScape</title>
+        <link>https://w2343419-del.github.io/WangScape/en/tags/algorithm/</link>
+        <description>Recent content in Algorithm on WangScape</description>
         <generator>Hugo -- gohugo.io</generator>
         <language>en</language>
-        <lastBuildDate>Sat, 28 Feb 2026 11:31:00 +0800</lastBuildDate><atom:link href="https://w2343419-del.github.io/WangScape/en/index.xml" rel="self" type="application/rss+xml" /><item>
+        <lastBuildDate>Sat, 28 Feb 2026 11:31:00 +0800</lastBuildDate><atom:link href="https://w2343419-del.github.io/WangScape/en/tags/algorithm/index.xml" rel="self" type="application/rss+xml" /><item>
         <title>P1004 [NOIP 2000 Advanced Group] Grid Number Picking: Analysis and Summary</title>
         <link>https://w2343419-del.github.io/WangScape/en/p/p1004-noip-2000-advanced-group-grid-number-picking-analysis-and-summary/</link>
         <pubDate>Sat, 28 Feb 2026 11:31:00 +0800</pubDate>
@@ -579,85 +579,6 @@
 &lt;/div&gt;
 &lt;/div&gt;&lt;p&gt;Advantage: this model scales naturally to the general case of $K$ paths.&lt;/p&gt;
 </description>
-        </item>
-        <item>
-        <title>Hello and welcome to my blog</title>
-        <link>https://w2343419-del.github.io/WangScape/en/p/hello-and-welcome-to-my-blog/</link>
-        <pubDate>Tue, 03 Feb 2026 13:28:00 +0800</pubDate>
-        
-        <guid>https://w2343419-del.github.io/WangScape/en/p/hello-and-welcome-to-my-blog/</guid>
-        <description>&lt;p&gt;After a full day of self-doubt, debugging, and wrestling with tools, this blog finally went online.&lt;/p&gt;
-&lt;p&gt;January 21, 2026 became a special day for me.&lt;/p&gt;
-&lt;h2 id=&#34;what-i-plan-to-write&#34;&gt;What I plan to write
-&lt;/h2&gt;&lt;p&gt;I will mainly use this space to record:&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;Programming problems I run into and how I solve them&lt;/li&gt;
-&lt;li&gt;Algorithm notes and learning summaries&lt;/li&gt;
-&lt;li&gt;Occasional reflections, book notes, and favorite poems&lt;/li&gt;
-&lt;li&gt;Broader interests such as AI, games, music, and films&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;This blog may also become my cross-discipline notebook during university.&lt;/p&gt;
-&lt;h2 id=&#34;final-note&#34;&gt;Final note
-&lt;/h2&gt;&lt;p&gt;I cannot promise perfect consistency, but I will do my best to keep updating.&lt;/p&gt;
-&lt;p&gt;The site is still rough around the edges for now, and I will keep improving it over time.&lt;/p&gt;
-&lt;hr&gt;
-&lt;p&gt;&lt;em&gt;Edited on February 3, 2026&lt;/em&gt;&lt;/p&gt;
-</description>
-        </item>
-        <item>
-        <title>Site Repair Summary</title>
-        <link>https://w2343419-del.github.io/WangScape/en/p/site-repair-summary/</link>
-        <pubDate>Mon, 02 Feb 2026 12:14:00 +0800</pubDate>
-        
-        <guid>https://w2343419-del.github.io/WangScape/en/p/site-repair-summary/</guid>
-        <description>&lt;p&gt;In a recent development cycle, I completed a set of fixes and feature updates for the site.&lt;/p&gt;
-&lt;h2 id=&#34;ui-and-display-fixes&#34;&gt;UI and display fixes
-&lt;/h2&gt;&lt;ul&gt;
-&lt;li&gt;Fixed animation stuttering in the lower-left sidebar&lt;/li&gt;
-&lt;li&gt;Fixed language switching between Chinese and English&lt;/li&gt;
-&lt;li&gt;Fixed avatar rendering issues&lt;/li&gt;
-&lt;/ul&gt;
-&lt;h2 id=&#34;features-and-workflow-updates&#34;&gt;Features and workflow updates
-&lt;/h2&gt;&lt;ul&gt;
-&lt;li&gt;Fixed the page view counting issue and resolved Umami API integration&lt;/li&gt;
-&lt;li&gt;Released &lt;strong&gt;WSwriter&lt;/strong&gt;, an article writing and publishing assistant
-&lt;ul&gt;
-&lt;li&gt;Supports one-click preview, submit, edit, and delete&lt;/li&gt;
-&lt;li&gt;Supports inserting code blocks, images, and tables&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-&lt;h2 id=&#34;interaction-and-reliability&#34;&gt;Interaction and reliability
-&lt;/h2&gt;&lt;ul&gt;
-&lt;li&gt;Added comment functionality&lt;/li&gt;
-&lt;li&gt;Fixed the double-quote bug when adding tags in WSwriter&lt;/li&gt;
-&lt;li&gt;Performed general security maintenance for the site&lt;/li&gt;
-&lt;/ul&gt;
-</description>
-        </item>
-        <item>
-        <title>Archives</title>
-        <link>https://w2343419-del.github.io/WangScape/en/archives/</link>
-        <pubDate>Wed, 21 Jan 2026 00:00:00 +0000</pubDate>
-        
-        <guid>https://w2343419-del.github.io/WangScape/en/archives/</guid>
-        <description></description>
-        </item>
-        <item>
-        <title>Links</title>
-        <link>https://w2343419-del.github.io/WangScape/en/links/</link>
-        <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-        
-        <guid>https://w2343419-del.github.io/WangScape/en/links/</guid>
-        <description></description>
-        </item>
-        <item>
-        <title>Search</title>
-        <link>https://w2343419-del.github.io/WangScape/en/search/</link>
-        <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-        
-        <guid>https://w2343419-del.github.io/WangScape/en/search/</guid>
-        <description></description>
         </item>
         
     </channel>
