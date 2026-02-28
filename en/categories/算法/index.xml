@@ -15,41 +15,42 @@
         <description>&lt;p&gt;This is a classic but difficult chessboard model problem. Although it is a NOIP problem in 2000, it is still quite difficult for first-time contacts like me as the finale.&lt;/p&gt;
 &lt;p&gt;Look at the background of the question first&lt;/p&gt;
 &lt;p&gt;NOIP 2000 improvement group T4&lt;/p&gt;
-&lt;p&gt;Question description
-There is a square diagram of N × N (N ≤ 9), some of which we fill in positive integers, while others put the number 0.&lt;/p&gt;
-&lt;p&gt;Someone starts at point A (0, 0) in the top left corner of the diagram and can walk down or to the right until they reach point B (N, N) in the bottom right corner. On the way he walks, he can take the number in the square (which becomes the number 0).&lt;/p&gt;
-&lt;p&gt;This person walked from point A to point B twice, trying to find 2 such paths, so that the sum of the obtained numbers is the maximum.&lt;/p&gt;
-&lt;p&gt;Input format
-The first line of the input is an integer N (representing the grid diagram of N × N), the next row has three integers, the first two represent the position, and the third number is the number put on the position.A separate line of 0 indicates the end of the input.&lt;/p&gt;
-&lt;p&gt;Output format
-Just output an integer representing the maximum sum obtained on the 2 paths.&lt;/p&gt;
-&lt;p&gt;Sample input/output
-Input
-8
-2 3 13
-2 6 6
-3 5 7
-4 4 14
-5 2 21
-5 6 4
-6 3 15
-7 2 14
-0 0 0&lt;/p&gt;
+&lt;p&gt;Question description&lt;/p&gt;
+&lt;p&gt;There is a square diagram of N × N (N ≤ 9), some of which we fill in positive integers, while others put the number 0.
+Someone starts at point A (0, 0) in the top left corner of the diagram and can walk down or to the right until they reach point B (N, N) in the bottom right corner.On the way he walks, he can take the number in the square (which becomes the number 0).
+This person walked from point A to point B twice, trying to find 2 such paths, so that the sum of the obtained numbers is the maximum.&lt;/p&gt;
+&lt;p&gt;Date input format&lt;/p&gt;
+&lt;p&gt;The first line of the input is an integer N (representing the grid diagram of N × N), the next line has three integers, the first two represent the position, and the third number is the number put on the position. A separate line of 0 indicates the end of the input.&lt;/p&gt;
+&lt;p&gt;Output format&lt;/p&gt;
+&lt;p&gt;Just output an integer representing the maximum sum obtained on the 2 paths.&lt;/p&gt;
+&lt;p&gt;Sample input/output&lt;/p&gt;
+&lt;p&gt;Masukkan&lt;/p&gt;
+&lt;p&gt;9&lt;/p&gt;
+&lt;p&gt;2 3 13&lt;/p&gt;
+&lt;p&gt;2 6 6&lt;/p&gt;
+&lt;p&gt;3 5 7&lt;/p&gt;
+&lt;p&gt;4 4 14&lt;/p&gt;
+&lt;p&gt;5 2 21&lt;/p&gt;
+&lt;p&gt;5 6 4&lt;/p&gt;
+&lt;p&gt;6 3 15&lt;/p&gt;
+&lt;p&gt;= 7×2 = 14)&lt;/p&gt;
+&lt;p&gt;0 0 0&lt;/p&gt;
 &lt;p&gt;Output
 67&lt;/p&gt;
-&lt;p&gt;Instructions/Tips
-Data range: 1 ≤ N ≤ 9.&lt;/p&gt;
-&lt;p&gt;I initially tried to enumerate the matrix that had been changed (that is, simulated) again after a round of enumeration, but found that the difficulty was a little too great. Finally, I couldn&amp;rsquo;t think of a solution, so I found Claude&amp;rsquo;s teacher. The solution it gave was to use the dp algorithm (see method 1 for details). I thought of the algorithm of DFS combined with pruning (thank you for the maze problem I did before, it is an algorithm problem related to the minimum number of steps, which is just suitable for DFS combined with pruning) (see method 2 for details). Later, Claude also gave an algorithm that is suitable for general solutions - the cost flow solution method (too difficult, belonging to the hyper-schema solution method, sketching one or two, see method 3 for details).&lt;/p&gt;
+&lt;p&gt;Instructions/Tips&lt;/p&gt;
+&lt;p&gt;Data range: 1 ≤ N ≤ 9.&lt;/p&gt;
+&lt;p&gt;I initially tried to enumerate the matrix that had been changed (that is, simulated) again after a round of enumeration, but found that the difficulty was a little too great. Finally, I couldn&amp;rsquo;t think of a solution, so I found Claude. The solution it gave was to use the dp algorithm (see method 1 for details). I also thought of the algorithm of DFS combined with pruning (thank you for the maze problem I did before, it is an algorithm problem related to the minimum number of steps, which is just suitable for DFS combined with pruning) (see method 2 for details). Later, Claude also gave an algorithm that is suitable for general solutions - the cost flow solution method (too difficult, belonging to the hyper-schema solution method, sketching one or two, see method 3 for details).&lt;/p&gt;
 &lt;p&gt;ps. Explain why two enums cannot be taken. One path changes the map, affecting the second, so the two paths must be considered in conjunction.&lt;/p&gt;
 &lt;p&gt;Solution 1 (dp dynamic programming):&lt;/p&gt;
 &lt;p&gt;Core idea: Advance both paths simultaneously and simulate two people walking at the same time with one DP.&lt;/p&gt;
 &lt;p&gt;State design: set dp [k] [x1] [x2], where:&lt;/p&gt;
-&lt;p&gt;k is the number of steps currently taken (i.e. the value of x + y, from 2 to 2N)
-x1 and x2 are the line numbers where the two people are currently located.
-By k and x can be derived y = k - x (key, this step reduces the dimension), so the column number does not need to be stored separately&lt;/p&gt;
+&lt;p&gt;k is the number of steps currently taken (i.e. the value of x + y, from 2 to 2N)&lt;/p&gt;
+&lt;p&gt;x1 and x2 are the line numbers where the two people are currently located.&lt;/p&gt;
+&lt;p&gt;By k and x can be derived y = k - x (key, this step reduces the dimension), so the column number does not need to be stored separately&lt;/p&gt;
 &lt;p&gt;Deduplication: When two people are in the same cell (x1 = = x2, then y1 = = y2), the cell is taken only once.&lt;/p&gt;
 &lt;p&gt;Transfer: Two people each can choose to move to the right or down for a total of 4 combinations.&lt;/p&gt;
-&lt;p&gt;Full code __ code_block_0 __\ n\ n&lt;/p&gt;
+&lt;p&gt;Full Code
+__ code_block_0 __\ n\ n&lt;/p&gt;
 &lt;p&gt;Time complexity: O (N ³)&lt;/p&gt;
 &lt;p&gt;Solution 2 (DFS + pruning):&lt;/p&gt;
 &lt;p&gt;Core idea: Similar to the dp algorithm (after all, deep search and dp are essentially one thing), but adds the step of memorized search, avoiding repetitive searches. (If there is no memory search, the amount of calculation will be an exponential explosion, about 4 ^ 16 times at N = 9)&lt;/p&gt;
