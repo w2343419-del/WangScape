@@ -2,12 +2,6 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://w2343419-del.github.io/WangScape/en/categories/algorithm/</loc>
-    <lastmod>2026-02-28T11:31:00+08:00</lastmod>
-  </url><url>
-    <loc>https://w2343419-del.github.io/WangScape/en/tags/algorithm/</loc>
-    <lastmod>2026-02-28T11:31:00+08:00</lastmod>
-  </url><url>
     <loc>https://w2343419-del.github.io/WangScape/en/categories/</loc>
     <lastmod>2026-02-28T11:31:00+08:00</lastmod>
     <xhtml:link
@@ -34,7 +28,7 @@
                 href="https://w2343419-del.github.io/WangScape/en/"
                 />
   </url><url>
-    <loc>https://w2343419-del.github.io/WangScape/en/p/p1004-noip-2000-advanced-group-grid-number-picking-analysis-and-summary/</loc>
+    <loc>https://w2343419-del.github.io/WangScape/en/p/p1004-noip-2000-improvement-group-grid-score-analysis-and-summary/</loc>
     <lastmod>2026-02-28T11:31:00+08:00</lastmod>
     <xhtml:link
                 rel="alternate"
@@ -44,7 +38,7 @@
     <xhtml:link
                 rel="alternate"
                 hreflang="en"
-                href="https://w2343419-del.github.io/WangScape/en/p/p1004-noip-2000-advanced-group-grid-number-picking-analysis-and-summary/"
+                href="https://w2343419-del.github.io/WangScape/en/p/p1004-noip-2000-improvement-group-grid-score-analysis-and-summary/"
                 />
   </url><url>
     <loc>https://w2343419-del.github.io/WangScape/en/post/</loc>
@@ -71,6 +65,32 @@
                 rel="alternate"
                 hreflang="en"
                 href="https://w2343419-del.github.io/WangScape/en/tags/"
+                />
+  </url><url>
+    <loc>https://w2343419-del.github.io/WangScape/en/categories/%E7%AE%97%E6%B3%95/</loc>
+    <lastmod>2026-02-28T11:31:00+08:00</lastmod>
+    <xhtml:link
+                rel="alternate"
+                hreflang="zh-cn"
+                href="https://w2343419-del.github.io/WangScape/categories/%E7%AE%97%E6%B3%95/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="en"
+                href="https://w2343419-del.github.io/WangScape/en/categories/%E7%AE%97%E6%B3%95/"
+                />
+  </url><url>
+    <loc>https://w2343419-del.github.io/WangScape/en/tags/%E7%AE%97%E6%B3%95/</loc>
+    <lastmod>2026-02-28T11:31:00+08:00</lastmod>
+    <xhtml:link
+                rel="alternate"
+                hreflang="zh-cn"
+                href="https://w2343419-del.github.io/WangScape/tags/%E7%AE%97%E6%B3%95/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="en"
+                href="https://w2343419-del.github.io/WangScape/en/tags/%E7%AE%97%E6%B3%95/"
                 />
   </url><url>
     <loc>https://w2343419-del.github.io/WangScape/en/p/hello-and-welcome-to-my-blog/</loc>

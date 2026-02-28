@@ -41,8 +41,8 @@
 &lt;p&gt;数据范围：1≤N≤9。&lt;/p&gt;
 &lt;p&gt;我一开始尝试是选择的先进行一轮枚举，然后再对已进行了更改的 matrix 进行再一次的枚举（就是模拟取数），但是发现难度有点过大。最后实在想不出来解决方法了，找了 Claude，它给出的解决方法是采用 dp 算法（详见解法一），我又想到了 DFS 结合剪枝的算法（感谢自己之前做的走迷宫问题，那是一道有关最少步数的算法题，刚好适用于 DFS 结合剪枝）（详见解法二），随后 Claude 还给出了一个适用于一般解的算法————费用流解法（难度过大，属于超纲解法，略写一二，详见解法三）。&lt;/p&gt;
 &lt;p&gt;ps. 解释一下为什么不能采取两次枚举。一次路径会改变地图，影响第二次，所以两条路径必须联动考虑。&lt;/p&gt;
-&lt;p&gt;解法一（dp 动态规划）：&lt;/p&gt;
-&lt;p&gt;核心思想：将两条路径同步推进，用一个DP同时模拟两个人的行走。&lt;/p&gt;
+&lt;h3 id=&#34;解法一dp-动态规划&#34;&gt;解法一（dp 动态规划）：
+&lt;/h3&gt;&lt;p&gt;核心思想：将两条路径同步推进，用一个DP同时模拟两个人的行走。&lt;/p&gt;
 &lt;p&gt;状态设计：设 dp[k][x1][x2]，其中：&lt;/p&gt;
 &lt;p&gt;k 为当前走的步数（即 x + y 的值，从2到2N）&lt;/p&gt;
 &lt;p&gt;x1、x2 分别为两人当前所在的行号&lt;/p&gt;
@@ -179,8 +179,8 @@
 &lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
 &lt;/div&gt;
 &lt;/div&gt;&lt;p&gt;时间复杂度：O(N³)&lt;/p&gt;
-&lt;p&gt;解法二（DFS + 剪枝）：&lt;/p&gt;
-&lt;p&gt;核心思想：类似于 dp 算法（毕竟深搜和 dp 本质上就是一个东西），但添加了记忆化搜索这一步，避免了重复搜索。（若无记忆化搜索，计算量将是指数级爆炸，在 N=9 时约为 4^16 次）&lt;/p&gt;
+&lt;h3 id=&#34;解法二dfs--剪枝&#34;&gt;解法二（DFS + 剪枝）：
+&lt;/h3&gt;&lt;p&gt;核心思想：类似于 dp 算法（毕竟深搜和 dp 本质上就是一个东西），但添加了记忆化搜索这一步，避免了重复搜索。（若无记忆化搜索，计算量将是指数级爆炸，在 N=9 时约为 4^16 次）&lt;/p&gt;
 &lt;p&gt;完整代码&lt;/p&gt;
 &lt;div class=&#34;highlight&#34;&gt;&lt;div class=&#34;chroma&#34;&gt;
 &lt;table class=&#34;lntable&#34;&gt;&lt;tr&gt;&lt;td class=&#34;lntd&#34;&gt;
@@ -309,8 +309,8 @@
 &lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
 &lt;/div&gt;
 &lt;/div&gt;&lt;p&gt;时间复杂度：O(N³)&lt;/p&gt;
-&lt;p&gt;解法三（费用流解法）：&lt;/p&gt;
-&lt;p&gt;核心思想：将&amp;quot;两条路径取最大值&amp;quot;转化为网络流问题。&lt;/p&gt;
+&lt;h3 id=&#34;解法三费用流解法&#34;&gt;解法三（费用流解法）：
+&lt;/h3&gt;&lt;p&gt;核心思想：将&amp;quot;两条路径取最大值&amp;quot;转化为网络流问题。&lt;/p&gt;
 &lt;p&gt;建模思路
 关键观察：
 两条从 A 到 B 的路径 = 从源点到汇点流量为 2 的流
