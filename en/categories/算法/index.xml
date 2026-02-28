@@ -50,11 +50,12 @@ This person walked from point A to point B twice, trying to find 2 such paths, s
 &lt;p&gt;Deduplication: When two people are in the same cell (x1 = = x2, then y1 = = y2), the cell is taken only once.&lt;/p&gt;
 &lt;p&gt;Transfer: Two people each can choose to move to the right or down for a total of 4 combinations.&lt;/p&gt;
 &lt;p&gt;Full Code
-__ code_block_0 __\ n\ n&lt;/p&gt;
+__ code_block_0 __&lt;/p&gt;
 &lt;p&gt;Time complexity: O (N ³)&lt;/p&gt;
 &lt;p&gt;Solution 2 (DFS + pruning):&lt;/p&gt;
 &lt;p&gt;Core idea: Similar to the dp algorithm (after all, deep search and dp are essentially one thing), but adds the step of memorized search, avoiding repetitive searches. (If there is no memory search, the amount of calculation will be an exponential explosion, about 4 ^ 16 times at N = 9)&lt;/p&gt;
-&lt;p&gt;Full code __ code_block_1 __\ n\ n&lt;/p&gt;
+&lt;p&gt;Full Code
+__ code_block_1 __&lt;/p&gt;
 &lt;p&gt;Time complexity: O (N ³)&lt;/p&gt;
 &lt;p&gt;Solution 3 (Cost Flow Solution):&lt;/p&gt;
 &lt;p&gt;Core idea: Convert &amp;ldquo;maximizing the two paths&amp;rdquo; into a network flow problem.&lt;/p&gt;
@@ -71,10 +72,10 @@ Namely: Consolidated to Capacity 2, but only the first unit stream has revenue&l
 &lt;p&gt;Source sink: The source point S is connected to (1,1) .in, (N, N) .out is connected to the sink point T, and the traffic is 2.&lt;/p&gt;
 &lt;p&gt;After splitting each grid (i, j):&lt;/p&gt;
 &lt;p&gt;Capacity 1, cost-val (first way through, take the number)
-in (i, j) = = = = = = = = = = = = = = = = &amp;gt; out (i, j)
+in (i, j) = = = = = = = = = = = = = = = = = = &amp;gt; out (i, j)
 Capacity 1, cost 0 (second way through, number taken)&lt;/p&gt;
-&lt;p&gt;Full code (MCMF, SPFA implementation) __ code_block_2 __\ n\ n&lt;/p&gt;
-&lt;p&gt;Time complexity: O (E · SPFA)&lt;/p&gt;
+&lt;p&gt;Full code (MCMF, SPFA implementation)
+__ code_block_2 __&lt;/p&gt;
 &lt;p&gt;Advantage: Easily scales to K paths.&lt;/p&gt;
 </description>
         </item>
