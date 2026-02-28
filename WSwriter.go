@@ -5901,77 +5901,90 @@ var htmlTemplate = `<!DOCTYPE html>
             // 更新categories
             if (currentMetadata.categories.length > 0) {
                 const catYaml = 'categories:\n' + currentMetadata.categories.map(c => '    - ' + c.replace(/"/g, '\\"')).join('\n');
-                newFm = newFm.replace(/categories:.*?(?=\n[a-z]|\n---)/s, catYaml);
+                // 删除旧的categories及其子项（仅匹配缩进的列表项）
+                newFm = newFm.replace(/categories:\n((?:    - [^\n]*\n)*)/g, catYaml + '\n');
                 if (!newFm.includes('categories:')) {
-                    newFm = newFm.replace(/---\n/, '---\n' + catYaml + '\n');
+                    newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + catYaml + '\n');
                 }
             } else {
-                newFm = newFm.replace(/categories:.*?(?=\n[a-z]|\n---)/s, '');
+                // 删除categories及所有子项
+                newFm = newFm.replace(/categories:\n((?:    - [^\n]*\n)*)/g, '');
             }
 
             // 更新tags
             if (currentMetadata.tags.length > 0) {
                 const tagYaml = 'tags:\n' + currentMetadata.tags.map(t => '    - ' + t.replace(/"/g, '\\"')).join('\n');
-                newFm = newFm.replace(/tags:.*?(?=\n[a-z]|\n---)/s, tagYaml);
+                // 删除旧的tags及其子项（仅匹配缩进的列表项）
+                newFm = newFm.replace(/tags:\n((?:    - [^\n]*\n)*)/g, tagYaml + '\n');
                 if (!newFm.includes('tags:')) {
-                    newFm = newFm.replace(/---\n/, '---\n' + tagYaml + '\n');
+                    newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + tagYaml + '\n');
                 }
             } else {
-                newFm = newFm.replace(/tags:.*?(?=\n[a-z]|\n---)/s, '');
+                // 删除tags及所有子项
+                newFm = newFm.replace(/tags:\n((?:    - [^\n]*\n)*)/g, '');
             }
 
             // 更新description
             if (currentMetadata.description) {
-                newFm = newFm.replace(/description:.*?\n/, 'description: "' + currentMetadata.description.replace(/"/g, '\\"') + '"\n');
+                newFm = newFm.replace(/description:\s*[^\n]*/, 'description: "' + currentMetadata.description.replace(/"/g, '\\"') + '"');
                 if (!newFm.includes('description:')) {
-                    newFm = newFm.replace(/---\n/, '---\ndescription: "' + currentMetadata.description.replace(/"/g, '\\"') + '"\n');
+                    newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'description: "' + currentMetadata.description.replace(/"/g, '\\"') + '"\n');
                 }
+            } else {
+                // 删除空的description字段
+                newFm = newFm.replace(/description:\s*[^\n]*\n?/, '');
             }
 
             // 更新image
             if (currentMetadata.image) {
-                newFm = newFm.replace(/image:.*?\n/, 'image: "' + currentMetadata.image.replace(/"/g, '\\"') + '"\n');
+                newFm = newFm.replace(/image:\s*[^\n]*/, 'image: "' + currentMetadata.image.replace(/"/g, '\\"') + '"');
                 if (!newFm.includes('image:')) {
-                    newFm = newFm.replace(/---\n/, '---\nimage: "' + currentMetadata.image.replace(/"/g, '\\"') + '"\n');
+                    newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'image: "' + currentMetadata.image.replace(/"/g, '\\"') + '"\n');
                 }
+            } else {
+                // 删除空的image字段
+                newFm = newFm.replace(/image:\s*[^\n]*\n?/, '');
             }
 
             // 更新draft
-            newFm = newFm.replace(/draft:.*?\n/, 'draft: ' + currentMetadata.draft + '\n');
+            newFm = newFm.replace(/draft:\s*[^\n]*/, 'draft: ' + currentMetadata.draft);
             if (!newFm.includes('draft:')) {
-                newFm = newFm.replace(/---\n/, '---\ndraft: ' + currentMetadata.draft + '\n');
+                newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'draft: ' + currentMetadata.draft + '\n');
             }
 
             // 更新license
             if (currentMetadata.license) {
-                newFm = newFm.replace(/license:.*?\n/, 'license: ' + currentMetadata.license + '\n');
+                newFm = newFm.replace(/license:\s*[^\n]*/, 'license: "' + currentMetadata.license.replace(/"/g, '\\"') + '"');
                 if (!newFm.includes('license:')) {
-                    newFm = newFm.replace(/---\n/, '---\nlicense: ' + currentMetadata.license + '\n');
+                    newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'license: "' + currentMetadata.license.replace(/"/g, '\\"') + '"\n');
                 }
+            } else {
+                // 删除空的license字段
+                newFm = newFm.replace(/license:\s*[^\n]*\n?/, '');
             }
 
             // 更新math
-            newFm = newFm.replace(/math:.*?\n/, 'math: ' + currentMetadata.math + '\n');
+            newFm = newFm.replace(/math:\s*[^\n]*/, 'math: ' + currentMetadata.math);
             if (!newFm.includes('math:')) {
-                newFm = newFm.replace(/---\n/, '---\nmath: ' + currentMetadata.math + '\n');
+                newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'math: ' + currentMetadata.math + '\n');
             }
 
             // 更新comments
-            newFm = newFm.replace(/comments:.*?\n/, 'comments: ' + currentMetadata.comments + '\n');
+            newFm = newFm.replace(/comments:\s*[^\n]*/, 'comments: ' + currentMetadata.comments);
             if (!newFm.includes('comments:')) {
-                newFm = newFm.replace(/---\n/, '---\ncomments: ' + currentMetadata.comments + '\n');
+                newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'comments: ' + currentMetadata.comments + '\n');
             }
 
             // 更新hidden
-            newFm = newFm.replace(/hidden:.*?\n/, 'hidden: ' + currentMetadata.hidden + '\n');
+            newFm = newFm.replace(/hidden:\s*[^\n]*/, 'hidden: ' + currentMetadata.hidden);
             if (!newFm.includes('hidden:')) {
-                newFm = newFm.replace(/---\n/, '---\nhidden: ' + currentMetadata.hidden + '\n');
+                newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'hidden: ' + currentMetadata.hidden + '\n');
             }
 
             // 更新pinned
-            newFm = newFm.replace(/pinned:.*?\n/, 'pinned: ' + currentMetadata.pinned + '\n');
+            newFm = newFm.replace(/pinned:\s*[^\n]*/, 'pinned: ' + currentMetadata.pinned);
             if (!newFm.includes('pinned:')) {
-                newFm = newFm.replace(/---\n/, '---\npinned: ' + currentMetadata.pinned + '\n');
+                newFm = newFm.replace(/(---\n)/, '$1' + 'pinned: ' + currentMetadata.pinned + '\n');
             }
 
             // 更新编辑器内容
