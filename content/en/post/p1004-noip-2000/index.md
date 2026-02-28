@@ -7,9 +7,9 @@ pinned: false
 title: "P1004 [NOIP 2000 improvement group] grid score analysis and summary"
 description: "date: 2026-02-28T11:31:04+08:00"
 date: 2026-02-28T11:31:00+08:00
-image: "math: false
-math: 
-license: hidden: false
+image: ""
+math: false
+license: ""
 hidden: false
 comments: true
 draft: false

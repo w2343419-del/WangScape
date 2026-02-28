@@ -7,9 +7,9 @@ pinned: false
 title: "P1004 [NOIP 2000 提高组] 方格取数 分析与总结"
 description: "date: 2026-02-28T11:31:04+08:00"
 date: 2026-02-28T11:31:00+08:00
-image: "math: false
-math: 
-license: hidden: false
+image: ""
+math: false
+license: ""
 hidden: false
 comments: true
 draft: false
