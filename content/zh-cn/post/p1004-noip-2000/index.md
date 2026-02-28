@@ -114,7 +114,7 @@ int main() {
 
     dp[2][1][1] = map[1][1];
 
-    // 动态规划主循环
+    // ========== 动态规划主循环 ==========
     for (int k = 2; k < 2 * N; k++) {
         for (int x1 = 1; x1 <= N; x1++) {
             int y1 = k - x1;
@@ -167,6 +167,8 @@ int main() {
 ```c
 #include <stdio.h>
 #include <string.h>
+
+// ========== DFS + 记忆化搜索 ==========
 
 int N;
 int map[10][10];
@@ -265,6 +267,8 @@ in(i,j) ================> out(i,j)
 #define MAXE 10000
 #define INF  0x3f3f3f3f
 
+// ========== 链式前向星数据结构 ==========
+
 int head[MAXN], nxt[MAXE], to[MAXE], cap[MAXE], cost[MAXE], tot;
 
 void init() {
@@ -279,6 +283,8 @@ void add_edge(int u, int v, int c, int w) {
 
 int dist[MAXN], in_queue[MAXN], prevv[MAXN], preve[MAXN];
 int queue[MAXN * 100];
+
+// ========== SPFA算法 ==========
 
 int spfa(int s, int t, int n) {
     memset(dist, 0x3f, sizeof(int) * (n + 1));
@@ -311,6 +317,8 @@ int spfa(int s, int t, int n) {
 
     return dist[t] < INF;
 }
+
+// ========== 最小费用最大流 ==========
 
 int mcmf(int s, int t, int n) {
     int total_cost = 0;

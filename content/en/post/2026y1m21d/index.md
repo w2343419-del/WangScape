@@ -1,45 +1,37 @@
 ---
 pinned: true
 title: "Hello and welcome to my blog"
-description: 
+description: "My blog is live: learning notes, algorithms, and life reflections"
 date: 2026-02-03T13:28:00+08:00
-
-image: 
+image: ""
 math: false
-license: 
+license: ""
 hidden: false
 comments: true
 draft: false
 ---
 
-After nearly a day of half a day of self-doubt, half a day of fighting with AI (doge), and a whole day of using your head and table harder than anyone else...
+After a full day of self-doubt, debugging, and wrestling with tools, this blog finally went online.
 
-January 21, 2026 finally became an extraordinary day for me.
+January 21, 2026 became a special day for me.
 
-My personal blog is finally live!!!
+## What I plan to write
 
-I will record my learning experience on my blog, occasionally complain, and even occasionally write a book review (and even record some of my favorite poems)
+I will mainly use this space to record:
 
-I will record the difficulties I have encountered in programming, the harvest, and a summary of some knowledge points.
+- Programming problems I run into and how I solve them
+- Algorithm notes and learning summaries
+- Occasional reflections, book notes, and favorite poems
+- Broader interests such as AI, games, music, and films
 
-This blog might also be my all-disciplinary notebook? (University Only)
+This blog may also become my cross-discipline notebook during university.
 
-(Although I don't know if I can maintain my blog all the time, after all, it's lazy, do your best)
+## Final note
 
-Of course, I will also record some other things, not only in terms of code, but also in terms of artificial intelligence? Algorithmic? Or, in terms of gaming?
+I cannot promise perfect consistency, but I will do my best to keep updating.
 
-Or, music? Movies?
+The site is still rough around the edges for now, and I will keep improving it over time.
 
-I will do my best to make blogging learning-oriented, hopefully.
+---
 
-I hope my update frequency is not too low...
-
-That's it, it's time to continue fixing the bug...
-
-(ps. Now the blog is still rough, it will be better in the future!)
-
-
-
-
-
-Edited February 3, 2026
+*Edited on February 3, 2026*

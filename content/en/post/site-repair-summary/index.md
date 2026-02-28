@@ -1,11 +1,11 @@
 ---
 pinned: true
 tags:
-    - 网站更新
+    - Site Updates
 categories:
-    - 网站更新
+    - Site Updates
 title: "Site Repair Summary"
-description: "网站修复记录"
+description: "Summary of website bug fixes and feature updates"
 date: 2026-02-02T12:14:00+08:00
 image: ""
 math: false
@@ -15,18 +15,23 @@ comments: true
 draft: false
 ---
 
-1. Fixed the animation carton problem in the lower left column;
+In a recent development cycle, I completed a set of fixes and feature updates for the site.
 
-2. Fixed the problem of switching between the Chinese and English interfaces;
+## UI and display fixes
 
-3. Fixed the problem of avatar display;
+- Fixed animation stuttering in the lower-left sidebar
+- Fixed language switching between Chinese and English
+- Fixed avatar rendering issues
 
-4. Fixed the problem of counting function and solved the problem of calling Umami API;
+## Features and workflow updates
 
-5. Launched WSwriter, a website article writing and pushing assistant, to meet the needs of writing in the office-like interface without the IDE interface, supporting one-click preview, submission, modification, and deletion of articles, as well as inserting code, images, and tables;
+- Fixed the page view counting issue and resolved Umami API integration
+- Released **WSwriter**, an article writing and publishing assistant
+    - Supports one-click preview, submit, edit, and delete
+    - Supports inserting code blocks, images, and tables
 
-6. Added commenting function;
+## Interaction and reliability
 
-7. Fixed the error of double quotes when adding tags to WSwriter;
-
-8. The security of the website has been maintained.
+- Added comment functionality
+- Fixed the double-quote bug when adding tags in WSwriter
+- Performed general security maintenance for the site
