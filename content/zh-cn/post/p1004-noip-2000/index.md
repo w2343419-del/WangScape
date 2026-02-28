@@ -91,7 +91,8 @@ x1、x2 分别为两人当前所在的行号
 
 
 完整代码
-```C\n// #include <stdio.h>
+```c
+#include <stdio.h>
 
 int N;
 int map[10][10];
@@ -148,7 +149,8 @@ int main() {
 
     printf("%d\n", dp[2 * N][N][N]);
     return 0;
-}\n\n```\n\n
+}
+```
 
 时间复杂度：O(N³)
 
@@ -157,8 +159,8 @@ int main() {
 
 核心思想：类似于 dp 算法（毕竟深搜和 dp 本质上就是一个东西），但添加了记忆化搜索这一步，避免了重复搜索。（若无记忆化搜索，计算量将是指数级爆炸，在 N=9 时约为 4^16 次）
 
-完整代码```C\n// 
-
+完整代码
+```c
 #include <stdio.h>
 #include <string.h>
 
@@ -222,7 +224,8 @@ int main() {
 
     printf("%d\n", result >= 0 ? start_val + result : 0);
     return 0;
-}\n\n```\n\n
+}
+```
 
 时间复杂度：O(N³)
 
@@ -253,8 +256,8 @@ in(i,j) ===============> out(i,j)
         容量1，费用0     (第二条路经过，数字已取走)
 
 
-完整代码（MCMF，SPFA实现）```C\n// 
-
+完整代码（MCMF，SPFA实现）
+```c
 #include <stdio.h>
 #include <string.h>
 
@@ -368,9 +371,7 @@ int main() {
     int ans = -mcmf(S, T, total_nodes);
     printf("%d\n", ans);
     return 0;
-}\n\n```\n\n
-
-
+}
 时间复杂度：O(E · SPFA)
 
 优势：可轻松扩展到 K 条路径。
