@@ -259,8 +259,9 @@
 取得数字最大 = 费用最大（转为最小费用取负值）</p><p>拆点： 每个格子 (i,j) 拆成两个节点 in 和 out：
 in → out：容量 1，费用 -map[i][j]（取负是因为求最小费用）
 in → out：再加一条容量 1，费用 0（允许第二条路径经过但不重复取值）
-即：合并为容量 2，但只有第一单位流有收益</p><p>连边： (i,j) 的 out 连向 (i+1,j) 的 in 和 (i,j+1) 的 in，容量 2，费用 0。</p><p>源汇： 源点 S 连 (1,1).in，(N,N).out 连汇点 T，流量均为 2。</p><p>每个格子(i,j)拆点后：</p><pre><code>    容量1，费用-val  (第一条路经过，取走数字)
-</code></pre><p>in(i,j) ===============> out(i,j)
+即：合并为容量 2，但只有第一单位流有收益</p><p>连边： (i,j) 的 out 连向 (i+1,j) 的 in 和 (i,j+1) 的 in，容量 2，费用 0。</p><p>源汇： 源点 S 连 (1,1).in，(N,N).out 连汇点 T，流量均为 2。</p><p>每个格子(i,j)拆点后:
+容量1，费用-val (第一条路经过，取走数字)
+in(i,j) ================> out(i,j)
 容量1，费用0 (第二条路经过，数字已取走)</p><p>完整代码（MCMF，SPFA实现）</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>  1
 </span><span class=lnt>  2
 </span><span class=lnt>  3
