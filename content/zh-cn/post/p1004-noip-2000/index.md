@@ -1,13 +1,18 @@
 ---
+tags:
+    - 算法
+categories:
+    - 算法
+pinned: false
 title: "P1004 [NOIP 2000 提高组] 方格取数 分析与总结"
-description: 
-date: 2026-02-28T11:31:04+08:00
-image: 
+description: "date: 2026-02-28T11:31:04+08:00"
+date: 2026-02-28T11:31:00+08:00
+image: "math: false
 math: 
-license: 
+license: hidden: false
 hidden: false
 comments: true
-draft: true
+draft: false
 ---
 这是一道经典但具有一定难度的棋盘模型题，虽然是 2000 年的 NOIP 题目，但作为压轴，对于像我这样第一次接触的人来说，还是相当困难的。
 

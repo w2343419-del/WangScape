@@ -1,14 +1,19 @@
 ---
+tags:
+    - 算法
+categories:
+    - 算法
+pinned: false
 title: "P1004 [NOIP 2000 improvement group] grid score analysis and summary"
-description: 
-date: 2026-02-28T11:31:04+08:00
-image: 
+description: "date: 2026-02-28T11:31:04+08:00"
+date: 2026-02-28T11:31:00+08:00
+image: "math: false
 math: 
-license: 
+license: hidden: false
 hidden: false
 comments: true
-draft: true
-ws_sync_zh_hash: "c558fb59332f571efec66d20b6fb77d4746fa8a79654dc5d36a11ef4e7013a17"
+draft: false
+ws_sync_zh_hash: "08d9623d5630b95a61578204e9753730521faf5f04db3fd269617cb91c2a00a2"
 ---This is a classic but difficult chessboard model problem. Although it is a NOIP problem in 2000, it is still quite difficult for first-time contacts like me as the finale.
 
 Look at the background of the question first
@@ -47,7 +52,7 @@ Output
 Instructions/Tips
 Data range: 1 ≤ N ≤ 9.
 
-I initially tried to enumerate the matrix that had been changed (that is, simulated) again after a round of enumeration, but found that the difficulty was a little too great. Finally, I couldn't think of a solution, so I found Claude. The solution it gave was to use the dp algorithm (see method 1 for details). I thought of the algorithm of DFS combined with pruning (thank you for the maze problem I did before, it is an algorithm problem related to the minimum number of steps, which is just suitable for DFS combined with pruning) (see method 2 for details). Later, Claude also gave an algorithm that is suitable for general solutions - the cost flow solution method (too difficult, belonging to the hyper-schema solution method, sketching one or two, see method 3 for details).
+I initially tried to enumerate the matrix that had been changed (that is, simulated) again after a round of enumeration, but found that the difficulty was a little too great. Finally, I couldn't think of a solution, so I found Claude's teacher. The solution it gave was to use the dp algorithm (see method 1 for details). I thought of the algorithm of DFS combined with pruning (thank you for the maze problem I did before, it is an algorithm problem related to the minimum number of steps, which is just suitable for DFS combined with pruning) (see method 2 for details). Later, Claude also gave an algorithm that is suitable for general solutions - the cost flow solution method (too difficult, belonging to the hyper-schema solution method, sketching one or two, see method 3 for details).
 
 ps. Explain why two enums cannot be taken. One path changes the map, affecting the second, so the two paths must be considered in conjunction.
 
