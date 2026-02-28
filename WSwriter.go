@@ -468,6 +468,7 @@ func escapeHTML(s string) string {
 func validateEmail(email string) bool {
 	_, err := mail.ParseAddress(email)
 	return err == nil // 成功解析表示格式有效
+}
 
 // validatePath 严格验证路径，防止目录遍历
 func validatePath(relPath, basePath string) (string, error) {
@@ -916,7 +917,57 @@ func withAuth(handler http.HandlerFunc) http.HandlerFunc {
     }
 }
 
-// ==================== Go并发安全和资源管理 ====================\n// sync.Mutex（互斥锁）是Go的基本同步原语\n// 保护对共享资源（日志文件）的访问，防止数据竞争\nvar auditLogMu sync.Mutex\n\n// writeAuditLog 安全地将审计日志写入文件\n// 演示Go的关键特性：\n//   1. sync.Mutex实现并发控制\n//   2. defer确保资源清理（RAII模式）\n//   3. 早期return简化错误处理流程\nfunc writeAuditLog(action string, r *http.Request, details map[string]interface{}) {\n    // ======= 获取互斥锁 =======\n    // Lock()阻塞直到获得锁，防止其他goroutine同时写入\n    auditLogMu.Lock()\n    // defer延迟执行，保证函数返回前Unlock()一定被调用\n    // 这防止了死锁（代码量多时容易遗漏unlock）\n    defer auditLogMu.Unlock()\n\t\n    // ======= 组装日志数据 =======\n    // map[string]interface{} 是Go的通用字典类型\n    // interface{} 可存储任意类型（灵活但需类型断言）\n    entry := map[string]interface{}{\n        \"ts\":     time.Now().Format(time.RFC3339), // ISO 8601格式\n        \"action\": action,                         // 操作\n        \"ip\":     getRealClientIP(r),             // IP\n        \"ua\":     r.UserAgent(),                  // 浏览器标识\n    }\n    // for-range遍历map，顺序随机（Go的设计特性）\n    for k, v := range details {\n        entry[k] = v\n    }\n\t\n    // ======= JSON序列化 =======\n    data, err := json.Marshal(entry)\n    if err != nil {\n        log.Printf(\"[WARN] Failed to marshal audit log: %v\", err)\n        return\n    }\n\t\n    // ======= 文件操作 =======\n    logPath := filepath.Join(hugoPath, \"config\", \"audit.log\")\n    // 位标志：O_APPEND(追加)|O_CREATE(创建)|O_WRONLY(只写)\n    // 0600权限：仅owner可读写\n    file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)\n    if err != nil {\n        log.Printf(\"[WARN] Failed to open audit log: %v\", err)\n        return\n    }\n    // defer file.Close()实现RAII模式：资源一定会清理\n    defer file.Close()\n\t\n    // ======= 写入日志 =======\n    // append(data, '\\n')添加换行符\n    _, _ = file.Write(append(data, '\\n'))\n}
+// ==================== Go并发安全和资源管理 ====================
+// sync.Mutex（互斥锁）是Go的基本同步原语
+// 保护对共享资源（日志文件）的访问，防止数据竞争
+var auditLogMu sync.Mutex
+
+// writeAuditLog 安全地将审计日志写入文件
+// 演示Go的关键特性：
+//   1. sync.Mutex实现并发控制
+//   2. defer确保资源清理（RAII模式）
+//   3. 早期return简化错误处理流程
+func writeAuditLog(action string, r *http.Request, details map[string]interface{}) {
+    // ======= 获取互斥锁 =======
+    // Lock()阻塞直到获得锁，防止其他goroutine同时写入
+    auditLogMu.Lock()
+    // defer延迟执行，保证函数返回前Unlock()一定被调用
+    // 这防止了死锁（代码量多时容易遗漏unlock）
+    defer auditLogMu.Unlock()
+
+    // ======= 组装日志数据 =======
+    // map[string]interface{} 是Go的通用字典类型
+    // interface{} 可存储任意类型（灵活但需类型断言）
+    entry := map[string]interface{}{
+        "ts":     time.Now().Format(time.RFC3339),
+        "action": action,
+        "ip":     getRealClientIP(r),
+        "ua":     r.UserAgent(),
+    }
+    // for-range遍历map，顺序随机（Go的设计特性）
+    for k, v := range details {
+        entry[k] = v
+    }
+
+    // ======= JSON序列化 =======
+    data, err := json.Marshal(entry)
+    if err != nil {
+        log.Printf("[WARN] Failed to marshal audit log: %v", err)
+        return
+    }
+
+    // ======= 文件操作 =======
+    logPath := filepath.Join(hugoPath, "config", "audit.log")
+    file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+    if err != nil {
+        log.Printf("[WARN] Failed to open audit log: %v", err)
+        return
+    }
+    defer file.Close()
+
+    // ======= 写入日志 =======
+    _, _ = file.Write(append(data, '\n'))
+}
 
 // 定期轮转审计日志 (每天午夜或文件超过100MB时)
 func rotateAuditLogPeriodically() {
@@ -1074,31 +1125,131 @@ func init() {
     adminToken = os.Getenv("ADMIN_TOKEN")
 }
 
-// translateText 使用MyMemory API翻译文本
-// 会使用一个东东的云翻译API来实现自动翻译
+// translateText 使用多源翻译API翻译文本
 func translateText(text, sourceLang, targetLang string) string {
-	escapedText := url.QueryEscape(text)
-	apiURL := fmt.Sprintf("https://api.mymemory.translated.net/get?q=%s&langpair=%s|%s",
-		escapedText, sourceLang, targetLang)
+    input := strings.TrimSpace(text)
+    if input == "" || sourceLang == "" || targetLang == "" || sourceLang == targetLang {
+        return text
+    }
 
-	resp, err := http.Get(apiURL)
-	if err != nil {
-		return text
-	}
-	defer resp.Body.Close()
+    if translated, err := translateWithMyMemory(input, sourceLang, targetLang); err == nil {
+        return translated
+    } else {
+        log.Printf("[WARN] MyMemory翻译失败: %v", err)
+    }
 
-	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return text
-	}
+    if translated, err := translateWithGoogle(input, sourceLang, targetLang); err == nil {
+        return translated
+    } else {
+        log.Printf("[WARN] Google备用翻译失败: %v", err)
+    }
 
-	if responseData, ok := result["responseData"].(map[string]interface{}); ok {
-		if translated, ok := responseData["translatedText"].(string); ok {
-			return translated
-		}
-	}
+    return text
+}
 
-	return text
+func translateWithMyMemory(text, sourceLang, targetLang string) (string, error) {
+    client := &http.Client{Timeout: 12 * time.Second}
+    escapedText := url.QueryEscape(text)
+    apiURL := fmt.Sprintf("https://api.mymemory.translated.net/get?q=%s&langpair=%s|%s", escapedText, sourceLang, targetLang)
+
+    req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+    if err != nil {
+        return "", err
+    }
+    req.Header.Set("User-Agent", "WangScape-Writer/1.0")
+
+    resp, err := client.Do(req)
+    if err != nil {
+        return "", err
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != http.StatusOK {
+        body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+        return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+    }
+
+    var result struct {
+        ResponseData struct {
+            TranslatedText string `json:"translatedText"`
+        } `json:"responseData"`
+        ResponseStatus  int    `json:"responseStatus"`
+        ResponseDetails string `json:"responseDetails"`
+        QuotaFinished   bool   `json:"quotaFinished"`
+    }
+
+    if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+        return "", err
+    }
+
+    translated := strings.TrimSpace(html.UnescapeString(result.ResponseData.TranslatedText))
+    if result.ResponseStatus != 200 || translated == "" {
+        return "", fmt.Errorf("responseStatus=%d details=%s", result.ResponseStatus, result.ResponseDetails)
+    }
+
+    if result.QuotaFinished {
+        return "", fmt.Errorf("quota finished")
+    }
+
+    return translated, nil
+}
+
+func translateWithGoogle(text, sourceLang, targetLang string) (string, error) {
+    client := &http.Client{Timeout: 12 * time.Second}
+    escapedText := url.QueryEscape(text)
+    apiURL := fmt.Sprintf("https://translate.googleapis.com/translate_a/single?client=gtx&sl=%s&tl=%s&dt=t&q=%s", sourceLang, targetLang, escapedText)
+
+    req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+    if err != nil {
+        return "", err
+    }
+    req.Header.Set("User-Agent", "WangScape-Writer/1.0")
+
+    resp, err := client.Do(req)
+    if err != nil {
+        return "", err
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != http.StatusOK {
+        body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+        return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+    }
+
+    var data interface{}
+    if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+        return "", err
+    }
+
+    arr, ok := data.([]interface{})
+    if !ok || len(arr) == 0 {
+        return "", fmt.Errorf("invalid response format")
+    }
+
+    segments, ok := arr[0].([]interface{})
+    if !ok || len(segments) == 0 {
+        return "", fmt.Errorf("missing translation segments")
+    }
+
+    var builder strings.Builder
+    for _, seg := range segments {
+        piece, ok := seg.([]interface{})
+        if !ok || len(piece) == 0 {
+            continue
+        }
+        translatedPart, ok := piece[0].(string)
+        if !ok || translatedPart == "" {
+            continue
+        }
+        builder.WriteString(translatedPart)
+    }
+
+    translated := strings.TrimSpace(html.UnescapeString(builder.String()))
+    if translated == "" {
+        return "", fmt.Errorf("empty translated text")
+    }
+
+    return translated, nil
 }
 
 // ==================== 文件上传安全检查 ====================
@@ -1263,16 +1414,14 @@ func deletePost(relPath string) error {
 	parentDir := filepath.Dir(fullPath)
 	entries, err := os.ReadDir(parentDir)
 	if err == nil && len(entries) == 0 {
-			// 成功删除了空的上级目录
-		}
+        _ = os.Remove(parentDir)
 	}
 
 	return nil
 }
 
 // parseFrontmatter 从提供Markdown文件中提取YAML元数据
-// YAML格式: ---\n title: ...
- draft: ...\n ---
+// YAML格式: ---\n title: ...\n draft: ...\n ---
 func parseFrontmatter(content string) Frontmatter {
 	fm := Frontmatter{Title: "Untitled", Draft: false, Date: time.Now().Format("2006-01-02")}
 
@@ -1355,8 +1504,9 @@ func getGitStatus() map[string]string {
 	return status
 }
 
-// getPosts \u8fd4\u56de\u6587\u7ae0\u5217\u8868
-// \u4f1a\u904d\u5386Hugo\u5185\u5bb9\u76ee\u5f55\uff0c\u8f6c\u6362\u6210\u53ef\u5e8f\u5217\u5316\u7684Post\u5bf9\u8c61\nfunc getPosts() []Post {
+// getPosts 返回文章列表
+// 会遍历Hugo内容目录，转换成可序列化的Post对象
+func getPosts() []Post {
 	var posts []Post
 	gitStatus := getGitStatus()
 
@@ -1605,7 +1755,9 @@ func addComment(postPath, author, email, content, ipAddress, userAgent, parentID
     return comment, saveComments(postPath, comments)
 }
 
-// approveComment \u7ec5\u51c6\u6bcf\u6761\u8bc4\u8bba\n// \u5b83\u4f1a\u67e5\u627e\u6587\u7ae0\u4e2d\u6307\u5b9a\u7c7b\u4f55\u7684\u8bc4\u8bba\uff0c\u7136\u540e\u5c06Approved\u9690\u5165True\nfunc approveComment(postPath, commentID string) error {
+// approveComment 批准某条评论
+// 它会查找文章中指定ID的评论，然后将 Approved 设为 true
+func approveComment(postPath, commentID string) error {
 	comments, err := getComments(postPath)
 	if err != nil {
 		return err
@@ -3343,10 +3495,12 @@ func handleSyncTranslate(w http.ResponseWriter, r *http.Request) {
 
 	// 检查英文版本是否存在
 	enFullPath := filepath.Join(hugoPath, data.EnPath)
-	if _, err := os.Stat(enFullPath); err != nil {
+    enRaw, err := os.ReadFile(enFullPath)
+    if err != nil {
 		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "English version not found"})
 		return
 	}
+    enExisting := string(enRaw)
 
 	// 解析 frontmatter 和内容
 	parts := strings.Split(data.Content, "---")
@@ -3358,6 +3512,14 @@ func handleSyncTranslate(w http.ResponseWriter, r *http.Request) {
 	// 获取中文版本的 frontmatter
 	zhFrontmatter := parts[1]
 	zhBody := strings.Join(parts[2:], "---")
+    zhContentHash := computeSyncHash(data.Content)
+
+    if enFrontmatter, _, ok := splitMarkdownFrontmatter(enExisting); ok {
+        if oldHash := getFrontmatterValue(enFrontmatter, "ws_sync_zh_hash"); oldHash != "" && oldHash == zhContentHash {
+            respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "内容无变化，已跳过重复翻译"})
+            return
+        }
+    }
 
 	// 翻译内容正文（保留代码块和特殊标记不翻译）
 	translatedBody := translateMarkdownContent(zhBody, "zh", "en")
@@ -3370,6 +3532,7 @@ func handleSyncTranslate(w http.ResponseWriter, r *http.Request) {
 		enTitle := translateText(zhTitle, "zh", "en")
 		enFrontmatter = regexp.MustCompile(`title:\s*"?[^"\n]+"?`).ReplaceAllString(zhFrontmatter, fmt.Sprintf(`title: "%s"`, enTitle))
 	}
+    enFrontmatter = setFrontmatterValue(enFrontmatter, "ws_sync_zh_hash", zhContentHash)
 
 	// 组装英文版本
 	enContent := "---" + enFrontmatter + "---" + translatedBody
@@ -3381,6 +3544,46 @@ func handleSyncTranslate(w http.ResponseWriter, r *http.Request) {
 	}
     writeAuditLog("sync_translate", r, map[string]interface{}{ "zh_path": data.ZhPath, "en_path": data.EnPath })
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Content translated and synced"})
+}
+
+func computeSyncHash(content string) string {
+    normalized := strings.ReplaceAll(content, "\r\n", "\n")
+    normalized = strings.TrimSpace(normalized)
+    sum := sha256.Sum256([]byte(normalized))
+    return hex.EncodeToString(sum[:])
+}
+
+func splitMarkdownFrontmatter(content string) (string, string, bool) {
+    parts := strings.Split(content, "---")
+    if len(parts) < 3 {
+        return "", "", false
+    }
+    frontmatter := parts[1]
+    body := strings.Join(parts[2:], "---")
+    return frontmatter, body, true
+}
+
+func getFrontmatterValue(frontmatter, key string) string {
+    pattern := fmt.Sprintf(`(?m)^%s:\s*"?([^"\n]+)"?\s*$`, regexp.QuoteMeta(key))
+    match := regexp.MustCompile(pattern).FindStringSubmatch(frontmatter)
+    if len(match) > 1 {
+        return strings.TrimSpace(match[1])
+    }
+    return ""
+}
+
+func setFrontmatterValue(frontmatter, key, value string) string {
+    pattern := fmt.Sprintf(`(?m)^%s:\s*"?[^"\n]*"?\s*$`, regexp.QuoteMeta(key))
+    line := fmt.Sprintf(`%s: "%s"`, key, value)
+    re := regexp.MustCompile(pattern)
+    if re.MatchString(frontmatter) {
+        return re.ReplaceAllString(frontmatter, line)
+    }
+    trimmed := strings.TrimRight(frontmatter, "\n")
+    if trimmed == "" {
+        return line + "\n"
+    }
+    return trimmed + "\n" + line + "\n"
 }
 
 // translateMarkdownContent 翻译Markdown体体制保“代码一块”不被翻译
@@ -5820,9 +6023,10 @@ var htmlTemplate = `<!DOCTYPE html>
                         });
                         const syncData = await syncRes.json();
                         if(syncData.success) {
-                            statusEl.textContent = "✅ 已保存并同步翻译 " + new Date().toLocaleTimeString();
+                            const msg = syncData.message ? String(syncData.message) : '已同步翻译';
+                            statusEl.textContent = "✅ 已保存（" + msg + "） " + new Date().toLocaleTimeString();
                         } else {
-                            statusEl.textContent = "✅ 已保存（翻译失败，请手动同步）";
+                            statusEl.textContent = "✅ 已保存（翻译失败）";
                         }
                     }
                     
