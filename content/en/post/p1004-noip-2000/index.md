@@ -13,7 +13,7 @@ license: ""
 hidden: false
 comments: true
 draft: false
-ws_sync_zh_hash: "1e00ac9b5bd24020d12d0f754c42a40b466f49398a96318267ba2834c7b2a0b8"
+ws_sync_zh_hash: "581e112e1c987d2c619154fd22488b7844362560c52f6e0033a14b1403f2a0e5"
 ---This is a classic but difficult chessboard model problem. Although it is a NOIP problem in 2000, it is still quite difficult for first-time contacts like me as the finale.
 
 Look at the background of the question first
@@ -86,7 +86,7 @@ Deduplication: When two people are in the same cell (x1 = = x2, then y1 = = y2),
 Transfer: Two people each can choose to move to the right or down for a total of 4 combinations.
 
 Full Code
-__ code_block_0 __\ n\ n
+__ code_block_0 __
 
 Time complexity: O (N ³)
 
@@ -94,7 +94,8 @@ Solution 2 (DFS + pruning):
 
 Core idea: Similar to the dp algorithm (after all, deep search and dp are essentially one thing), but adds the step of memorized search, avoiding repetitive searches. (If there is no memory search, the amount of calculation will be an exponential explosion, about 4 ^ 16 times at N = 9)
 
-Full code __ code_block_1 __\ n\ n
+Full Code
+__ code_block_1 __
 
 Time complexity: O (N ³)
 
@@ -120,12 +121,11 @@ Source sink: The source point S is connected to (1,1) .in, (N, N) .out is connec
 After splitting each grid (i, j):
 
 Capacity 1, cost-val (first way through, take the number)
-in (i, j) = = = = = = = = = = = = = = = = > out (i, j)
+in (i, j) = = = = = = = = = = = = = = = = = = > out (i, j)
         Capacity 1, cost 0 (second way through, number taken)
 
-Full code (MCMF, SPFA implementation) __ code_block_2 __\ n\ n
-
-Time complexity: O (E · SPFA)
+Full code (MCMF, SPFA implementation)
+__ code_block_2 __
 
 Advantage: Easily scales to K paths.
 
