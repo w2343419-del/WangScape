@@ -1,7 +1,7 @@
 ---
 pinned: true
 title: "Hello and welcome to my blog"
-description: "My blog is live: learning notes, algorithms, and life reflections"
+description: "博客上线了，记录学习心得和生活思考"
 date: 2026-02-03T13:28:00+08:00
 image: ""
 math: false
@@ -9,29 +9,36 @@ license: ""
 hidden: false
 comments: true
 draft: false
+ws_sync_zh_hash: "3558d90836754db2b71da14328d4f96ef790a3c533892541d5d0882e5495ec25"
 ---
 
-After a full day of self-doubt, debugging, and wrestling with tools, this blog finally went online.
+After nearly a day of half-day self-doubt, half-day struggle with AI (doge) and all-day hardness ratio with head and table...
 
-January 21, 2026 became a special day for me.
+January 21, 2026 finally became an extraordinary day for me.
 
-## What I plan to write
+My personal blog is finally live!!!
 
-I will mainly use this space to record:
+## 博客的目标
 
-- Programming problems I run into and how I solve them
-- Algorithm notes and learning summaries
-- Occasional reflections, book notes, and favorite poems
-- Broader interests such as AI, games, music, and films
+I will record here:
 
-This blog may also become my cross-discipline notebook during university.
+- Summary of difficulties, gains and knowledge points encountered in programming
+-Learning experience and algorithmic analysis
+- Occasional complaints and book reviews
+- Favorite poems and other cultural content
 
-## Final note
+Maybe this blog will be my all-disciplinary notebook? (at least during university)
 
-I cannot promise perfect consistency, but I will do my best to keep updating.
+In addition to code, it may also involve artificial intelligence, games, music, movies and other fields. I do my best to keep my blog focused on learning.
 
-The site is still rough around the edges for now, and I will keep improving it over time.
+## 写在末尾
+
+Although I don't know if I can always maintain this blog (a bit lazy after all), I will do my best.
+
+I hope my update frequency is not too low...
+
+(ps. Blogs are rough now, but better later!)
 
 ---
 
-*Edited on February 3, 2026*
+* Edited February 3, 2026 *
