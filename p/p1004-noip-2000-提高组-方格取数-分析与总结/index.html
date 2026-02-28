@@ -14,7 +14,254 @@
 <span class=umami-views data-umami-page-pv><span class=umami-value>0</span> 次阅读</span></div></footer><footer class=article-translations><svg class="icon icon-tabler icon-tabler-language" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5h7"/><path d="M9 3v2c0 4.418-2.239 8-5 8"/><path d="M5 9c-.003 2.144 2.952 3.908 6.7 4"/><path d="M12 20l4-9 4 9"/><path d="M19.1 18h-6.2"/></svg><div><a href=https://w2343419-del.github.io/WangScape/en/p/p1004-noip-2000-improvement-group-grid-score-analysis-and-summary/ class=link>English</a></div></footer></div></header><section class=article-content><p>这是一道经典但具有一定难度的棋盘模型题，虽然是 2000 年的 NOIP 题目，但作为压轴，对于像我这样第一次接触的人来说，还是相当困难的。</p><p>先看题目背景</p><p>NOIP 2000 提高组 T4</p><p>题目描述</p><p>设有 N×N 的方格图 (N≤9)，我们将其中的某些方格中填入正整数，而其他的方格中则放入数字 0。
 某人从图的左上角的 A 点（0，0）出发，可以向下行走，也可以向右走，直到到达右下角的 B 点（N, N)。在走过的路上，他可以取走方格中的数（取走后的方格中将变为数字 0）。
 此人从 A 点到 B 点共走两次，试找出 2 条这样的路径，使得取得的数之和为最大。</p><p>输入格式</p><p>输入的第一行为一个整数 N（表示 N×N 的方格图），接下来的每行有三个整数，前两个表示位置，第三个数为该位置上所放的数。一行单独的 0 表示输入结束。</p><p>输出格式</p><p>只需输出一个整数，表示 2 条路径上取得的最大的和。</p><p>输入输出样例</p><p>输入</p><p>8</p><p>2 3 13</p><p>2 6 6</p><p>3 5 7</p><p>4 4 14</p><p>5 2 21</p><p>5 6 4</p><p>6 3 15</p><p>7 2 14</p><p>0 0 0</p><p>输出
-67</p><p>说明/提示</p><p>数据范围：1≤N≤9。</p><p>我一开始尝试是选择的先进行一轮枚举，然后再对已进行了更改的 matrix 进行再一次的枚举（就是模拟取数），但是发现难度有点过大。最后实在想不出来解决方法了，找了 Claude，它给出的解决方法是采用 dp 算法（详见解法一），我又想到了 DFS 结合剪枝的算法（感谢自己之前做的走迷宫问题，那是一道有关最少步数的算法题，刚好适用于 DFS 结合剪枝）（详见解法二），随后 Claude 还给出了一个适用于一般解的算法————费用流解法（难度过大，属于超纲解法，略写一二，详见解法三）。</p><p>ps. 解释一下为什么不能采取两次枚举。一次路径会改变地图，影响第二次，所以两条路径必须联动考虑。</p><p>解法一（dp 动态规划）：</p><p>核心思想：将两条路径同步推进，用一个DP同时模拟两个人的行走。</p><p>状态设计：设 dp[k][x1][x2]，其中：</p><p>k 为当前走的步数（即 x + y 的值，从2到2N）</p><p>x1、x2 分别为两人当前所在的行号</p><p>由 k 和 x 可以推出 y = k - x（关键，这一步降低了维度），因此列号不需要单独存储</p><p>去重处理：当两人在同一格时（x1 == x2，则 y1 == y2），该格只取一次。</p><p>转移：每步两人各自可以选择向右或向下，共4种组合。</p><p>完整代码</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>  1
+67</p><p>说明/提示</p><p>数据范围：1≤N≤9。</p><p>我一开始尝试是选择的先进行一轮枚举，然后再对已进行了更改的 matrix 进行再一次的枚举（就是模拟取数），但是发现难度有点过大。最后实在想不出来解决方法了，找了 Claude，它给出的解决方法是采用 dp 算法（详见解法一），我又想到了 DFS 结合剪枝的算法（感谢自己之前做的走迷宫问题，那是一道有关最少步数的算法题，刚好适用于 DFS 结合剪枝）（详见解法二），随后 Claude 还给出了一个适用于一般解的算法————费用流解法（难度过大，属于超纲解法，略写一二，详见解法三）。</p><p>ps. 解释一下为什么不能采取两次枚举。一次路径会改变地图，影响第二次，所以两条路径必须联动考虑。</p><p>解法一（dp 动态规划）：</p><p>核心思想：将两条路径同步推进，用一个DP同时模拟两个人的行走。</p><p>状态设计：设 dp[k][x1][x2]，其中：</p><p>k 为当前走的步数（即 x + y 的值，从2到2N）</p><p>x1、x2 分别为两人当前所在的行号</p><p>由 k 和 x 可以推出 y = k - x（关键，这一步降低了维度），因此列号不需要单独存储</p><p>去重处理：当两人在同一格时（x1 == x2，则 y1 == y2），该格只取一次。</p><p>转移：每步两人各自可以选择向右或向下，共4种组合。</p><p>完整代码</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span><span class=lnt>51
+</span><span class=lnt>52
+</span><span class=lnt>53
+</span><span class=lnt>54
+</span><span class=lnt>55
+</span><span class=lnt>56
+</span><span class=lnt>57
+</span><span class=lnt>58
+</span><span class=lnt>59
+</span><span class=lnt>60
+</span><span class=lnt>61
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;stdio.h&gt;</span><span class=cp>
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>N</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>map</span><span class=p>[</span><span class=mi>10</span><span class=p>][</span><span class=mi>10</span><span class=p>];</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>dp</span><span class=p>[</span><span class=mi>20</span><span class=p>][</span><span class=mi>10</span><span class=p>][</span><span class=mi>10</span><span class=p>];</span> <span class=c1>// dp[步数][人1的行][人2的行]
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=nf>scanf</span><span class=p>(</span><span class=s>&#34;%d&#34;</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>N</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>x</span><span class=p>,</span> <span class=n>y</span><span class=p>,</span> <span class=n>v</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>while</span> <span class=p>(</span><span class=nf>scanf</span><span class=p>(</span><span class=s>&#34;%d %d %d&#34;</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>x</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>y</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>v</span><span class=p>)</span> <span class=o>&amp;&amp;</span> <span class=p>(</span><span class=n>x</span> <span class=o>||</span> <span class=n>y</span> <span class=o>||</span> <span class=n>v</span><span class=p>))</span>
+</span></span><span class=line><span class=cl>        <span class=n>map</span><span class=p>[</span><span class=n>x</span><span class=p>][</span><span class=n>y</span><span class=p>]</span> <span class=o>=</span> <span class=n>v</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 初始化为-1表示不可达
+</span></span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>k</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>k</span> <span class=o>&lt;</span> <span class=mi>20</span><span class=p>;</span> <span class=n>k</span><span class=o>++</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>i</span> <span class=o>&lt;</span> <span class=mi>10</span><span class=p>;</span> <span class=n>i</span><span class=o>++</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>            <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>j</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>j</span> <span class=o>&lt;</span> <span class=mi>10</span><span class=p>;</span> <span class=n>j</span><span class=o>++</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>                <span class=n>dp</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>i</span><span class=p>][</span><span class=n>j</span><span class=p>]</span> <span class=o>=</span> <span class=o>-</span><span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>dp</span><span class=p>[</span><span class=mi>2</span><span class=p>][</span><span class=mi>1</span><span class=p>][</span><span class=mi>1</span><span class=p>]</span> <span class=o>=</span> <span class=n>map</span><span class=p>[</span><span class=mi>1</span><span class=p>][</span><span class=mi>1</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 动态规划主循环
+</span></span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>k</span> <span class=o>=</span> <span class=mi>2</span><span class=p>;</span> <span class=n>k</span> <span class=o>&lt;</span> <span class=mi>2</span> <span class=o>*</span> <span class=n>N</span><span class=p>;</span> <span class=n>k</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>x1</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>x1</span> <span class=o>&lt;=</span> <span class=n>N</span><span class=p>;</span> <span class=n>x1</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=kt>int</span> <span class=n>y1</span> <span class=o>=</span> <span class=n>k</span> <span class=o>-</span> <span class=n>x1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>y1</span> <span class=o>&lt;</span> <span class=mi>1</span> <span class=o>||</span> <span class=n>y1</span> <span class=o>&gt;</span> <span class=n>N</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>            <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>x2</span> <span class=o>=</span> <span class=n>x1</span><span class=p>;</span> <span class=n>x2</span> <span class=o>&lt;=</span> <span class=n>N</span><span class=p>;</span> <span class=n>x2</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>                <span class=kt>int</span> <span class=n>y2</span> <span class=o>=</span> <span class=n>k</span> <span class=o>-</span> <span class=n>x2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>                <span class=k>if</span> <span class=p>(</span><span class=n>y2</span> <span class=o>&lt;</span> <span class=mi>1</span> <span class=o>||</span> <span class=n>y2</span> <span class=o>&gt;</span> <span class=n>N</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>                <span class=k>if</span> <span class=p>(</span><span class=n>dp</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>x1</span><span class=p>][</span><span class=n>x2</span><span class=p>]</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>                <span class=c1>// 尝试所有4种移动组合
+</span></span></span><span class=line><span class=cl>                <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>m1</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>m1</span> <span class=o>&lt;=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>m1</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>                    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>m2</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>m2</span> <span class=o>&lt;=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>m2</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>                        <span class=kt>int</span> <span class=n>nx1</span> <span class=o>=</span> <span class=n>x1</span> <span class=o>+</span> <span class=n>m1</span><span class=p>,</span>     <span class=n>ny1</span> <span class=o>=</span> <span class=n>y1</span> <span class=o>+</span> <span class=p>(</span><span class=mi>1</span> <span class=o>-</span> <span class=n>m1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>                        <span class=kt>int</span> <span class=n>nx2</span> <span class=o>=</span> <span class=n>x2</span> <span class=o>+</span> <span class=n>m2</span><span class=p>,</span>     <span class=n>ny2</span> <span class=o>=</span> <span class=n>y2</span> <span class=o>+</span> <span class=p>(</span><span class=mi>1</span> <span class=o>-</span> <span class=n>m2</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>                        <span class=k>if</span> <span class=p>(</span><span class=n>nx1</span> <span class=o>&gt;</span> <span class=n>N</span> <span class=o>||</span> <span class=n>ny1</span> <span class=o>&gt;</span> <span class=n>N</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>                        <span class=k>if</span> <span class=p>(</span><span class=n>nx2</span> <span class=o>&gt;</span> <span class=n>N</span> <span class=o>||</span> <span class=n>ny2</span> <span class=o>&gt;</span> <span class=n>N</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>                        <span class=c1>// 计算当前步收益
+</span></span></span><span class=line><span class=cl>                        <span class=kt>int</span> <span class=n>gain</span> <span class=o>=</span> <span class=n>map</span><span class=p>[</span><span class=n>nx1</span><span class=p>][</span><span class=n>ny1</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>                        <span class=k>if</span> <span class=p>(</span><span class=n>nx1</span> <span class=o>!=</span> <span class=n>nx2</span><span class=p>)</span> <span class=n>gain</span> <span class=o>+=</span> <span class=n>map</span><span class=p>[</span><span class=n>nx2</span><span class=p>][</span><span class=n>ny2</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>                        <span class=c1>// 规范化：保证 a &lt;= b
+</span></span></span><span class=line><span class=cl>                        <span class=kt>int</span> <span class=n>a</span> <span class=o>=</span> <span class=n>nx1</span><span class=p>,</span> <span class=n>b</span> <span class=o>=</span> <span class=n>nx2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>                        <span class=k>if</span> <span class=p>(</span><span class=n>a</span> <span class=o>&gt;</span> <span class=n>b</span><span class=p>)</span> <span class=p>{</span> <span class=kt>int</span> <span class=n>t</span> <span class=o>=</span> <span class=n>a</span><span class=p>;</span> <span class=n>a</span> <span class=o>=</span> <span class=n>b</span><span class=p>;</span> <span class=n>b</span> <span class=o>=</span> <span class=n>t</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>                        <span class=kt>int</span> <span class=n>newval</span> <span class=o>=</span> <span class=n>dp</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>x1</span><span class=p>][</span><span class=n>x2</span><span class=p>]</span> <span class=o>+</span> <span class=n>gain</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>                        <span class=k>if</span> <span class=p>(</span><span class=n>newval</span> <span class=o>&gt;</span> <span class=n>dp</span><span class=p>[</span><span class=n>k</span> <span class=o>+</span> <span class=mi>1</span><span class=p>][</span><span class=n>a</span><span class=p>][</span><span class=n>b</span><span class=p>])</span>
+</span></span><span class=line><span class=cl>                            <span class=n>dp</span><span class=p>[</span><span class=n>k</span> <span class=o>+</span> <span class=mi>1</span><span class=p>][</span><span class=n>a</span><span class=p>][</span><span class=n>b</span><span class=p>]</span> <span class=o>=</span> <span class=n>newval</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>                    <span class=p>}</span>
+</span></span><span class=line><span class=cl>                <span class=p>}</span>
+</span></span><span class=line><span class=cl>            <span class=p>}</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=nf>printf</span><span class=p>(</span><span class=s>&#34;%d</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>,</span> <span class=n>dp</span><span class=p>[</span><span class=mi>2</span> <span class=o>*</span> <span class=n>N</span><span class=p>][</span><span class=n>N</span><span class=p>][</span><span class=n>N</span><span class=p>]);</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>时间复杂度：O(N³)</p><p>解法二（DFS + 剪枝）：</p><p>核心思想：类似于 dp 算法（毕竟深搜和 dp 本质上就是一个东西），但添加了记忆化搜索这一步，避免了重复搜索。（若无记忆化搜索，计算量将是指数级爆炸，在 N=9 时约为 4^16 次）</p><p>完整代码</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span><span class=lnt>51
+</span><span class=lnt>52
+</span><span class=lnt>53
+</span><span class=lnt>54
+</span><span class=lnt>55
+</span><span class=lnt>56
+</span><span class=lnt>57
+</span><span class=lnt>58
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;stdio.h&gt;</span><span class=cp>
+</span></span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;string.h&gt;</span><span class=cp>
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>N</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>map</span><span class=p>[</span><span class=mi>10</span><span class=p>][</span><span class=mi>10</span><span class=p>];</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>memo</span><span class=p>[</span><span class=mi>20</span><span class=p>][</span><span class=mi>10</span><span class=p>][</span><span class=mi>10</span><span class=p>];</span>    <span class=c1>// 记忆化数组
+</span></span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>visited</span><span class=p>[</span><span class=mi>20</span><span class=p>][</span><span class=mi>10</span><span class=p>][</span><span class=mi>10</span><span class=p>];</span> <span class=c1>// 标记是否计算过
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>dfs</span><span class=p>(</span><span class=kt>int</span> <span class=n>k</span><span class=p>,</span> <span class=kt>int</span> <span class=n>x1</span><span class=p>,</span> <span class=kt>int</span> <span class=n>x2</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>x1</span> <span class=o>==</span> <span class=n>N</span> <span class=o>&amp;&amp;</span> <span class=n>x2</span> <span class=o>==</span> <span class=n>N</span><span class=p>)</span> <span class=k>return</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>visited</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>x1</span><span class=p>][</span><span class=n>x2</span><span class=p>])</span> <span class=k>return</span> <span class=n>memo</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>x1</span><span class=p>][</span><span class=n>x2</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>    <span class=n>visited</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>x1</span><span class=p>][</span><span class=n>x2</span><span class=p>]</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>y1</span> <span class=o>=</span> <span class=n>k</span> <span class=o>-</span> <span class=n>x1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>y2</span> <span class=o>=</span> <span class=n>k</span> <span class=o>-</span> <span class=n>x2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>best</span> <span class=o>=</span> <span class=o>-</span><span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>m1</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>m1</span> <span class=o>&lt;=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>m1</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>m2</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>m2</span> <span class=o>&lt;=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>m2</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=kt>int</span> <span class=n>nx1</span> <span class=o>=</span> <span class=n>x1</span> <span class=o>+</span> <span class=n>m1</span><span class=p>,</span>  <span class=n>ny1</span> <span class=o>=</span> <span class=n>y1</span> <span class=o>+</span> <span class=p>(</span><span class=mi>1</span> <span class=o>-</span> <span class=n>m1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>            <span class=kt>int</span> <span class=n>nx2</span> <span class=o>=</span> <span class=n>x2</span> <span class=o>+</span> <span class=n>m2</span><span class=p>,</span>  <span class=n>ny2</span> <span class=o>=</span> <span class=n>y2</span> <span class=o>+</span> <span class=p>(</span><span class=mi>1</span> <span class=o>-</span> <span class=n>m2</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>nx1</span> <span class=o>&gt;</span> <span class=n>N</span> <span class=o>||</span> <span class=n>ny1</span> <span class=o>&gt;</span> <span class=n>N</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>nx2</span> <span class=o>&gt;</span> <span class=n>N</span> <span class=o>||</span> <span class=n>ny2</span> <span class=o>&gt;</span> <span class=n>N</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>            <span class=kt>int</span> <span class=n>a</span> <span class=o>=</span> <span class=n>nx1</span><span class=p>,</span> <span class=n>b</span> <span class=o>=</span> <span class=n>nx2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>a</span> <span class=o>&gt;</span> <span class=n>b</span><span class=p>)</span> <span class=p>{</span> <span class=kt>int</span> <span class=n>t</span> <span class=o>=</span> <span class=n>a</span><span class=p>;</span> <span class=n>a</span> <span class=o>=</span> <span class=n>b</span><span class=p>;</span> <span class=n>b</span> <span class=o>=</span> <span class=n>t</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>            <span class=kt>int</span> <span class=n>sub</span> <span class=o>=</span> <span class=nf>dfs</span><span class=p>(</span><span class=n>k</span> <span class=o>+</span> <span class=mi>1</span><span class=p>,</span> <span class=n>a</span><span class=p>,</span> <span class=n>b</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>sub</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>            <span class=kt>int</span> <span class=n>gain</span> <span class=o>=</span> <span class=n>map</span><span class=p>[</span><span class=n>nx1</span><span class=p>][</span><span class=n>ny1</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>nx1</span> <span class=o>!=</span> <span class=n>nx2</span><span class=p>)</span> <span class=n>gain</span> <span class=o>+=</span> <span class=n>map</span><span class=p>[</span><span class=n>nx2</span><span class=p>][</span><span class=n>ny2</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>gain</span> <span class=o>+</span> <span class=n>sub</span> <span class=o>&gt;</span> <span class=n>best</span><span class=p>)</span> <span class=n>best</span> <span class=o>=</span> <span class=n>gain</span> <span class=o>+</span> <span class=n>sub</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>memo</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>x1</span><span class=p>][</span><span class=n>x2</span><span class=p>]</span> <span class=o>=</span> <span class=n>best</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>best</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=nf>scanf</span><span class=p>(</span><span class=s>&#34;%d&#34;</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>N</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>x</span><span class=p>,</span> <span class=n>y</span><span class=p>,</span> <span class=n>v</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>while</span> <span class=p>(</span><span class=nf>scanf</span><span class=p>(</span><span class=s>&#34;%d %d %d&#34;</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>x</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>y</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>v</span><span class=p>)</span> <span class=o>&amp;&amp;</span> <span class=p>(</span><span class=n>x</span> <span class=o>||</span> <span class=n>y</span> <span class=o>||</span> <span class=n>v</span><span class=p>))</span>
+</span></span><span class=line><span class=cl>        <span class=n>map</span><span class=p>[</span><span class=n>x</span><span class=p>][</span><span class=n>y</span><span class=p>]</span> <span class=o>=</span> <span class=n>v</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=nf>memset</span><span class=p>(</span><span class=n>visited</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=k>sizeof</span><span class=p>(</span><span class=n>visited</span><span class=p>));</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>start_val</span> <span class=o>=</span> <span class=n>map</span><span class=p>[</span><span class=mi>1</span><span class=p>][</span><span class=mi>1</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>result</span> <span class=o>=</span> <span class=nf>dfs</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span> <span class=mi>1</span><span class=p>,</span> <span class=mi>1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=nf>printf</span><span class=p>(</span><span class=s>&#34;%d</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>,</span> <span class=n>result</span> <span class=o>&gt;=</span> <span class=mi>0</span> <span class=o>?</span> <span class=n>start_val</span> <span class=o>+</span> <span class=nl>result</span> <span class=p>:</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>时间复杂度：O(N³)</p><p>解法三（费用流解法）：</p><p>核心思想：将"两条路径取最大值"转化为网络流问题。</p><p>建模思路
+关键观察：
+两条从 A 到 B 的路径 = 从源点到汇点流量为 2 的流
+每个格子最多取一次 = 每个节点容量为 1
+取得数字最大 = 费用最大（转为最小费用取负值）</p><p>拆点： 每个格子 (i,j) 拆成两个节点 in 和 out：
+in → out：容量 1，费用 -map[i][j]（取负是因为求最小费用）
+in → out：再加一条容量 1，费用 0（允许第二条路径经过但不重复取值）
+即：合并为容量 2，但只有第一单位流有收益</p><p>连边： (i,j) 的 out 连向 (i+1,j) 的 in 和 (i,j+1) 的 in，容量 2，费用 0。</p><p>源汇： 源点 S 连 (1,1).in，(N,N).out 连汇点 T，流量均为 2。</p><p>每个格子(i,j)拆点后：</p><pre><code>    容量1，费用-val  (第一条路经过，取走数字)
+</code></pre><p>in(i,j) ===============> out(i,j)
+容量1，费用0 (第二条路经过，数字已取走)</p><p>完整代码（MCMF，SPFA实现）</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>  1
 </span><span class=lnt>  2
 </span><span class=lnt>  3
 </span><span class=lnt>  4
@@ -126,348 +373,14 @@
 </span><span class=lnt>110
 </span><span class=lnt>111
 </span><span class=lnt>112
-</span><span class=lnt>113
-</span><span class=lnt>114
-</span><span class=lnt>115
-</span><span class=lnt>116
-</span><span class=lnt>117
-</span><span class=lnt>118
-</span><span class=lnt>119
-</span><span class=lnt>120
-</span><span class=lnt>121
-</span><span class=lnt>122
-</span><span class=lnt>123
-</span><span class=lnt>124
-</span><span class=lnt>125
-</span><span class=lnt>126
-</span><span class=lnt>127
-</span><span class=lnt>128
-</span><span class=lnt>129
-</span><span class=lnt>130
-</span><span class=lnt>131
-</span><span class=lnt>132
-</span><span class=lnt>133
-</span><span class=lnt>134
-</span><span class=lnt>135
-</span><span class=lnt>136
-</span><span class=lnt>137
-</span><span class=lnt>138
-</span><span class=lnt>139
-</span><span class=lnt>140
-</span><span class=lnt>141
-</span><span class=lnt>142
-</span><span class=lnt>143
-</span><span class=lnt>144
-</span><span class=lnt>145
-</span><span class=lnt>146
-</span><span class=lnt>147
-</span><span class=lnt>148
-</span><span class=lnt>149
-</span><span class=lnt>150
-</span><span class=lnt>151
-</span><span class=lnt>152
-</span><span class=lnt>153
-</span><span class=lnt>154
-</span><span class=lnt>155
-</span><span class=lnt>156
-</span><span class=lnt>157
-</span><span class=lnt>158
-</span><span class=lnt>159
-</span><span class=lnt>160
-</span><span class=lnt>161
-</span><span class=lnt>162
-</span><span class=lnt>163
-</span><span class=lnt>164
-</span><span class=lnt>165
-</span><span class=lnt>166
-</span><span class=lnt>167
-</span><span class=lnt>168
-</span><span class=lnt>169
-</span><span class=lnt>170
-</span><span class=lnt>171
-</span><span class=lnt>172
-</span><span class=lnt>173
-</span><span class=lnt>174
-</span><span class=lnt>175
-</span><span class=lnt>176
-</span><span class=lnt>177
-</span><span class=lnt>178
-</span><span class=lnt>179
-</span><span class=lnt>180
-</span><span class=lnt>181
-</span><span class=lnt>182
-</span><span class=lnt>183
-</span><span class=lnt>184
-</span><span class=lnt>185
-</span><span class=lnt>186
-</span><span class=lnt>187
-</span><span class=lnt>188
-</span><span class=lnt>189
-</span><span class=lnt>190
-</span><span class=lnt>191
-</span><span class=lnt>192
-</span><span class=lnt>193
-</span><span class=lnt>194
-</span><span class=lnt>195
-</span><span class=lnt>196
-</span><span class=lnt>197
-</span><span class=lnt>198
-</span><span class=lnt>199
-</span><span class=lnt>200
-</span><span class=lnt>201
-</span><span class=lnt>202
-</span><span class=lnt>203
-</span><span class=lnt>204
-</span><span class=lnt>205
-</span><span class=lnt>206
-</span><span class=lnt>207
-</span><span class=lnt>208
-</span><span class=lnt>209
-</span><span class=lnt>210
-</span><span class=lnt>211
-</span><span class=lnt>212
-</span><span class=lnt>213
-</span><span class=lnt>214
-</span><span class=lnt>215
-</span><span class=lnt>216
-</span><span class=lnt>217
-</span><span class=lnt>218
-</span><span class=lnt>219
-</span><span class=lnt>220
-</span><span class=lnt>221
-</span><span class=lnt>222
-</span><span class=lnt>223
-</span><span class=lnt>224
-</span><span class=lnt>225
-</span><span class=lnt>226
-</span><span class=lnt>227
-</span><span class=lnt>228
-</span><span class=lnt>229
-</span><span class=lnt>230
-</span><span class=lnt>231
-</span><span class=lnt>232
-</span><span class=lnt>233
-</span><span class=lnt>234
-</span><span class=lnt>235
-</span><span class=lnt>236
-</span><span class=lnt>237
-</span><span class=lnt>238
-</span><span class=lnt>239
-</span><span class=lnt>240
-</span><span class=lnt>241
-</span><span class=lnt>242
-</span><span class=lnt>243
-</span><span class=lnt>244
-</span><span class=lnt>245
-</span><span class=lnt>246
-</span><span class=lnt>247
-</span><span class=lnt>248
-</span><span class=lnt>249
-</span><span class=lnt>250
-</span><span class=lnt>251
-</span><span class=lnt>252
-</span><span class=lnt>253
-</span><span class=lnt>254
-</span><span class=lnt>255
-</span><span class=lnt>256
-</span><span class=lnt>257
-</span><span class=lnt>258
-</span><span class=lnt>259
-</span><span class=lnt>260
-</span><span class=lnt>261
-</span><span class=lnt>262
-</span><span class=lnt>263
-</span><span class=lnt>264
-</span><span class=lnt>265
-</span><span class=lnt>266
-</span><span class=lnt>267
-</span><span class=lnt>268
-</span><span class=lnt>269
-</span><span class=lnt>270
-</span><span class=lnt>271
-</span><span class=lnt>272
-</span><span class=lnt>273
-</span><span class=lnt>274
-</span><span class=lnt>275
-</span><span class=lnt>276
-</span><span class=lnt>277
-</span><span class=lnt>278
-</span><span class=lnt>279
-</span><span class=lnt>280
-</span><span class=lnt>281
-</span><span class=lnt>282
-</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>N</span><span class=p>;</span>
-</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>map</span><span class=p>[</span><span class=mi>10</span><span class=p>][</span><span class=mi>10</span><span class=p>];</span>
-</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>dp</span><span class=p>[</span><span class=mi>20</span><span class=p>][</span><span class=mi>10</span><span class=p>][</span><span class=mi>10</span><span class=p>];</span> <span class=c1>// dp[步数][人1的行][人2的行]
-</span></span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=nf>scanf</span><span class=p>(</span><span class=s>&#34;%d&#34;</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>N</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>x</span><span class=p>,</span> <span class=n>y</span><span class=p>,</span> <span class=n>v</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>    <span class=k>while</span> <span class=p>(</span><span class=nf>scanf</span><span class=p>(</span><span class=s>&#34;%d %d %d&#34;</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>x</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>y</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>v</span><span class=p>)</span> <span class=o>&amp;&amp;</span> <span class=p>(</span><span class=n>x</span> <span class=o>||</span> <span class=n>y</span> <span class=o>||</span> <span class=n>v</span><span class=p>))</span>
-</span></span><span class=line><span class=cl>        <span class=n>map</span><span class=p>[</span><span class=n>x</span><span class=p>][</span><span class=n>y</span><span class=p>]</span> <span class=o>=</span> <span class=n>v</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=c1>// 初始化为-1表示不可达
-</span></span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>k</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>k</span> <span class=o>&lt;</span> <span class=mi>20</span><span class=p>;</span> <span class=n>k</span><span class=o>++</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>i</span> <span class=o>&lt;</span> <span class=mi>10</span><span class=p>;</span> <span class=n>i</span><span class=o>++</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>            <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>j</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>j</span> <span class=o>&lt;</span> <span class=mi>10</span><span class=p>;</span> <span class=n>j</span><span class=o>++</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>                <span class=n>dp</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>i</span><span class=p>][</span><span class=n>j</span><span class=p>]</span> <span class=o>=</span> <span class=o>-</span><span class=mi>1</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=n>dp</span><span class=p>[</span><span class=mi>2</span><span class=p>][</span><span class=mi>1</span><span class=p>][</span><span class=mi>1</span><span class=p>]</span> <span class=o>=</span> <span class=n>map</span><span class=p>[</span><span class=mi>1</span><span class=p>][</span><span class=mi>1</span><span class=p>];</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>k</span> <span class=o>=</span> <span class=mi>2</span><span class=p>;</span> <span class=n>k</span> <span class=o>&lt;</span> <span class=mi>2</span> <span class=o>*</span> <span class=n>N</span><span class=p>;</span> <span class=n>k</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>x1</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>x1</span> <span class=o>&lt;=</span> <span class=n>N</span><span class=p>;</span> <span class=n>x1</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>            <span class=kt>int</span> <span class=n>y1</span> <span class=o>=</span> <span class=n>k</span> <span class=o>-</span> <span class=n>x1</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>y1</span> <span class=o>&lt;</span> <span class=mi>1</span> <span class=o>||</span> <span class=n>y1</span> <span class=o>&gt;</span> <span class=n>N</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>            <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>x2</span> <span class=o>=</span> <span class=n>x1</span><span class=p>;</span> <span class=n>x2</span> <span class=o>&lt;=</span> <span class=n>N</span><span class=p>;</span> <span class=n>x2</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>                <span class=kt>int</span> <span class=n>y2</span> <span class=o>=</span> <span class=n>k</span> <span class=o>-</span> <span class=n>x2</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>                <span class=k>if</span> <span class=p>(</span><span class=n>y2</span> <span class=o>&lt;</span> <span class=mi>1</span> <span class=o>||</span> <span class=n>y2</span> <span class=o>&gt;</span> <span class=n>N</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>                <span class=k>if</span> <span class=p>(</span><span class=n>dp</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>x1</span><span class=p>][</span><span class=n>x2</span><span class=p>]</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>                <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>m1</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>m1</span> <span class=o>&lt;=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>m1</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>                    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>m2</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>m2</span> <span class=o>&lt;=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>m2</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>                        <span class=kt>int</span> <span class=n>nx1</span> <span class=o>=</span> <span class=n>x1</span> <span class=o>+</span> <span class=n>m1</span><span class=p>,</span>     <span class=n>ny1</span> <span class=o>=</span> <span class=n>y1</span> <span class=o>+</span> <span class=p>(</span><span class=mi>1</span> <span class=o>-</span> <span class=n>m1</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>                        <span class=kt>int</span> <span class=n>nx2</span> <span class=o>=</span> <span class=n>x2</span> <span class=o>+</span> <span class=n>m2</span><span class=p>,</span>     <span class=n>ny2</span> <span class=o>=</span> <span class=n>y2</span> <span class=o>+</span> <span class=p>(</span><span class=mi>1</span> <span class=o>-</span> <span class=n>m2</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>                        <span class=k>if</span> <span class=p>(</span><span class=n>nx1</span> <span class=o>&gt;</span> <span class=n>N</span> <span class=o>||</span> <span class=n>ny1</span> <span class=o>&gt;</span> <span class=n>N</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>                        <span class=k>if</span> <span class=p>(</span><span class=n>nx2</span> <span class=o>&gt;</span> <span class=n>N</span> <span class=o>||</span> <span class=n>ny2</span> <span class=o>&gt;</span> <span class=n>N</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>                        <span class=kt>int</span> <span class=n>gain</span> <span class=o>=</span> <span class=n>map</span><span class=p>[</span><span class=n>nx1</span><span class=p>][</span><span class=n>ny1</span><span class=p>];</span>
-</span></span><span class=line><span class=cl>                        <span class=k>if</span> <span class=p>(</span><span class=n>nx1</span> <span class=o>!=</span> <span class=n>nx2</span><span class=p>)</span> <span class=n>gain</span> <span class=o>+=</span> <span class=n>map</span><span class=p>[</span><span class=n>nx2</span><span class=p>][</span><span class=n>ny2</span><span class=p>];</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>                        <span class=c1>// 规范化，令 nx1 &lt;= nx2
-</span></span></span><span class=line><span class=cl>                        <span class=kt>int</span> <span class=n>a</span> <span class=o>=</span> <span class=n>nx1</span><span class=p>,</span> <span class=n>b</span> <span class=o>=</span> <span class=n>nx2</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>                        <span class=k>if</span> <span class=p>(</span><span class=n>a</span> <span class=o>&gt;</span> <span class=n>b</span><span class=p>)</span> <span class=p>{</span> <span class=kt>int</span> <span class=n>t</span> <span class=o>=</span> <span class=n>a</span><span class=p>;</span> <span class=n>a</span> <span class=o>=</span> <span class=n>b</span><span class=p>;</span> <span class=n>b</span> <span class=o>=</span> <span class=n>t</span><span class=p>;</span> <span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>                        <span class=kt>int</span> <span class=n>newval</span> <span class=o>=</span> <span class=n>dp</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>x1</span><span class=p>][</span><span class=n>x2</span><span class=p>]</span> <span class=o>+</span> <span class=n>gain</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>                        <span class=k>if</span> <span class=p>(</span><span class=n>newval</span> <span class=o>&gt;</span> <span class=n>dp</span><span class=p>[</span><span class=n>k</span> <span class=o>+</span> <span class=mi>1</span><span class=p>][</span><span class=n>a</span><span class=p>][</span><span class=n>b</span><span class=p>])</span>
-</span></span><span class=line><span class=cl>                            <span class=n>dp</span><span class=p>[</span><span class=n>k</span> <span class=o>+</span> <span class=mi>1</span><span class=p>][</span><span class=n>a</span><span class=p>][</span><span class=n>b</span><span class=p>]</span> <span class=o>=</span> <span class=n>newval</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>                    <span class=p>}</span>
-</span></span><span class=line><span class=cl>                <span class=p>}</span>
-</span></span><span class=line><span class=cl>            <span class=p>}</span>
-</span></span><span class=line><span class=cl>        <span class=p>}</span>
-</span></span><span class=line><span class=cl>    <span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=nf>printf</span><span class=p>(</span><span class=s>&#34;%d</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>,</span> <span class=n>dp</span><span class=p>[</span><span class=mi>2</span> <span class=o>*</span> <span class=n>N</span><span class=p>][</span><span class=n>N</span><span class=p>][</span><span class=n>N</span><span class=p>]);</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=mi>0</span><span class=p>;</span>
-</span></span><span class=line><span class=cl><span class=p>}</span><span class=err>\</span><span class=n>n</span><span class=err>\</span><span class=n>n</span><span class=err>```\</span><span class=n>n</span><span class=err>\</span><span class=n>n</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>时间复杂度：</span><span class=nf>O</span><span class=p>(</span><span class=n>N</span><span class=err>³</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>解法二（</span><span class=n>DFS</span> <span class=o>+</span> <span class=err>剪枝）：</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>核心思想：类似于</span> <span class=n>dp</span> <span class=err>算法（毕竟深搜和</span> <span class=n>dp</span> <span class=err>本质上就是一个东西），但添加了记忆化搜索这一步，避免了重复搜索。（若无记忆化搜索，计算量将是指数级爆炸，在</span> <span class=n>N</span><span class=o>=</span><span class=mi>9</span> <span class=err>时约为</span> <span class=mi>4</span><span class=o>^</span><span class=mi>16</span> <span class=err>次）</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>完整代码```</span><span class=n>C</span><span class=err>\</span><span class=n>n</span><span class=c1>// 
-</span></span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;stdio.h&gt;</span><span class=cp>
-</span></span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;string.h&gt;</span><span class=cp>
-</span></span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>N</span><span class=p>;</span>
-</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>map</span><span class=p>[</span><span class=mi>10</span><span class=p>][</span><span class=mi>10</span><span class=p>];</span>
-</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>memo</span><span class=p>[</span><span class=mi>20</span><span class=p>][</span><span class=mi>10</span><span class=p>][</span><span class=mi>10</span><span class=p>];</span> <span class=c1>// 记忆化数组
-</span></span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>visited</span><span class=p>[</span><span class=mi>20</span><span class=p>][</span><span class=mi>10</span><span class=p>][</span><span class=mi>10</span><span class=p>];</span> <span class=c1>// 标记是否计算过
-</span></span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>dfs</span><span class=p>(</span><span class=kt>int</span> <span class=n>k</span><span class=p>,</span> <span class=kt>int</span> <span class=n>x1</span><span class=p>,</span> <span class=kt>int</span> <span class=n>x2</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=c1>// 终点：两人都到达(N, N)
-</span></span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>x1</span> <span class=o>==</span> <span class=n>N</span> <span class=o>&amp;&amp;</span> <span class=n>x2</span> <span class=o>==</span> <span class=n>N</span><span class=p>)</span> <span class=k>return</span> <span class=mi>0</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=c1>// 查记忆化
-</span></span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>visited</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>x1</span><span class=p>][</span><span class=n>x2</span><span class=p>])</span> <span class=k>return</span> <span class=n>memo</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>x1</span><span class=p>][</span><span class=n>x2</span><span class=p>];</span>
-</span></span><span class=line><span class=cl>    <span class=n>visited</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>x1</span><span class=p>][</span><span class=n>x2</span><span class=p>]</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>y1</span> <span class=o>=</span> <span class=n>k</span> <span class=o>-</span> <span class=n>x1</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>y2</span> <span class=o>=</span> <span class=n>k</span> <span class=o>-</span> <span class=n>x2</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>best</span> <span class=o>=</span> <span class=o>-</span><span class=mi>1</span><span class=p>;</span> <span class=c1>// -1表示无效状态
-</span></span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=c1>// 枚举两人各自的下一步：0=向右，1=向下
-</span></span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>m1</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>m1</span> <span class=o>&lt;=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>m1</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>m2</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>m2</span> <span class=o>&lt;=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>m2</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>            <span class=kt>int</span> <span class=n>nx1</span> <span class=o>=</span> <span class=n>x1</span> <span class=o>+</span> <span class=n>m1</span><span class=p>,</span>  <span class=n>ny1</span> <span class=o>=</span> <span class=n>y1</span> <span class=o>+</span> <span class=p>(</span><span class=mi>1</span> <span class=o>-</span> <span class=n>m1</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>            <span class=kt>int</span> <span class=n>nx2</span> <span class=o>=</span> <span class=n>x2</span> <span class=o>+</span> <span class=n>m2</span><span class=p>,</span>  <span class=n>ny2</span> <span class=o>=</span> <span class=n>y2</span> <span class=o>+</span> <span class=p>(</span><span class=mi>1</span> <span class=o>-</span> <span class=n>m2</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>nx1</span> <span class=o>&gt;</span> <span class=n>N</span> <span class=o>||</span> <span class=n>ny1</span> <span class=o>&gt;</span> <span class=n>N</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>nx2</span> <span class=o>&gt;</span> <span class=n>N</span> <span class=o>||</span> <span class=n>ny2</span> <span class=o>&gt;</span> <span class=n>N</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>            <span class=c1>// 规范化
-</span></span></span><span class=line><span class=cl>            <span class=kt>int</span> <span class=n>a</span> <span class=o>=</span> <span class=n>nx1</span><span class=p>,</span> <span class=n>b</span> <span class=o>=</span> <span class=n>nx2</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>a</span> <span class=o>&gt;</span> <span class=n>b</span><span class=p>)</span> <span class=p>{</span> <span class=kt>int</span> <span class=n>t</span> <span class=o>=</span> <span class=n>a</span><span class=p>;</span> <span class=n>a</span> <span class=o>=</span> <span class=n>b</span><span class=p>;</span> <span class=n>b</span> <span class=o>=</span> <span class=n>t</span><span class=p>;</span> <span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>            <span class=kt>int</span> <span class=n>sub</span> <span class=o>=</span> <span class=nf>dfs</span><span class=p>(</span><span class=n>k</span> <span class=o>+</span> <span class=mi>1</span><span class=p>,</span> <span class=n>a</span><span class=p>,</span> <span class=n>b</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>sub</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>)</span> <span class=k>continue</span><span class=p>;</span> <span class=c1>// 子状态不可达
-</span></span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>            <span class=c1>// 当前步两人取得的值
-</span></span></span><span class=line><span class=cl>            <span class=kt>int</span> <span class=n>gain</span> <span class=o>=</span> <span class=n>map</span><span class=p>[</span><span class=n>nx1</span><span class=p>][</span><span class=n>ny1</span><span class=p>];</span>
-</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>nx1</span> <span class=o>!=</span> <span class=n>nx2</span><span class=p>)</span> <span class=n>gain</span> <span class=o>+=</span> <span class=n>map</span><span class=p>[</span><span class=n>nx2</span><span class=p>][</span><span class=n>ny2</span><span class=p>];</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>gain</span> <span class=o>+</span> <span class=n>sub</span> <span class=o>&gt;</span> <span class=n>best</span><span class=p>)</span> <span class=n>best</span> <span class=o>=</span> <span class=n>gain</span> <span class=o>+</span> <span class=n>sub</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>        <span class=p>}</span>
-</span></span><span class=line><span class=cl>    <span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=n>memo</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>x1</span><span class=p>][</span><span class=n>x2</span><span class=p>]</span> <span class=o>=</span> <span class=n>best</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>best</span><span class=p>;</span>
-</span></span><span class=line><span class=cl><span class=p>}</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>    <span class=nf>scanf</span><span class=p>(</span><span class=s>&#34;%d&#34;</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>N</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>x</span><span class=p>,</span> <span class=n>y</span><span class=p>,</span> <span class=n>v</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>    <span class=k>while</span> <span class=p>(</span><span class=nf>scanf</span><span class=p>(</span><span class=s>&#34;%d %d %d&#34;</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>x</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>y</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>v</span><span class=p>)</span> <span class=o>&amp;&amp;</span> <span class=p>(</span><span class=n>x</span> <span class=o>||</span> <span class=n>y</span> <span class=o>||</span> <span class=n>v</span><span class=p>))</span>
-</span></span><span class=line><span class=cl>        <span class=n>map</span><span class=p>[</span><span class=n>x</span><span class=p>][</span><span class=n>y</span><span class=p>]</span> <span class=o>=</span> <span class=n>v</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=nf>memset</span><span class=p>(</span><span class=n>visited</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=k>sizeof</span><span class=p>(</span><span class=n>visited</span><span class=p>));</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=c1>// 两人同时从(1,1)出发，起点格只取一次
-</span></span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>start_val</span> <span class=o>=</span> <span class=n>map</span><span class=p>[</span><span class=mi>1</span><span class=p>][</span><span class=mi>1</span><span class=p>];</span>
-</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>result</span> <span class=o>=</span> <span class=nf>dfs</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span> <span class=mi>1</span><span class=p>,</span> <span class=mi>1</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=nf>printf</span><span class=p>(</span><span class=s>&#34;%d</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>,</span> <span class=n>result</span> <span class=o>&gt;=</span> <span class=mi>0</span> <span class=o>?</span> <span class=n>start_val</span> <span class=o>+</span> <span class=nl>result</span> <span class=p>:</span> <span class=mi>0</span><span class=p>);</span>
-</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=mi>0</span><span class=p>;</span>
-</span></span><span class=line><span class=cl><span class=p>}</span><span class=err>\</span><span class=n>n</span><span class=err>\</span><span class=n>n</span><span class=err>```\</span><span class=n>n</span><span class=err>\</span><span class=n>n</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>时间复杂度：</span><span class=nf>O</span><span class=p>(</span><span class=n>N</span><span class=err>³</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>解法三（费用流解法）：</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>核心思想：将</span><span class=s>&#34;两条路径取最大值&#34;</span><span class=err>转化为网络流问题。</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>建模思路</span>
-</span></span><span class=line><span class=cl><span class=err>关键观察：</span>
-</span></span><span class=line><span class=cl><span class=err>两条从</span> <span class=n>A</span> <span class=err>到</span> <span class=n>B</span> <span class=err>的路径</span> <span class=o>=</span> <span class=err>从源点到汇点流量为</span> <span class=mi>2</span> <span class=err>的流</span>
-</span></span><span class=line><span class=cl><span class=err>每个格子最多取一次</span> <span class=o>=</span> <span class=err>每个节点容量为</span> <span class=mi>1</span>
-</span></span><span class=line><span class=cl><span class=err>取得数字最大</span> <span class=o>=</span> <span class=err>费用最大（转为最小费用取负值）</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>拆点：</span> <span class=err>每个格子</span> <span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>)</span> <span class=err>拆成两个节点</span> <span class=n>in</span> <span class=err>和</span> <span class=n>out</span><span class=err>：</span>
-</span></span><span class=line><span class=cl><span class=n>in</span> <span class=err>→</span> <span class=n>out</span><span class=err>：容量</span> <span class=mi>1</span><span class=err>，费用</span> <span class=o>-</span><span class=n>map</span><span class=p>[</span><span class=n>i</span><span class=p>][</span><span class=n>j</span><span class=p>]</span><span class=err>（取负是因为求最小费用）</span>
-</span></span><span class=line><span class=cl><span class=n>in</span> <span class=err>→</span> <span class=n>out</span><span class=err>：再加一条容量</span> <span class=mi>1</span><span class=err>，费用</span> <span class=mi>0</span><span class=err>（允许第二条路径经过但不重复取值）</span>
-</span></span><span class=line><span class=cl><span class=err>即：合并为容量</span> <span class=mi>2</span><span class=err>，但只有第一单位流有收益</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>连边：</span> <span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>)</span> <span class=err>的</span> <span class=n>out</span> <span class=err>连向</span> <span class=p>(</span><span class=n>i</span><span class=o>+</span><span class=mi>1</span><span class=p>,</span><span class=n>j</span><span class=p>)</span> <span class=err>的</span> <span class=n>in</span> <span class=err>和</span> <span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=o>+</span><span class=mi>1</span><span class=p>)</span> <span class=err>的</span> <span class=n>in</span><span class=err>，容量</span> <span class=mi>2</span><span class=err>，费用</span> <span class=mi>0</span><span class=err>。</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>源汇：</span> <span class=err>源点</span> <span class=n>S</span> <span class=err>连</span> <span class=p>(</span><span class=mi>1</span><span class=p>,</span><span class=mi>1</span><span class=p>).</span><span class=n>in</span><span class=err>，</span><span class=p>(</span><span class=n>N</span><span class=p>,</span><span class=n>N</span><span class=p>).</span><span class=n>out</span> <span class=err>连汇点</span> <span class=n>T</span><span class=err>，流量均为</span> <span class=mi>2</span><span class=err>。</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>每个格子</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>)</span><span class=err>拆点后：</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>        <span class=err>容量</span><span class=mi>1</span><span class=err>，费用</span><span class=o>-</span><span class=nf>val</span>  <span class=p>(</span><span class=err>第一条路经过，取走数字</span><span class=p>)</span>
-</span></span><span class=line><span class=cl><span class=nf>in</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>)</span> <span class=o>===============&gt;</span> <span class=nf>out</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>        <span class=err>容量</span><span class=mi>1</span><span class=err>，费用</span><span class=mi>0</span>     <span class=p>(</span><span class=err>第二条路经过，数字已取走</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>完整代码（</span><span class=n>MCMF</span><span class=err>，</span><span class=n>SPFA实现</span><span class=err>）```</span><span class=n>C</span><span class=err>\</span><span class=n>n</span><span class=c1>// 
-</span></span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;stdio.h&gt;</span><span class=cp>
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;stdio.h&gt;</span><span class=cp>
 </span></span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;string.h&gt;</span><span class=cp>
 </span></span></span><span class=line><span class=cl>
 </span></span><span class=line><span class=cl><span class=cp>#define MAXN 1000
 </span></span></span><span class=line><span class=cl><span class=cp>#define MAXE 10000
 </span></span></span><span class=line><span class=cl><span class=cp>#define INF  0x3f3f3f3f
 </span></span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=c1>// ========== 链式前向星 ==========
-</span></span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>head</span><span class=p>[</span><span class=n>MAXN</span><span class=p>],</span> <span class=n>nxt</span><span class=p>[</span><span class=n>MAXE</span><span class=p>],</span> <span class=n>to</span><span class=p>[</span><span class=n>MAXE</span><span class=p>],</span> <span class=n>cap</span><span class=p>[</span><span class=n>MAXE</span><span class=p>],</span> <span class=n>cost</span><span class=p>[</span><span class=n>MAXE</span><span class=p>],</span> <span class=n>tot</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>head</span><span class=p>[</span><span class=n>MAXN</span><span class=p>],</span> <span class=n>nxt</span><span class=p>[</span><span class=n>MAXE</span><span class=p>],</span> <span class=n>to</span><span class=p>[</span><span class=n>MAXE</span><span class=p>],</span> <span class=n>cap</span><span class=p>[</span><span class=n>MAXE</span><span class=p>],</span> <span class=n>cost</span><span class=p>[</span><span class=n>MAXE</span><span class=p>],</span> <span class=n>tot</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>
 </span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>init</span><span class=p>()</span> <span class=p>{</span>
 </span></span><span class=line><span class=cl>    <span class=nf>memset</span><span class=p>(</span><span class=n>head</span><span class=p>,</span> <span class=o>-</span><span class=mi>1</span><span class=p>,</span> <span class=k>sizeof</span><span class=p>(</span><span class=n>head</span><span class=p>));</span>
@@ -479,25 +392,30 @@
 </span></span><span class=line><span class=cl>    <span class=n>to</span><span class=p>[</span><span class=n>tot</span><span class=p>]</span> <span class=o>=</span> <span class=n>u</span><span class=p>;</span> <span class=n>cap</span><span class=p>[</span><span class=n>tot</span><span class=p>]</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>cost</span><span class=p>[</span><span class=n>tot</span><span class=p>]</span> <span class=o>=</span> <span class=o>-</span><span class=n>w</span><span class=p>;</span> <span class=n>nxt</span><span class=p>[</span><span class=n>tot</span><span class=p>]</span> <span class=o>=</span> <span class=n>head</span><span class=p>[</span><span class=n>v</span><span class=p>];</span> <span class=n>head</span><span class=p>[</span><span class=n>v</span><span class=p>]</span> <span class=o>=</span> <span class=n>tot</span><span class=o>++</span><span class=p>;</span>
 </span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=c1>// ========== SPFA + 增广（MCMF）==========
-</span></span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>dist</span><span class=p>[</span><span class=n>MAXN</span><span class=p>],</span> <span class=n>in_queue</span><span class=p>[</span><span class=n>MAXN</span><span class=p>],</span> <span class=n>prevv</span><span class=p>[</span><span class=n>MAXN</span><span class=p>],</span> <span class=n>preve</span><span class=p>[</span><span class=n>MAXN</span><span class=p>];</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>dist</span><span class=p>[</span><span class=n>MAXN</span><span class=p>],</span> <span class=n>in_queue</span><span class=p>[</span><span class=n>MAXN</span><span class=p>],</span> <span class=n>prevv</span><span class=p>[</span><span class=n>MAXN</span><span class=p>],</span> <span class=n>preve</span><span class=p>[</span><span class=n>MAXN</span><span class=p>];</span>
 </span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>queue</span><span class=p>[</span><span class=n>MAXN</span> <span class=o>*</span> <span class=mi>100</span><span class=p>];</span>
 </span></span><span class=line><span class=cl>
 </span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>spfa</span><span class=p>(</span><span class=kt>int</span> <span class=n>s</span><span class=p>,</span> <span class=kt>int</span> <span class=n>t</span><span class=p>,</span> <span class=kt>int</span> <span class=n>n</span><span class=p>)</span> <span class=p>{</span>
 </span></span><span class=line><span class=cl>    <span class=nf>memset</span><span class=p>(</span><span class=n>dist</span><span class=p>,</span> <span class=mh>0x3f</span><span class=p>,</span> <span class=k>sizeof</span><span class=p>(</span><span class=kt>int</span><span class=p>)</span> <span class=o>*</span> <span class=p>(</span><span class=n>n</span> <span class=o>+</span> <span class=mi>1</span><span class=p>));</span>
 </span></span><span class=line><span class=cl>    <span class=nf>memset</span><span class=p>(</span><span class=n>in_queue</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=k>sizeof</span><span class=p>(</span><span class=kt>int</span><span class=p>)</span> <span class=o>*</span> <span class=p>(</span><span class=n>n</span> <span class=o>+</span> <span class=mi>1</span><span class=p>));</span>
 </span></span><span class=line><span class=cl>    <span class=n>dist</span><span class=p>[</span><span class=n>s</span><span class=p>]</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
 </span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>front</span> <span class=o>=</span> <span class=mi>0</span><span class=p>,</span> <span class=n>rear</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>    <span class=n>queue</span><span class=p>[</span><span class=n>rear</span><span class=o>++</span><span class=p>]</span> <span class=o>=</span> <span class=n>s</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>    <span class=n>in_queue</span><span class=p>[</span><span class=n>s</span><span class=p>]</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>    <span class=k>while</span> <span class=p>(</span><span class=n>front</span> <span class=o>!=</span> <span class=n>rear</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// SPFA主循环
+</span></span></span><span class=line><span class=cl>    <span class=k>while</span> <span class=p>(</span><span class=n>front</span> <span class=o>!=</span> <span class=n>rear</span><span class=p>)</span> <span class=p>{</span>
 </span></span><span class=line><span class=cl>        <span class=kt>int</span> <span class=n>u</span> <span class=o>=</span> <span class=n>queue</span><span class=p>[</span><span class=n>front</span><span class=o>++</span><span class=p>];</span>
 </span></span><span class=line><span class=cl>        <span class=n>in_queue</span><span class=p>[</span><span class=n>u</span><span class=p>]</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
-</span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>e</span> <span class=o>=</span> <span class=n>head</span><span class=p>[</span><span class=n>u</span><span class=p>];</span> <span class=n>e</span> <span class=o>!=</span> <span class=o>-</span><span class=mi>1</span><span class=p>;</span> <span class=n>e</span> <span class=o>=</span> <span class=n>nxt</span><span class=p>[</span><span class=n>e</span><span class=p>])</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=c1>// 松弛边
+</span></span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>e</span> <span class=o>=</span> <span class=n>head</span><span class=p>[</span><span class=n>u</span><span class=p>];</span> <span class=n>e</span> <span class=o>!=</span> <span class=o>-</span><span class=mi>1</span><span class=p>;</span> <span class=n>e</span> <span class=o>=</span> <span class=n>nxt</span><span class=p>[</span><span class=n>e</span><span class=p>])</span> <span class=p>{</span>
 </span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>cap</span><span class=p>[</span><span class=n>e</span><span class=p>]</span> <span class=o>&gt;</span> <span class=mi>0</span> <span class=o>&amp;&amp;</span> <span class=n>dist</span><span class=p>[</span><span class=n>to</span><span class=p>[</span><span class=n>e</span><span class=p>]]</span> <span class=o>&gt;</span> <span class=n>dist</span><span class=p>[</span><span class=n>u</span><span class=p>]</span> <span class=o>+</span> <span class=n>cost</span><span class=p>[</span><span class=n>e</span><span class=p>])</span> <span class=p>{</span>
 </span></span><span class=line><span class=cl>                <span class=n>dist</span><span class=p>[</span><span class=n>to</span><span class=p>[</span><span class=n>e</span><span class=p>]]</span> <span class=o>=</span> <span class=n>dist</span><span class=p>[</span><span class=n>u</span><span class=p>]</span> <span class=o>+</span> <span class=n>cost</span><span class=p>[</span><span class=n>e</span><span class=p>];</span>
 </span></span><span class=line><span class=cl>                <span class=n>prevv</span><span class=p>[</span><span class=n>to</span><span class=p>[</span><span class=n>e</span><span class=p>]]</span> <span class=o>=</span> <span class=n>u</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>                <span class=n>preve</span><span class=p>[</span><span class=n>to</span><span class=p>[</span><span class=n>e</span><span class=p>]]</span> <span class=o>=</span> <span class=n>e</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
 </span></span><span class=line><span class=cl>                <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>in_queue</span><span class=p>[</span><span class=n>to</span><span class=p>[</span><span class=n>e</span><span class=p>]])</span> <span class=p>{</span>
 </span></span><span class=line><span class=cl>                    <span class=n>queue</span><span class=p>[</span><span class=n>rear</span><span class=o>++</span><span class=p>]</span> <span class=o>=</span> <span class=n>to</span><span class=p>[</span><span class=n>e</span><span class=p>];</span>
 </span></span><span class=line><span class=cl>                    <span class=n>in_queue</span><span class=p>[</span><span class=n>to</span><span class=p>[</span><span class=n>e</span><span class=p>]]</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span>
@@ -505,31 +423,29 @@
 </span></span><span class=line><span class=cl>            <span class=p>}</span>
 </span></span><span class=line><span class=cl>        <span class=p>}</span>
 </span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
 </span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>dist</span><span class=p>[</span><span class=n>t</span><span class=p>]</span> <span class=o>&lt;</span> <span class=n>INF</span><span class=p>;</span>
 </span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span><span class=line><span class=cl>
 </span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>mcmf</span><span class=p>(</span><span class=kt>int</span> <span class=n>s</span><span class=p>,</span> <span class=kt>int</span> <span class=n>t</span><span class=p>,</span> <span class=kt>int</span> <span class=n>n</span><span class=p>)</span> <span class=p>{</span>
 </span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>total_cost</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
 </span></span><span class=line><span class=cl>    <span class=k>while</span> <span class=p>(</span><span class=nf>spfa</span><span class=p>(</span><span class=n>s</span><span class=p>,</span> <span class=n>t</span><span class=p>,</span> <span class=n>n</span><span class=p>))</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>        <span class=c1>// 找最小可增广量（这里每次增广1单位即可）
-</span></span></span><span class=line><span class=cl>        <span class=kt>int</span> <span class=n>flow</span> <span class=o>=</span> <span class=n>INF</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=kt>int</span> <span class=n>flow</span> <span class=o>=</span> <span class=n>INF</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>v</span> <span class=o>=</span> <span class=n>t</span><span class=p>;</span> <span class=n>v</span> <span class=o>!=</span> <span class=n>s</span><span class=p>;</span> <span class=n>v</span> <span class=o>=</span> <span class=n>prevv</span><span class=p>[</span><span class=n>v</span><span class=p>])</span>
 </span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>cap</span><span class=p>[</span><span class=n>preve</span><span class=p>[</span><span class=n>v</span><span class=p>]]</span> <span class=o>&lt;</span> <span class=n>flow</span><span class=p>)</span> <span class=n>flow</span> <span class=o>=</span> <span class=n>cap</span><span class=p>[</span><span class=n>preve</span><span class=p>[</span><span class=n>v</span><span class=p>]];</span>
-</span></span><span class=line><span class=cl>        <span class=c1>// 增广
-</span></span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>v</span> <span class=o>=</span> <span class=n>t</span><span class=p>;</span> <span class=n>v</span> <span class=o>!=</span> <span class=n>s</span><span class=p>;</span> <span class=n>v</span> <span class=o>=</span> <span class=n>prevv</span><span class=p>[</span><span class=n>v</span><span class=p>])</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>v</span> <span class=o>=</span> <span class=n>t</span><span class=p>;</span> <span class=n>v</span> <span class=o>!=</span> <span class=n>s</span><span class=p>;</span> <span class=n>v</span> <span class=o>=</span> <span class=n>prevv</span><span class=p>[</span><span class=n>v</span><span class=p>])</span> <span class=p>{</span>
 </span></span><span class=line><span class=cl>            <span class=n>cap</span><span class=p>[</span><span class=n>preve</span><span class=p>[</span><span class=n>v</span><span class=p>]]</span> <span class=o>-=</span> <span class=n>flow</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>            <span class=n>cap</span><span class=p>[</span><span class=n>preve</span><span class=p>[</span><span class=n>v</span><span class=p>]</span> <span class=o>^</span> <span class=mi>1</span><span class=p>]</span> <span class=o>+=</span> <span class=n>flow</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>
 </span></span><span class=line><span class=cl>        <span class=n>total_cost</span> <span class=o>+=</span> <span class=n>dist</span><span class=p>[</span><span class=n>t</span><span class=p>]</span> <span class=o>*</span> <span class=n>flow</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
 </span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>total_cost</span><span class=p>;</span>
 </span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=c1>// ========== 建图 ==========
-</span></span></span><span class=line><span class=cl><span class=c1>// 节点编号：(i,j) 的 in  = (i-1)*N+j
-</span></span></span><span class=line><span class=cl><span class=c1>//           (i,j) 的 out = N*N + (i-1)*N+j
-</span></span></span><span class=line><span class=cl><span class=c1>// 源点 S = 2*N*N+1，汇点 T = 2*N*N+2
-</span></span></span><span class=line><span class=cl>
 </span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
 </span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>N</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>    <span class=nf>scanf</span><span class=p>(</span><span class=s>&#34;%d&#34;</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>N</span><span class=p>);</span>
@@ -545,40 +461,31 @@
 </span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>T</span> <span class=o>=</span> <span class=mi>2</span> <span class=o>*</span> <span class=n>N</span> <span class=o>*</span> <span class=n>N</span> <span class=o>+</span> <span class=mi>2</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>total_nodes</span> <span class=o>=</span> <span class=n>T</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=cp>#define IN(i,j)  ((i-1)*N+(j))
-</span></span></span><span class=line><span class=cl><span class=cp>#define OUT(i,j) (N*N+(i-1)*N+(j))
+</span></span><span class=line><span class=cl>    <span class=cp>#define IN(i,j)  ((i-1)*N+(j))
+</span></span></span><span class=line><span class=cl>    <span class=cp>#define OUT(i,j) (N*N+(i-1)*N+(j))
 </span></span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=c1>// 拆点建边
-</span></span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>i</span> <span class=o>&lt;=</span> <span class=n>N</span><span class=p>;</span> <span class=n>i</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>i</span> <span class=o>&lt;=</span> <span class=n>N</span><span class=p>;</span> <span class=n>i</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
 </span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>j</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>j</span> <span class=o>&lt;=</span> <span class=n>N</span><span class=p>;</span> <span class=n>j</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
 </span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>map</span><span class=p>[</span><span class=n>i</span><span class=p>][</span><span class=n>j</span><span class=p>]</span> <span class=o>&gt;</span> <span class=mi>0</span><span class=p>)</span> <span class=p>{</span>
-</span></span><span class=line><span class=cl>                <span class=c1>// 第一单位流：取走数字，费用为负（求最小费用）
-</span></span></span><span class=line><span class=cl>                <span class=nf>add_edge</span><span class=p>(</span><span class=nf>IN</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=nf>OUT</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=mi>1</span><span class=p>,</span> <span class=o>-</span><span class=n>map</span><span class=p>[</span><span class=n>i</span><span class=p>][</span><span class=n>j</span><span class=p>]);</span>
-</span></span><span class=line><span class=cl>                <span class=c1>// 第二单位流：不取数字
-</span></span></span><span class=line><span class=cl>                <span class=nf>add_edge</span><span class=p>(</span><span class=nf>IN</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=nf>OUT</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=mi>1</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>                <span class=nf>add_edge</span><span class=p>(</span><span class=nf>IN</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=nf>OUT</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=mi>1</span><span class=p>,</span> <span class=o>-</span><span class=n>map</span><span class=p>[</span><span class=n>i</span><span class=p>][</span><span class=n>j</span><span class=p>]);</span>
+</span></span><span class=line><span class=cl>                <span class=nf>add_edge</span><span class=p>(</span><span class=nf>IN</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=nf>OUT</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=mi>1</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
 </span></span><span class=line><span class=cl>            <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
 </span></span><span class=line><span class=cl>                <span class=nf>add_edge</span><span class=p>(</span><span class=nf>IN</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=nf>OUT</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=mi>2</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
 </span></span><span class=line><span class=cl>            <span class=p>}</span>
-</span></span><span class=line><span class=cl>            <span class=c1>// 向右、向下连边
-</span></span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>j</span> <span class=o>+</span> <span class=mi>1</span> <span class=o>&lt;=</span> <span class=n>N</span><span class=p>)</span> <span class=nf>add_edge</span><span class=p>(</span><span class=nf>OUT</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=nf>IN</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=o>+</span><span class=mi>1</span><span class=p>),</span> <span class=mi>2</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>j</span> <span class=o>+</span> <span class=mi>1</span> <span class=o>&lt;=</span> <span class=n>N</span><span class=p>)</span> <span class=nf>add_edge</span><span class=p>(</span><span class=nf>OUT</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=nf>IN</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=o>+</span><span class=mi>1</span><span class=p>),</span> <span class=mi>2</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
 </span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>i</span> <span class=o>+</span> <span class=mi>1</span> <span class=o>&lt;=</span> <span class=n>N</span><span class=p>)</span> <span class=nf>add_edge</span><span class=p>(</span><span class=nf>OUT</span><span class=p>(</span><span class=n>i</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=nf>IN</span><span class=p>(</span><span class=n>i</span><span class=o>+</span><span class=mi>1</span><span class=p>,</span><span class=n>j</span><span class=p>),</span> <span class=mi>2</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
 </span></span><span class=line><span class=cl>        <span class=p>}</span>
 </span></span><span class=line><span class=cl>    <span class=p>}</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    <span class=c1>// 源汇
-</span></span></span><span class=line><span class=cl>    <span class=nf>add_edge</span><span class=p>(</span><span class=n>S</span><span class=p>,</span> <span class=nf>IN</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span><span class=mi>1</span><span class=p>),</span> <span class=mi>2</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=nf>add_edge</span><span class=p>(</span><span class=n>S</span><span class=p>,</span> <span class=nf>IN</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span><span class=mi>1</span><span class=p>),</span> <span class=mi>2</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
 </span></span><span class=line><span class=cl>    <span class=nf>add_edge</span><span class=p>(</span><span class=nf>OUT</span><span class=p>(</span><span class=n>N</span><span class=p>,</span><span class=n>N</span><span class=p>),</span> <span class=n>T</span><span class=p>,</span> <span class=mi>2</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
 </span></span><span class=line><span class=cl>
 </span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>ans</span> <span class=o>=</span> <span class=o>-</span><span class=nf>mcmf</span><span class=p>(</span><span class=n>S</span><span class=p>,</span> <span class=n>T</span><span class=p>,</span> <span class=n>total_nodes</span><span class=p>);</span>
 </span></span><span class=line><span class=cl>    <span class=nf>printf</span><span class=p>(</span><span class=s>&#34;%d</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>,</span> <span class=n>ans</span><span class=p>);</span>
 </span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=mi>0</span><span class=p>;</span>
-</span></span><span class=line><span class=cl><span class=p>}</span><span class=err>\</span><span class=n>n</span><span class=err>\</span><span class=n>n</span><span class=err>```\</span><span class=n>n</span><span class=err>\</span><span class=n>n</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>时间复杂度：</span><span class=nf>O</span><span class=p>(</span><span class=n>E</span> <span class=err>·</span> <span class=n>SPFA</span><span class=p>)</span>
-</span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl><span class=err>优势：可轻松扩展到</span> <span class=n>K</span> <span class=err>条路径。</span>
-</span></span></code></pre></td></tr></table></div></div></section><footer class=article-footer><section class=article-tags><a href=/WangScape/tags/%E7%AE%97%E6%B3%95/>算法</a></section></footer></article><div class=article-comments><h3 style=margin-top:40px>💬 评论</h3><div id=comments-list class=comments-container><div style=text-align:center;color:#999;padding:40px>加载评论中...</div></div><div style="text-align:center;margin:30px 0"><button type=button class=btn-open-comment-form onclick=openCommentForm()>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>优势：可轻松扩展到 K 条路径。</p></section><footer class=article-footer><section class=article-tags><a href=/WangScape/tags/%E7%AE%97%E6%B3%95/>算法</a></section></footer></article><div class=article-comments><h3 style=margin-top:40px>💬 评论</h3><div id=comments-list class=comments-container><div style=text-align:center;color:#999;padding:40px>加载评论中...</div></div><div style="text-align:center;margin:30px 0"><button type=button class=btn-open-comment-form onclick=openCommentForm()>
 💬 发表评论</button></div><div id=comment-modal class=comment-modal style=display:none data-api-base=https://wang-scape.vercel.app data-github-repo=w2343419-del/WangScape data-github-label-approved=approved data-github-label-pending=pending data-github-label-comment=comment><div class=comment-modal-content><div class=comment-modal-header><h4>💬 发表评论</h4><button type=button class=comment-modal-close onclick=closeCommentForm()>✕</button></div><div id=replying-to style=display:none;margin-bottom:10px;font-size:13px;color:#666;padding:10px;background:#f0f8ff;border-radius:4px>正在回复：<span id=replying-to-name style=font-weight:600></span>
 <button type=button class=comment-reply-cancel onclick=cancelReply()>取消回复</button></div><form id=comment-form onsubmit=submitComment(event)><input type=hidden id=comment-parent-id name=parent_id><div class=form-group><label for=comment-name>姓名 *</label>
 <input type=text id=comment-name name=name placeholder=您的姓名 required></div><div class=form-group><label for=comment-email>邮箱 *</label>
