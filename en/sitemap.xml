@@ -2,9 +2,6 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://w2343419-del.github.io/WangScape/en/categories/algorithm/</loc>
-    <lastmod>2026-03-02T13:57:00+08:00</lastmod>
-  </url><url>
     <loc>https://w2343419-del.github.io/WangScape/en/categories/</loc>
     <lastmod>2026-03-02T13:57:00+08:00</lastmod>
     <xhtml:link
@@ -18,10 +15,7 @@
                 href="https://w2343419-del.github.io/WangScape/en/categories/"
                 />
   </url><url>
-    <loc>https://w2343419-del.github.io/WangScape/en/tags/dynamic-programming/</loc>
-    <lastmod>2026-03-02T13:57:00+08:00</lastmod>
-  </url><url>
-    <loc>https://w2343419-del.github.io/WangScape/en/p/dynamic-programming-and-state-transition-equations/</loc>
+    <loc>https://w2343419-del.github.io/WangScape/en/p/dynamic-planning-and-state-transition-equation/</loc>
     <lastmod>2026-03-02T13:57:00+08:00</lastmod>
     <xhtml:link
                 rel="alternate"
@@ -31,7 +25,7 @@
     <xhtml:link
                 rel="alternate"
                 hreflang="en"
-                href="https://w2343419-del.github.io/WangScape/en/p/dynamic-programming-and-state-transition-equations/"
+                href="https://w2343419-del.github.io/WangScape/en/p/dynamic-planning-and-state-transition-equation/"
                 />
   </url><url>
     <loc>https://w2343419-del.github.io/WangScape/en/</loc>
@@ -60,9 +54,6 @@
                 href="https://w2343419-del.github.io/WangScape/en/post/"
                 />
   </url><url>
-    <loc>https://w2343419-del.github.io/WangScape/en/tags/state-transition-equation/</loc>
-    <lastmod>2026-03-02T13:57:00+08:00</lastmod>
-  </url><url>
     <loc>https://w2343419-del.github.io/WangScape/en/tags/</loc>
     <lastmod>2026-03-02T13:57:00+08:00</lastmod>
     <xhtml:link
@@ -75,6 +66,48 @@
                 hreflang="en"
                 href="https://w2343419-del.github.io/WangScape/en/tags/"
                 />
+  </url><url>
+    <loc>https://w2343419-del.github.io/WangScape/en/tags/%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92/</loc>
+    <lastmod>2026-03-02T13:57:00+08:00</lastmod>
+    <xhtml:link
+                rel="alternate"
+                hreflang="zh-cn"
+                href="https://w2343419-del.github.io/WangScape/tags/%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="en"
+                href="https://w2343419-del.github.io/WangScape/en/tags/%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92/"
+                />
+  </url><url>
+    <loc>https://w2343419-del.github.io/WangScape/en/tags/%E7%8A%B6%E6%80%81%E8%BD%AC%E7%A7%BB%E6%96%B9%E7%A8%8B/</loc>
+    <lastmod>2026-03-02T13:57:00+08:00</lastmod>
+    <xhtml:link
+                rel="alternate"
+                hreflang="zh-cn"
+                href="https://w2343419-del.github.io/WangScape/tags/%E7%8A%B6%E6%80%81%E8%BD%AC%E7%A7%BB%E6%96%B9%E7%A8%8B/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="en"
+                href="https://w2343419-del.github.io/WangScape/en/tags/%E7%8A%B6%E6%80%81%E8%BD%AC%E7%A7%BB%E6%96%B9%E7%A8%8B/"
+                />
+  </url><url>
+    <loc>https://w2343419-del.github.io/WangScape/en/categories/%E7%AE%97%E6%B3%95/</loc>
+    <lastmod>2026-03-02T13:57:00+08:00</lastmod>
+    <xhtml:link
+                rel="alternate"
+                hreflang="zh-cn"
+                href="https://w2343419-del.github.io/WangScape/categories/%E7%AE%97%E6%B3%95/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="en"
+                href="https://w2343419-del.github.io/WangScape/en/categories/%E7%AE%97%E6%B3%95/"
+                />
+  </url><url>
+    <loc>https://w2343419-del.github.io/WangScape/en/categories/algorithm/</loc>
+    <lastmod>2026-02-28T11:31:00+08:00</lastmod>
   </url><url>
     <loc>https://w2343419-del.github.io/WangScape/en/tags/algorithm/</loc>
     <lastmod>2026-02-28T11:31:00+08:00</lastmod>
