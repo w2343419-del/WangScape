@@ -1,7 +1,7 @@
 ---
-title: "Dynamic Planning and State Transition Equation"
+title: "State Transition Equation, with Dynamic Programming"
 date: 2026-03-02T13:57:00+08:00
-description: "动态规划与状态转移方程，并总结了几类较常见的模型"
+description: "对动态规划与状态转移方程的总结，及常见模型"
 tags:
     - 动态规划
     - 状态转移方程
@@ -12,10 +12,10 @@ math: true
 comments: true
 hidden: false
 pinned: false
-ws_sync_zh_hash: "afa374a14b77bfab1f769b31c89ba35c6bede99d82e496e08b82fc2117f8a521"
+ws_sync_zh_hash: "ef4560380d923d4d852d25dc5e1187587daa73b37c1b1e120d52828ff6954cda"
 ---
 
-The shadow of dynamic programming can be seen in almost any algorithmic problem, so here is a summary of dynamic programming (DP) and a very important part of it - the state transition equation.
+In algorithmic problems, we can often see the shadow of dynamic programming, so here is a summary of dynamic programming (DP) and a very important part of it - the state transition equation.
 
 ## 一、何为动态规划
 
