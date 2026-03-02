@@ -6,7 +6,180 @@
         <description>Recent content in Home on WangScape</description>
         <generator>Hugo -- gohugo.io</generator>
         <language>en</language>
-        <lastBuildDate>Sat, 28 Feb 2026 11:31:00 +0800</lastBuildDate><atom:link href="https://w2343419-del.github.io/WangScape/en/index.xml" rel="self" type="application/rss+xml" /><item>
+        <lastBuildDate>Mon, 02 Mar 2026 13:57:00 +0800</lastBuildDate><atom:link href="https://w2343419-del.github.io/WangScape/en/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>Dynamic Planning and State Transition Equation</title>
+        <link>https://w2343419-del.github.io/WangScape/en/p/dynamic-planning-and-state-transition-equation/</link>
+        <pubDate>Mon, 02 Mar 2026 13:57:00 +0800</pubDate>
+        
+        <guid>https://w2343419-del.github.io/WangScape/en/p/dynamic-planning-and-state-transition-equation/</guid>
+        <description>&lt;p&gt;The shadow of dynamic programming can be seen in almost any algorithmic problem, so here is a summary of dynamic programming (DP) and a very important part of it - the state transition equation.&lt;/p&gt;
+&lt;h2 id=&#34;一何为动态规划&#34;&gt;一、何为动态规划
+&lt;/h2&gt;&lt;p&gt;Dynamic Programming (DP) is an algorithmic idea that solves the original problem by decomposing it into sub-problems.&lt;/p&gt;
+&lt;p&gt;Dynamic planning is not some specific data structure, but a way of thinking.&lt;/p&gt;
+&lt;p&gt;DP needs to meet the following two properties:&lt;/p&gt;
+&lt;h3 id=&#34;1-最优子结构&#34;&gt;1. 最优子结构
+&lt;/h3&gt;&lt;p&gt;The optimal solution of the original problem contains the optimal solution of the subproblem.&lt;/p&gt;
+&lt;h3 id=&#34;2-重叠子问题&#34;&gt;2. 重叠子问题
+&lt;/h3&gt;&lt;p&gt;Subquestions are computed iteratively and can be cached to avoid duplication.&lt;/p&gt;
+&lt;h2 id=&#34;二何为状态转移方程&#34;&gt;二、何为状态转移方程
+&lt;/h2&gt;&lt;p&gt;To understand the state transition equation, you should first know what a &amp;ldquo;state&amp;rdquo; is.&lt;/p&gt;
+&lt;h3 id=&#34;1-状态&#34;&gt;1. &amp;ldquo;状态&amp;rdquo;
+&lt;/h3&gt;&lt;p&gt;Status is a description of the problem at a certain stage, usually denoted by &lt;code&gt;dp [i]&lt;/code&gt; or &lt;code&gt;dp [i] [j]&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;For example:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;dp [i]&lt;/code&gt; = optimal solution for the first i elements&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;dp [i] [j]&lt;/code&gt; = optimal solution from position i to position j&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;dp [i] [w]&lt;/code&gt; = optimal solution considering the first i items with remaining capacity w&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;2-状态转移方程&#34;&gt;2. 状态转移方程
+&lt;/h3&gt;&lt;p&gt;The state transition equation can be roughly written as:&lt;/p&gt;
+&lt;p&gt;__ code_block_0 __&lt;/p&gt;
+&lt;p&gt;What the state transition equation does is determine what options are available for that step, as well as the sub-problems behind the choices (which can be understood as recursive).&lt;/p&gt;
+&lt;h2 id=&#34;三典型例题&#34;&gt;三、典型例题
+&lt;/h2&gt;&lt;h3 id=&#34;1-线性-dp爬楼梯&#34;&gt;1. 线性 DP：爬楼梯
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Question: * * How many ways can you climb 1 or 2 steps at a time to reach step n?&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Idea Analysis: * *&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ol&gt;
+&lt;li&gt;Define status: &lt;code&gt;dp [i]&lt;/code&gt; = Number of methods to climb to level i&lt;/li&gt;
+&lt;li&gt;Last step analysis: to reach step i, you can only come from step i-1 (step 1) or step i-2 (step 2)&lt;/li&gt;
+&lt;li&gt;Based on the analysis, we can obtain such a state transition equation:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_1 __&lt;/p&gt;
+&lt;p&gt;Note: There are two more boundary states in this state transition equation: &lt;code&gt;dp [1] = 1&lt;/code&gt;, &lt;code&gt;dp [2] = 2&lt;/code&gt;&lt;/p&gt;
+&lt;ol start=&#34;4&#34;&gt;
+&lt;li&gt;Illustration:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_2 __&lt;/p&gt;
+&lt;ol start=&#34;5&#34;&gt;
+&lt;li&gt;Code implementation (take climbing 5 layers as an example):&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_3 __&lt;/p&gt;
+&lt;h3 id=&#34;2-线性-dp打家劫舍&#34;&gt;2. 线性 DP：打家劫舍
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Problem: * * A row of houses can&amp;rsquo;t rob neighbors, ask for the maximum amount.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Idea Analysis: * *&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ol&gt;
+&lt;li&gt;Define status: &lt;code&gt;dp [i]&lt;/code&gt; = the maximum amount you can get for grabbing room i&lt;/li&gt;
+&lt;li&gt;Last step analysis: room i, either rob or not rob&lt;/li&gt;
+&lt;li&gt;Based on the analysis, we can obtain such a state transition equation:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_4 __&lt;/p&gt;
+&lt;ol start=&#34;4&#34;&gt;
+&lt;li&gt;Illustration:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_5 __&lt;/p&gt;
+&lt;ol start=&#34;5&#34;&gt;
+&lt;li&gt;Code Implementation:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_6 __&lt;/p&gt;
+&lt;h3 id=&#34;3-背包-dp01-背包&#34;&gt;3. 背包 DP：0/1 背包
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Question: * * n items, weight &lt;code&gt;w []&lt;/code&gt;, value &lt;code&gt;v []&lt;/code&gt;, back capacity W, for maximum value.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Idea Analysis: * *&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ol&gt;
+&lt;li&gt;Define status: &lt;code&gt;dp [i] [j]&lt;/code&gt; = maximum value considering the first i items, capacity j&lt;/li&gt;
+&lt;li&gt;Last step analysis: the ith item, put or not put&lt;/li&gt;
+&lt;li&gt;Based on the analysis, we can obtain such a state transition equation:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_7 __&lt;/p&gt;
+&lt;ol start=&#34;4&#34;&gt;
+&lt;li&gt;Illustration:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Items: (w = 2, v = 3), (w = 3, v = 4), (w = 4, v = 5) Back carrying capacity W = 5&lt;/p&gt;
+&lt;p&gt;__ code_block_8 __&lt;/p&gt;
+&lt;ol start=&#34;5&#34;&gt;
+&lt;li&gt;Code Implementation:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_9 __&lt;/p&gt;
+&lt;ol start=&#34;6&#34;&gt;
+&lt;li&gt;Space Optimization&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;The two-dimensional dp can be compressed in one dimension, and the inner loop * * must be reversed * * to prevent the same item from being repeatedly placed:&lt;/p&gt;
+&lt;p&gt;__ code_block_10 __&lt;/p&gt;
+&lt;h3 id=&#34;4-序列-dp最长公共子序列lcs&#34;&gt;4. 序列 DP：最长公共子序列（LCS）
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Problem: * * Two strings to find the length of the longest common subsequence. Example: &lt;code&gt;&amp;quot;abcde&amp;quot;&lt;/code&gt; and &lt;code&gt;&amp;quot;ace&amp;quot;&lt;/code&gt; → length is 3 (&lt;code&gt;ace&lt;/code&gt;)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Idea Analysis: * *&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ol&gt;
+&lt;li&gt;Define the status: &lt;code&gt;dp [i] [j]&lt;/code&gt; = LCS length of the first i characters of s1 and the first j characters of s2&lt;/li&gt;
+&lt;li&gt;Final step analysis and state transition equation judgment: whether s1 [i] and s2 [j] are equal:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_11 __&lt;/p&gt;
+&lt;ol start=&#34;3&#34;&gt;
+&lt;li&gt;Illustration:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;s1 = &amp;ldquo;abcde&amp;rdquo; s2 = &amp;ldquo;ace&amp;rdquo;&lt;/p&gt;
+&lt;p&gt;__ code_block_12 __&lt;/p&gt;
+&lt;ol start=&#34;4&#34;&gt;
+&lt;li&gt;Code Implementation:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_13 __&lt;/p&gt;
+&lt;h3 id=&#34;5-区间-dp戳气球&#34;&gt;5. 区间 DP：戳气球
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Question: * * Poke balloon i score = &lt;code&gt;nums [i-1] * nums [i] * nums [i +1]&lt;/code&gt; for maximum total score.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Idea Analysis: * *&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ol&gt;
+&lt;li&gt;Key idea: Do not want to &amp;ldquo;poke which first&amp;rdquo;, but &amp;ldquo;poke which * * last * * in the interval (i, j)&amp;rdquo;, so that the boundaries on both sides are known to avoid confusion&lt;/li&gt;
+&lt;li&gt;Define status: &lt;code&gt;dp [i] [j]&lt;/code&gt; = Maximum score for all balloons in punctured open interval (i, j)&lt;/li&gt;
+&lt;li&gt;Based on the analysis, we can obtain such a state transition equation:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_14 __&lt;/p&gt;
+&lt;p&gt;where k is the last poked balloon in interval (i, j).&lt;/p&gt;
+&lt;ol start=&#34;4&#34;&gt;
+&lt;li&gt;Code Implementation:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_15 __&lt;/p&gt;
+&lt;h2 id=&#34;四模型总结&#34;&gt;四、模型总结
+&lt;/h2&gt;&lt;p&gt;__ code_block_16 __&lt;/p&gt;
+</description>
+        </item>
+        <item>
         <title>P1004 [NOIP 2000 improvement group] grid score analysis and summary</title>
         <link>https://w2343419-del.github.io/WangScape/en/p/p1004-noip-2000-improvement-group-grid-score-analysis-and-summary/</link>
         <pubDate>Sat, 28 Feb 2026 11:31:00 +0800</pubDate>
