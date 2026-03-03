@@ -1,0 +1,51 @@
+{{- partial "helper/external" (dict "Context" . "Namespace" "KaTeX") -}}
+<script>
+    window.addEventListener("DOMContentLoaded", () => {
+        const elementsToRender = [".main-article", ".widget--toc"];
+        const renderOptions = {
+            delimiters: [
+                { left: "$$", right: "$$", display: true },
+                { left: "$", right: "$", display: false },
+                { left: "\\(", right: "\\)", display: false },
+                { left: "\\[", right: "\\]", display: true }
+            ],
+            ignoredClasses: ["gist"],
+            throwOnError: false,
+            strict: "ignore"
+        };
+
+        elementsToRender.forEach(selector => {
+            const element = document.querySelector(selector);
+            if (!element) {
+                return;
+            }
+
+            if (typeof renderMathInElement === "function") {
+                try {
+                    renderMathInElement(element, renderOptions);
+                } catch (error) {
+                    console.warn("KaTeX auto-render failed:", error);
+                }
+            }
+
+            if (typeof katex === "object") {
+                element.querySelectorAll(".math.inline, .math.display").forEach(mathElement => {
+                    const expression = mathElement.textContent?.trim();
+                    if (!expression) {
+                        return;
+                    }
+
+                    try {
+                        katex.render(expression, mathElement, {
+                            displayMode: mathElement.classList.contains("display"),
+                            throwOnError: false,
+                            strict: "ignore"
+                        });
+                    } catch (error) {
+                        console.warn("KaTeX passthrough render failed:", error);
+                    }
+                });
+            }
+        });
+    });
+</script>
