@@ -1,0 +1,742 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>动态规划 on WangScape</title>
+        <link>https://w2343419-del.github.io/WangScape/en/tags/%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92/</link>
+        <description>Recent content in 动态规划 on WangScape</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>en</language>
+        <lastBuildDate>Mon, 02 Mar 2026 13:57:00 +0800</lastBuildDate><atom:link href="https://w2343419-del.github.io/WangScape/en/tags/%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>State Transition Equations and Dynamic Programming</title>
+        <link>https://w2343419-del.github.io/WangScape/en/p/state-transition-equations-and-dynamic-programming/</link>
+        <pubDate>Mon, 02 Mar 2026 13:57:00 +0800</pubDate>
+        
+        <guid>https://w2343419-del.github.io/WangScape/en/p/state-transition-equations-and-dynamic-programming/</guid>
+        <description>&lt;p&gt;In algorithmic problems, we can often see the shadow of dynamic programming, so here is a summary of dynamic programming (DP) and a very important part of it - the state transition equation.&lt;/p&gt;
+&lt;h2 id=&#34;一何为动态规划&#34;&gt;一、何为动态规划
+&lt;/h2&gt;&lt;p&gt;Dynamic Programming (DP) is an algorithmic idea that solves the original problem by decomposing it into sub-problems.&lt;/p&gt;
+&lt;p&gt;Dynamic planning is not some specific data structure, but a way of thinking.&lt;/p&gt;
+&lt;p&gt;DP needs to meet the following two properties:&lt;/p&gt;
+&lt;h3 id=&#34;1-最优子结构&#34;&gt;1. 最优子结构
+&lt;/h3&gt;&lt;p&gt;The optimal solution of the original problem contains the optimal solution of the subproblem.&lt;/p&gt;
+&lt;h3 id=&#34;2-重叠子问题&#34;&gt;2. 重叠子问题
+&lt;/h3&gt;&lt;p&gt;Subquestions are computed iteratively and can be cached to avoid duplication.&lt;/p&gt;
+&lt;h2 id=&#34;二何为状态转移方程&#34;&gt;二、何为状态转移方程
+&lt;/h2&gt;&lt;p&gt;To understand the state transition equation, you should first know what a &amp;ldquo;state&amp;rdquo; is.&lt;/p&gt;
+&lt;h3 id=&#34;1-状态&#34;&gt;1. &amp;ldquo;状态&amp;rdquo;
+&lt;/h3&gt;&lt;p&gt;Status is a description of the problem at a certain stage, usually denoted by &lt;code&gt;dp [i]&lt;/code&gt; or &lt;code&gt;dp [i] [j]&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;For example:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;dp [i]&lt;/code&gt; = optimal solution for the first i elements&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;dp [i] [j]&lt;/code&gt; = optimal solution from position i to position j&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;dp [i] [w]&lt;/code&gt; = optimal solution considering the first i items with remaining capacity w&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;2-状态转移方程&#34;&gt;2. 状态转移方程
+&lt;/h3&gt;&lt;p&gt;The state transition equation can be roughly written as:&lt;/p&gt;
+&lt;p&gt;__ code_block_0 __&lt;/p&gt;
+&lt;p&gt;What the state transition equation does is determine what options are available for that step, as well as the sub-problems behind the choices (which can be understood as recursive).&lt;/p&gt;
+&lt;h2 id=&#34;三典型例题&#34;&gt;三、典型例题
+&lt;/h2&gt;&lt;h2 id=&#34;三典型例题-1&#34;&gt;三、典型例题
+&lt;/h2&gt;&lt;h3 id=&#34;例-1线性-dp---爬楼梯&#34;&gt;例 1：线性 DP - 爬楼梯
+&lt;/h3&gt;&lt;h4 id=&#34;问题&#34;&gt;问题
+&lt;/h4&gt;&lt;p&gt;How many ways can you climb 1 or 2 steps at a time to reach step n?&lt;/p&gt;
+&lt;h4 id=&#34;思路分析&#34;&gt;思路分析
+&lt;/h4&gt;&lt;ol&gt;
+&lt;li&gt;Define status: &lt;code&gt;dp [i]&lt;/code&gt; = Number of methods to climb to level i&lt;/li&gt;
+&lt;li&gt;Last step analysis: to reach step i, you can only come from step i-1 (step 1) or step i-2 (step 2)&lt;/li&gt;
+&lt;li&gt;Based on the analysis, we can obtain such a state transition equation:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;$ $ dp [i] = dp [i-1] + dp [i-2] $ $&lt;/p&gt;
+&lt;p&gt;Note: There are two more boundary states in this state transition equation: &lt;code&gt;dp [1] = 1&lt;/code&gt;, &lt;code&gt;dp [2] = 2&lt;/code&gt;&lt;/p&gt;
+&lt;ol start=&#34;4&#34;&gt;
+&lt;li&gt;Illustration:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_1 __&lt;/p&gt;
+&lt;h4 id=&#34;代码实现&#34;&gt;代码实现
+&lt;/h4&gt;&lt;p&gt;__ code_block_2 __&lt;/p&gt;
+&lt;h4 id=&#34;时间复杂度与优缺点&#34;&gt;时间复杂度与优缺点
+&lt;/h4&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Time complexity * *: $ O (n) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Space complexity * *: $ O (n) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Benefits * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;✅ The question is simple and easy to understand&lt;/li&gt;
+&lt;li&gt;✅ Status definition is intuitive&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Cons * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Values ❌ can only be calculated in one fixed place and need to be recursed multiple times to calculate multiple times&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h3 id=&#34;例-2线性-dp---打家劫舍&#34;&gt;例 2：线性 DP - 打家劫舍
+&lt;/h3&gt;&lt;h4 id=&#34;问题-1&#34;&gt;问题
+&lt;/h4&gt;&lt;p&gt;A row of houses can not rob neighbors, ask for the maximum amount. The given array &lt;code&gt;nums&lt;/code&gt; represents the amounts for each house.&lt;/p&gt;
+&lt;h4 id=&#34;思路分析-1&#34;&gt;思路分析
+&lt;/h4&gt;&lt;ol&gt;
+&lt;li&gt;Define status: &lt;code&gt;dp [i]&lt;/code&gt; = the maximum amount you can get for grabbing room i&lt;/li&gt;
+&lt;li&gt;Last step analysis: room i, either rob or not rob
+&lt;ul&gt;
+&lt;li&gt;Grab this room: get &lt;code&gt;nums [i] + dp [i-2]&lt;/code&gt; (up to i-2 in front)&lt;/li&gt;
+&lt;li&gt;Don&amp;rsquo;t grab this room: get &lt;code&gt;dp [i-1]&lt;/code&gt; (grab the maximum between i-1)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;State transition equation:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;$ $ dp [i] =\ max (dp [i-1], dp [i-2] + nums [i]) $ $&lt;/p&gt;
+&lt;ol start=&#34;4&#34;&gt;
+&lt;li&gt;Illustration:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;__ code_block_3 __&lt;/p&gt;
+&lt;h4 id=&#34;代码实现-1&#34;&gt;代码实现
+&lt;/h4&gt;&lt;p&gt;__ code_block_4 __&lt;/p&gt;
+&lt;h4 id=&#34;时间复杂度与优缺点-1&#34;&gt;时间复杂度与优缺点
+&lt;/h4&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Time complexity * *: $ O (n) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Space complexity * *: $ O (n) $, optimized for $ O (1) $ (only the first two are retained)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Benefits * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;✅ Similar to climbing stairs, clear thinking&lt;/li&gt;
+&lt;li&gt;✅ Optimizes space to O (1)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Cons * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;❌ No direct backtracking on which houses were robbed&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h3 id=&#34;例-3背包-dp---01-背包&#34;&gt;例 3：背包 DP - 0/1 背包
+&lt;/h3&gt;&lt;h4 id=&#34;问题-2&#34;&gt;问题
+&lt;/h4&gt;&lt;p&gt;n items, weight &lt;code&gt;w []&lt;/code&gt;, value &lt;code&gt;v []&lt;/code&gt;, back capacity W, for maximum value.&lt;/p&gt;
+&lt;h4 id=&#34;思路分析-2&#34;&gt;思路分析
+&lt;/h4&gt;&lt;ol&gt;
+&lt;li&gt;Define status: &lt;code&gt;dp [i] [j]&lt;/code&gt; = maximum value considering the first i items, capacity j&lt;/li&gt;
+&lt;li&gt;Last step analysis: the ith item, put or not put
+&lt;ul&gt;
+&lt;li&gt;Do not put: &lt;code&gt;dp [i] [j] = dp [i-1] [j]&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;Placement: &lt;code&gt;dp [i] [j] = dp [i-1] [j-w [i]] + v [i]&lt;/code&gt; for $ j\ geq w [i] $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;State transition equation:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;$ $ dp [i] [j] =\ max (dp [i-1] [j], dp [i-1] [j-w [i]] + v [i]) $ $&lt;/p&gt;
+&lt;ol start=&#34;4&#34;&gt;
+&lt;li&gt;Illustration:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Items: (w = 2, v = 3), (w = 3, v = 4), (w = 4, v = 5) Back carrying capacity W = 5&lt;/p&gt;
+&lt;p&gt;__ code_block_5 __&lt;/p&gt;
+&lt;h4 id=&#34;代码实现-2&#34;&gt;代码实现
+&lt;/h4&gt;&lt;p&gt;__ code_block_6 __&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Spatial optimization * *: The two-dimensional dp can be compressed into one dimension, and the inner loop * * must be reversed * * to prevent the same item from being repeatedly placed:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;__ code_block_7 __&lt;/p&gt;
+&lt;h4 id=&#34;时间复杂度与优缺点-2&#34;&gt;时间复杂度与优缺点
+&lt;/h4&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Time complexity * *: $ O (nW) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Space complexity * *: $ O (nW) $, optimized to $ O (W) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Benefits * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;✅ DP framework is classic and easy to expand&lt;/li&gt;
+&lt;li&gt;Optimal values for all capacities ✅ can be solved at once&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Cons * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;When the number or capacity of ❌ items is large, the pressure in time and space is high&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h3 id=&#34;例-4序列-dp---最长公共子序列lcs&#34;&gt;例 4：序列 DP - 最长公共子序列（LCS）
+&lt;/h3&gt;&lt;h4 id=&#34;问题-3&#34;&gt;问题
+&lt;/h4&gt;&lt;p&gt;Two strings for the length of the longest common subsequence. Example: &lt;code&gt;&amp;quot;abcde&amp;quot;&lt;/code&gt; and &lt;code&gt;&amp;quot;ace&amp;quot;&lt;/code&gt; → length is 3 (&lt;code&gt;ace&lt;/code&gt;)&lt;/p&gt;
+&lt;h4 id=&#34;思路分析-3&#34;&gt;思路分析
+&lt;/h4&gt;&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;Define the status: &lt;code&gt;dp [i] [j]&lt;/code&gt; = LCS length of the first i characters of s1 and the first j characters of s2&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Last step analysis: Are s1 [i] and s2 [j] equal:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Equals: &lt;code&gt;dp [i] [j] = dp [i-1] [j-1] + 1&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;unequal: &lt;code&gt;dp [i] [j] = max (dp [i-1] [j], dp [i] [j-1])&lt;/code&gt; (remove s1 [i] or s2 [j] to see which is better)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;State transition equation: &amp;lsquo;dp [i] [j] = dp [i-1] [j-1] + 1&lt;code&gt;when s1 [i-1] = = s2 [j-1]; otherwise&lt;/code&gt;dp [i] [j] = max (dp [i-1] [j], dp [i] [j-1])`&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Or as a piecewise function:&lt;/p&gt;
+&lt;p&gt;$ $ dp [i] [j] =\ begin {cases}
+\ text {dp [i-1] [j-1] + 1} &amp;amp;\ text {when equal}\
+\ text {max (dp [i-1] [j], dp [i] [j-1])} &amp;amp;\ text {when not equal}
+\ end {cases} $ $&lt;/p&gt;
+&lt;ol start=&#34;4&#34;&gt;
+&lt;li&gt;Illustration:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;s1 = &amp;ldquo;abcde&amp;rdquo; s2 = &amp;ldquo;ace&amp;rdquo;&lt;/p&gt;
+&lt;p&gt;__ code_block_8 __&lt;/p&gt;
+&lt;h4 id=&#34;代码实现-3&#34;&gt;代码实现
+&lt;/h4&gt;&lt;p&gt;__ code_block_9 __&lt;/p&gt;
+&lt;h4 id=&#34;时间复杂度与优缺点-3&#34;&gt;时间复杂度与优缺点
+&lt;/h4&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Time complexity * *: $ O (mn) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Space complexity * *: $ O (mn) $, optimized for $ O (\ min (m, n)) $ (scrolling array)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Benefits * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;✅ Frame for sequence alignment problems&lt;/li&gt;
+&lt;li&gt;✅ Scalable to LCS specific characters (backtracking)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Cons * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;When ❌ m and n are large, the spatial pressure is large&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h3 id=&#34;例-5区间-dp---戳气球&#34;&gt;例 5：区间 DP - 戳气球
+&lt;/h3&gt;&lt;h4 id=&#34;问题-4&#34;&gt;问题
+&lt;/h4&gt;&lt;p&gt;Poke the balloon i score = &lt;code&gt;nums [i-1] * nums [i] * nums [i +1]&lt;/code&gt; to get the maximum total score.&lt;/p&gt;
+&lt;h4 id=&#34;思路分析-4&#34;&gt;思路分析
+&lt;/h4&gt;&lt;ol&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Key ideas * *: Do not want to &amp;ldquo;poke which first&amp;rdquo;, but &amp;ldquo;poke which last * * in the interval (i, j)&amp;rdquo;, so that the boundaries on both sides are known to avoid confusion&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Define status: &lt;code&gt;dp [i] [j]&lt;/code&gt; = Maximum score for all balloons in punctured open interval (i, j)&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Based on the analysis, we can obtain such a state transition equation:&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;$ $ dp [i] [j] =\ max_{i &amp;lt; k &amp;lt; j} (dp [i] [k] + dp [k] [j] + nums [i]\ nums [k]\ times nums [j]) $ $&lt;/p&gt;
+&lt;p&gt;where k is the last poked balloon in interval (i, j).&lt;/p&gt;
+&lt;h4 id=&#34;代码实现-4&#34;&gt;代码实现
+&lt;/h4&gt;&lt;p&gt;__ code_block_10 __&lt;/p&gt;
+&lt;h4 id=&#34;时间复杂度与优缺点-4&#34;&gt;时间复杂度与优缺点
+&lt;/h4&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Time complexity * *: $ O (n ^ 3) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Space complexity * *: $ O (n ^ 2) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Benefits * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Classic example of an ✅ interval DP&lt;/li&gt;
+&lt;li&gt;The idea of the ✅ &amp;ldquo;last one&amp;rdquo; is very enlightening&lt;/li&gt;
+&lt;li&gt;✅ The order in which specific stamps can be obtained by backtracking&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Cons * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;The ❌ idea is relatively complex and confusing to the first contact&lt;/li&gt;
+&lt;li&gt;❌ Time complexity is cubic&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;四dp-模型总结&#34;&gt;四、DP 模型总结
+&lt;/h2&gt;&lt;p&gt;DP Model Comparison Summary:&lt;/p&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;Type&lt;/th&gt;
+          &lt;th&gt;State Transition Equation&lt;/th&gt;
+          &lt;th&gt;Time Complexity&lt;/th&gt;
+          &lt;th&gt;Space Complexity&lt;/th&gt;
+          &lt;th&gt;Represents Problem&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;* * Linear DP * *&lt;/td&gt;
+          &lt;td&gt;Recursive Relationship&lt;/td&gt;
+          &lt;td&gt;$ O (n) $&lt;/td&gt;
+          &lt;td&gt;$ O (n) $&lt;/td&gt;
+          &lt;td&gt;Climbing Stairs, Burglary&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;* * Backpack DP * *&lt;/td&gt;
+          &lt;td&gt;Choose max&lt;/td&gt;
+          &lt;td&gt;$ O (nW) $&lt;/td&gt;
+          &lt;td&gt;$ O (nW) $&lt;/td&gt;
+          &lt;td&gt;0/1 Backpack, full backpack&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;* * Sequence DP * *&lt;/td&gt;
+          &lt;td&gt;Two Pointer Recursion&lt;/td&gt;
+          &lt;td&gt;$ O (mn) $&lt;/td&gt;
+          &lt;td&gt;$ O (mn) $&lt;/td&gt;
+          &lt;td&gt;LCS, Edit Distance&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;* * Interval DP * *&lt;/td&gt;
+          &lt;td&gt;Interval Split Recursion&lt;/td&gt;
+          &lt;td&gt;$ O (n ^ 3) $&lt;/td&gt;
+          &lt;td&gt;$ O (n ^ 2) $&lt;/td&gt;
+          &lt;td&gt;Balloon Poke, Matrix Chain Multiplication&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;总结与建议&#34;&gt;总结与建议
+&lt;/h2&gt;&lt;ol&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;From the question * *: Determine if DP can be used (with optimal sub-structure and overlapping sub-problems)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Define status * *: clearly define what &lt;code&gt;dp [...]&lt;/code&gt; means&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Write out the transfer equation * *: Determine the relationship between the states&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Determination of initial conditions * *: treatment of boundary situations&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Implementation and optimization * *: Code implementation, then consider space + time optimization&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+        </item>
+        <item>
+        <title>P1004 [NOIP 2000 improvement group] grid score analysis and summary</title>
+        <link>https://w2343419-del.github.io/WangScape/en/p/p1004-noip-2000-improvement-group-grid-score-analysis-and-summary/</link>
+        <pubDate>Sat, 28 Feb 2026 11:31:00 +0800</pubDate>
+        
+        <guid>https://w2343419-del.github.io/WangScape/en/p/p1004-noip-2000-improvement-group-grid-score-analysis-and-summary/</guid>
+        <description>&lt;p&gt;This is a classic but difficult chessboard problem. Although it is the topic of NOIP in 2000, it is still quite difficult for first-time contacts as the final topic. This paper summarizes three different solutions: Dynamic Planning, DFS Memorization, and Minimum Cost Maximum Flow, which unfolds gradually from easy to difficult.&lt;/p&gt;
+&lt;h2 id=&#34;问题&#34;&gt;问题
+&lt;/h2&gt;&lt;h3 id=&#34;题目来源&#34;&gt;题目来源
+&lt;/h3&gt;&lt;p&gt;NOIP 2000 提高组 T4&lt;/p&gt;
+&lt;h3 id=&#34;问题描述&#34;&gt;问题描述
+&lt;/h3&gt;&lt;p&gt;There is a square diagram of N × N (N ≤ 9), some of which we fill in positive integers, while others put the number 0.
+Someone starts at point A (0, 0) in the top left corner of the diagram and can walk down or to the right until they reach point B (N, N) in the bottom right corner.On the way he walks, he can take the number in the square (which becomes the number 0).
+This person walked from point A to point B twice, trying to find 2 such paths, so that the sum of the obtained numbers is the maximum.&lt;/p&gt;
+&lt;h3 id=&#34;输入输出&#34;&gt;输入输出
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Input format * *: The first line of input is an integer N (representing the grid diagram of N × N), and each subsequent line has three integers, the first two represent the position, and the third number is the number placed on the position. A separate line of 0 indicates the end of the input.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Output format * *: Just output an integer representing the maximum sum obtained on the 2 paths.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;样例&#34;&gt;样例
+&lt;/h3&gt;&lt;p&gt;Input:
+__ code_block_0 __&lt;/p&gt;
+&lt;p&gt;Output:
+__ code_block_1 __&lt;/p&gt;
+&lt;h3 id=&#34;约束条件&#34;&gt;约束条件
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;数据范围：1≤N≤9&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;问题分析&#34;&gt;问题分析
+&lt;/h3&gt;&lt;p&gt;Why can&amp;rsquo;t I enumerate twice (i.e. find an optimal path first, then find the second one in the remaining cells)? Because one path changes the map (takes the number) and affects the result of the second, the two paths must be considered in conjunction and cannot be optimized independently.&lt;/p&gt;
+&lt;h2 id=&#34;思路分析&#34;&gt;思路分析
+&lt;/h2&gt;&lt;p&gt;The ideas for the three solutions are as follows:&lt;/p&gt;
+&lt;h3 id=&#34;解法一动态规划&#34;&gt;解法一：动态规划
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Core idea * *: Advance both paths simultaneously, simulating two people walking at the same time with one DP.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;State design * *: set &lt;code&gt;dp [k] [x1] [x2]&lt;/code&gt;, where:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;k is the number of steps currently taken (i.e. the value of x + y, from 2 to 2N)&lt;/li&gt;
+&lt;li&gt;x1 and x2 are the line numbers where the two people are currently located&lt;/li&gt;
+&lt;li&gt;y = k - x can be derived from k and x (key optimization, this step reduces the dimension), so column numbers do not need to be stored separately&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Deduplication * *: When two people are in the same cell (x1 = = x2, y1 = = y2), the cell is taken only once.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;State transition * *: Two people each can choose to move to the right or down for a total of 4 combinations. Each state dp [k] [x1] [x2] represents the sum of the maximum values at line x1 and line x2 for human 1 and 2, respectively, going to step k.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;解法二dfs--记忆化搜索&#34;&gt;解法二：DFS + 记忆化搜索
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Core idea * *: Similar to the DP algorithm (deep search and DP are essentially one thing after all), but adds memorized search to avoid double counting. If there is no memorized search, the amount of calculation will be an exponential explosion, about $4 ^ {16} $ times at N = 9.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Implementation * *: Starting from the initial state, all possible transitions are attempted recursively, while the calculated state is cached with the memo array, avoiding duplication. Returns 0 when the end point is reached and returns the maximum value layer by layer.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;解法三费用流最小费用最大流&#34;&gt;解法三：费用流（最小费用最大流）
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Core Idea * *: Convert &amp;ldquo;maximize two paths&amp;rdquo; into a network flow problem.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Modeling ideas * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Two paths from A to B = 2 flows from the source to the sink&lt;/li&gt;
+&lt;li&gt;Fetch up to once per cell = Capacity limit per node&lt;/li&gt;
+&lt;li&gt;Get number max = cost max (min to min)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Split point processing * *: Each grid (i, j) is split into two nodes in and out:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;in → out capacity 1, cost - map [i] [j] (first path taken)&lt;/li&gt;
+&lt;li&gt;in → out plus capacity 1, cost 0 (second path through but not counted)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Connecting edges * *: (i, j) out connects (i +1, j) in and (i, j +1) in, capacity 2, cost 0.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;代码实现&#34;&gt;代码实现
+&lt;/h2&gt;&lt;h3 id=&#34;解法一动态规划-1&#34;&gt;解法一：动态规划
+&lt;/h3&gt;&lt;p&gt;Full Code
+__ code_block_2 __&lt;/p&gt;
+&lt;h3 id=&#34;解法二dfs--记忆化搜索-1&#34;&gt;解法二：DFS + 记忆化搜索
+&lt;/h3&gt;&lt;p&gt;__ code_block_3 __&lt;/p&gt;
+&lt;h3 id=&#34;解法三费用流最小费用最大流-1&#34;&gt;解法三：费用流（最小费用最大流）
+&lt;/h3&gt;&lt;p&gt;__ code_block_4 __&lt;/p&gt;
+&lt;h2 id=&#34;时间复杂度与优缺点&#34;&gt;时间复杂度与优缺点
+&lt;/h2&gt;&lt;h3 id=&#34;解法一动态规划-2&#34;&gt;解法一：动态规划
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Time complexity * *: $ O (N ^ 3) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Number of states: $ O (N ^ 2)\ times O (N ^ 2)/2 = O (N ^ 4) $, but due to the constraints of dimensionality reduction and x1 and x2, it is actually $ O (N ^ 3) $&lt;/li&gt;
+&lt;li&gt;4 transitions per state&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Space complexity * *: $ O (N ^ 3) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;dp array size is $2N\ times N\ times N $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Benefits * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Clear ✅ thinking and easy to understand&lt;/li&gt;
+&lt;li&gt;Problem solving in ✅ one iteration&lt;/li&gt;
+&lt;li&gt;✅ The code is relatively simple&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Cons * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Large ❌ footprint (approx. 1.3MB at N = 9)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;解法二dfs--记忆化搜索-2&#34;&gt;解法二：DFS + 记忆化搜索
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Time complexity * *: $ O (N ^ 3) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Same number of statuses as DP&lt;/li&gt;
+&lt;li&gt;Up to one calculation per state (memorization)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Space complexity * *: $ O (N ^ 3) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Memo and visited arrays account for $ O (N ^ 3) $ each&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Benefits * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;✅ Logical and natural, thinking from top to bottom&lt;/li&gt;
+&lt;li&gt;✅ Easy to add pruning (although there are not many pruning in this question)&lt;/li&gt;
+&lt;li&gt;✅ Flexible state definition&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Cons * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;The ❌ recursive call stack depth is $ O (N) $ (stack space)&lt;/li&gt;
+&lt;li&gt;Same ❌ space complexity as DP&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;解法三费用流&#34;&gt;解法三：费用流
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Time complexity * *: $ O (Flow\ times SPFA) = O (2\ times E\ log V) = O (N ^ 2\ times N ^ 2) = O (N ^ 4) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Flow is 2&lt;/li&gt;
+&lt;li&gt;SPFA $ O (V\ log V) $ each time, where $ V = O (N ^ 2) $, $ E = O (N ^ 2) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Space complexity * *: $ O (V + E) = O (N ^ 2) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Storage space for diagrams&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Benefits * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;✅ Suitable for more general scenarios (multiple paths, restricted diagrams, etc.)&lt;/li&gt;
+&lt;li&gt;✅ Code frameworks can be reused for other expense stream issues&lt;/li&gt;
+&lt;li&gt;Relatively sparsely occupied ✅ space&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Cons * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Highest ❌ time complexity (about $ O (N ^ 4) $ vs $ O (N ^ 3) $)&lt;/li&gt;
+&lt;li&gt;❌ The code is long, complex and error-prone&lt;/li&gt;
+&lt;li&gt;❌ Difficulty has skyrocketed beyond the limits of the competition&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;对比与总结&#34;&gt;对比与总结
+&lt;/h3&gt;&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;Features&lt;/th&gt;
+          &lt;th&gt;Solution 1 DP&lt;/th&gt;
+          &lt;th&gt;Solution 2 DFS&lt;/th&gt;
+          &lt;th&gt;Solution 3 Cost Flow&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Ease of Understanding&lt;/td&gt;
+          &lt;td&gt;★★★★☆&lt;/td&gt;
+          &lt;td&gt;★★★★☆&lt;/td&gt;
+          &lt;td&gt;★☆☆☆☆&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Difficulty&lt;/td&gt;
+          &lt;td&gt;★★☆☆☆&lt;/td&gt;
+          &lt;td&gt;★★☆☆☆&lt;/td&gt;
+          &lt;td&gt;★★★★★&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Time Complexity&lt;/td&gt;
+          &lt;td&gt;$ O (N ^ 3) $&lt;/td&gt;
+          &lt;td&gt;$ O (N ^ 3) $&lt;/td&gt;
+          &lt;td&gt;$ O (N ^ 4) $&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Space Complexity&lt;/td&gt;
+          &lt;td&gt;$ O (N ^ 3) $&lt;/td&gt;
+          &lt;td&gt;$ O (N ^ 3) $&lt;/td&gt;
+          &lt;td&gt;$ O (N ^ 2) $&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Recommendation Index&lt;/td&gt;
+          &lt;td&gt;★★★★★&lt;/td&gt;
+          &lt;td&gt;★★★★☆&lt;/td&gt;
+          &lt;td&gt;★★☆☆☆&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Conclusion * *: For this question, * * Solution 1 (DP) * * is the best choice, which is clear, efficient and not overly complicated. Solution 2 is for students who want to practice DFS. Solution 3 Although elegant, it is not as efficient as DP for the scale of N ≤ 9, and only extends knowledge.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+        </item>
+        
+    </channel>
+</rss>
