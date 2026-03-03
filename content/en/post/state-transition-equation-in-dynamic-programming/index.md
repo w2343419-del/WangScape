@@ -1,12 +1,12 @@
 ---
 title: "State Transition Equation, with Dynamic Programming"
 date: 2026-03-02T13:57:00+08:00
-description: "对动态规划与状态转移方程的总结，及常见模型"
+description: "Summary of dynamic programming and state transition equations, with common models"
 tags:
-    - 动态规划
-    - 状态转移方程
+    - Dynamic Programming
+    - State Transition Equation
 categories:
-    - 算法
+    - Algorithm
 draft: false
 math: true
 comments: true
@@ -17,7 +17,7 @@ ws_sync_zh_hash: "ef4560380d923d4d852d25dc5e1187587daa73b37c1b1e120d52828ff6954c
 
 In algorithmic problems, we can often see the shadow of dynamic programming, so here is a summary of dynamic programming (DP) and a very important part of it - the state transition equation.
 
-## 一、何为动态规划
+## 1. What is Dynamic Programming
 
 Dynamic Programming (DP) is an algorithmic idea that solves the original problem by decomposing it into sub-problems.
 
@@ -25,19 +25,19 @@ Dynamic planning is not some specific data structure, but a way of thinking.
 
 DP needs to meet the following two properties:
 
-### 1. 最优子结构
+### 1. Optimal Substructure
 
 The optimal solution of the original problem contains the optimal solution of the subproblem.
 
-### 2. 重叠子问题
+### 2. Overlapping Subproblems
 
 Subquestions are computed iteratively and can be cached to avoid duplication.
 
-## 二、何为状态转移方程
+## 2. What is State Transition Equation
 
 To understand the state transition equation, you should first know what a "state" is.
 
-### 1. "状态"
+### 1. "State"
 
 Status is a description of the problem at a certain stage, usually denoted by `dp [i]` or `dp [i] [j]`.
 
@@ -46,7 +46,7 @@ For example:
 - `dp [i] [j]` = optimal solution from position i to position j
 - `dp [i] [w]` = optimal solution considering the first i items with remaining capacity w
 
-### 2. 状态转移方程
+### 2. State Transition Equation
 
 The state transition equation can be roughly written as:
 
@@ -54,9 +54,9 @@ __ code_block_0 __
 
 What the state transition equation does is determine what options are available for that step, as well as the sub-problems behind the choices (which can be understood as recursive).
 
-## 三、典型例题
+## 3. Typical Examples
 
-### 1. 线性 DP：爬楼梯
+### 1. Linear DP: Climbing Stairs
 
 * * Question: * * How many ways can you climb 1 or 2 steps at a time to reach step n?
 
@@ -78,7 +78,7 @@ __ code_block_2 __
 
 __ code_block_3 __
 
-### 2. 线性 DP：打家劫舍
+### 2. Linear DP: House Robber
 
 * * Problem: * * A row of houses can't rob neighbors, ask for the maximum amount.
 
@@ -98,7 +98,7 @@ __ code_block_5 __
 
 __ code_block_6 __
 
-### 3. 背包 DP：0/1 背包
+### 3. Knapsack DP: 0/1 Knapsack
 
 * * Question: * * n items, weight `w []`, value `v []`, back capacity W, for maximum value.
 
@@ -126,7 +126,7 @@ The two-dimensional dp can be compressed in one dimension, and the inner loop * 
 
 __ code_block_10 __
 
-### 4. 序列 DP：最长公共子序列（LCS）
+### 4. Sequence DP: Longest Common Subsequence (LCS)
 
 * * Problem: * * Two strings to find the length of the longest common subsequence. Example: `"abcde"` and `"ace"` → length is 3 (`ace`)
 
@@ -147,7 +147,7 @@ __ code_block_12 __
 
 __ code_block_13 __
 
-### 5. 区间 DP：戳气球
+### 5. Interval DP: Burst Balloons
 
 * * Question: * * Poke balloon i score = `nums [i-1] * nums [i] * nums [i +1]` for maximum total score.
 
@@ -165,6 +165,6 @@ where k is the last poked balloon in interval (i, j).
 
 __ code_block_15 __
 
-## 四、模型总结
+## 4. Model Summary
 
 __ code_block_16 __

@@ -3524,14 +3524,61 @@ func handleSyncTranslate(w http.ResponseWriter, r *http.Request) {
 	// 翻译内容正文（保留代码块和特殊标记不翻译）
 	translatedBody := translateMarkdownContent(zhBody, "zh", "en")
 
-	// 生成英文版本的 frontmatter（替换标题）
+	// 生成英文版本的 frontmatter（翻译标题、描述、标签、分类）
 	enFrontmatter := zhFrontmatter
+	
+	// 翻译title
 	titleMatch := regexp.MustCompile(`title:\s*"?([^"\n]+)"?`).FindStringSubmatch(zhFrontmatter)
 	if len(titleMatch) > 1 {
 		zhTitle := titleMatch[1]
 		enTitle := translateText(zhTitle, "zh", "en")
-		enFrontmatter = regexp.MustCompile(`title:\s*"?[^"\n]+"?`).ReplaceAllString(zhFrontmatter, fmt.Sprintf(`title: "%s"`, enTitle))
+		enFrontmatter = regexp.MustCompile(`title:\s*"?[^"\n]+"?`).ReplaceAllString(enFrontmatter, fmt.Sprintf(`title: "%s"`, enTitle))
 	}
+	
+	// 翻译description
+	descMatch := regexp.MustCompile(`description:\s*"([^"]+)"`).FindStringSubmatch(zhFrontmatter)
+	if len(descMatch) > 1 {
+		zhDesc := descMatch[1]
+		enDesc := translateText(zhDesc, "zh", "en")
+		enFrontmatter = regexp.MustCompile(`description:\s*"[^"]+"`).ReplaceAllString(enFrontmatter, fmt.Sprintf(`description: "%s"`, enDesc))
+	}
+	
+	// 翻译tags（数组形式）
+	tagsRegex := regexp.MustCompile(`tags:\s*\n((?:\s+-\s+.+\n?)+)`)
+	if tagsMatch := tagsRegex.FindStringSubmatch(zhFrontmatter); len(tagsMatch) > 1 {
+		tagsList := tagsMatch[1]
+		tagLines := strings.Split(strings.TrimSpace(tagsList), "\n")
+		var translatedTags []string
+		for _, line := range tagLines {
+			tagValue := strings.TrimSpace(strings.TrimPrefix(line, "-"))
+			if tagValue != "" {
+				enTag := translateText(tagValue, "zh", "en")
+				translatedTags = append(translatedTags, "    - "+enTag)
+			}
+		}
+		if len(translatedTags) > 0 {
+			enFrontmatter = tagsRegex.ReplaceAllString(enFrontmatter, "tags:\n"+strings.Join(translatedTags, "\n")+"\n")
+		}
+	}
+	
+	// 翻译categories（数组形式）
+	catsRegex := regexp.MustCompile(`categories:\s*\n((?:\s+-\s+.+\n?)+)`)
+	if catsMatch := catsRegex.FindStringSubmatch(zhFrontmatter); len(catsMatch) > 1 {
+		catsList := catsMatch[1]
+		catLines := strings.Split(strings.TrimSpace(catsList), "\n")
+		var translatedCats []string
+		for _, line := range catLines {
+			catValue := strings.TrimSpace(strings.TrimPrefix(line, "-"))
+			if catValue != "" {
+				enCat := translateText(catValue, "zh", "en")
+				translatedCats = append(translatedCats, "    - "+enCat)
+			}
+		}
+		if len(translatedCats) > 0 {
+			enFrontmatter = catsRegex.ReplaceAllString(enFrontmatter, "categories:\n"+strings.Join(translatedCats, "\n")+"\n")
+		}
+	}
+	
     enFrontmatter = setFrontmatterValue(enFrontmatter, "ws_sync_zh_hash", zhContentHash)
 
 	// 组装英文版本
@@ -3596,10 +3643,26 @@ func translateMarkdownContent(content, sourceLang, targetLang string) string {
 		return fmt.Sprintf("__CODE_BLOCK_%d__", len(codeBlocks)-1)
 	})
 
-	// 分段翻译（避免超过 API 限制）
+	// 分段翻译（包括标题）
 	paragraphs := strings.Split(content, "\n\n")
 	for i, para := range paragraphs {
-		if len(strings.TrimSpace(para)) > 0 && !strings.HasPrefix(para, "#") {
+		trimmed := strings.TrimSpace(para)
+		if len(trimmed) == 0 {
+			continue
+		}
+		
+		// 检查是否是Markdown标题（#开头）
+		if strings.HasPrefix(trimmed, "#") {
+			// 提取标题级别和内容
+			headerMatch := regexp.MustCompile(`^(#+)\s+(.+)$`).FindStringSubmatch(trimmed)
+			if len(headerMatch) > 2 {
+				hashes := headerMatch[1]  // # 号的数量
+				headerText := headerMatch[2]  // 标题文本
+				translatedHeader := translateText(headerText, sourceLang, targetLang)
+				paragraphs[i] = hashes + " " + translatedHeader
+			}
+		} else {
+			// 普通段落直接翻译
 			paragraphs[i] = translateText(para, sourceLang, targetLang)
 		}
 	}

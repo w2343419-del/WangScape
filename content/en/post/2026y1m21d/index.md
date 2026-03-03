@@ -1,7 +1,7 @@
 ---
 pinned: true
 title: "Alpine flowing water, searching for sound"
-description: "你好，欢迎来到我的博客"
+description: "Hello, welcome to my blog"
 date: 2026-02-03T13:28:00+08:00
 image: ""
 math: false
@@ -18,7 +18,7 @@ January 21, 2026 finally became an extraordinary day for me.
 
 My personal blog is finally live!!!
 
-## 博客的目标
+## Blog Goals
 
 I will record here:
 
@@ -31,7 +31,7 @@ Maybe this blog will be my all-disciplinary notebook? (at least during universit
 
 In addition to code, it may also involve artificial intelligence, games, music, movies and other fields. I do my best to keep my blog focused on learning.
 
-## 写在末尾
+## Final Words
 
 Although I don't know if I can always maintain this blog (a bit lazy after all), I will do my best.
 
