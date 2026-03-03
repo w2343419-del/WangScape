@@ -1,29 +1,29 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <channel>
-        <title>状态转移方程 on WangScape</title>
-        <link>https://w2343419-del.github.io/WangScape/en/tags/%E7%8A%B6%E6%80%81%E8%BD%AC%E7%A7%BB%E6%96%B9%E7%A8%8B/</link>
-        <description>Recent content in 状态转移方程 on WangScape</description>
+        <title>Dynamic Programming on WangScape</title>
+        <link>https://w2343419-del.github.io/WangScape/en/tags/dynamic-programming/</link>
+        <description>Recent content in Dynamic Programming on WangScape</description>
         <generator>Hugo -- gohugo.io</generator>
         <language>en</language>
-        <lastBuildDate>Mon, 02 Mar 2026 13:57:00 +0800</lastBuildDate><atom:link href="https://w2343419-del.github.io/WangScape/en/tags/%E7%8A%B6%E6%80%81%E8%BD%AC%E7%A7%BB%E6%96%B9%E7%A8%8B/index.xml" rel="self" type="application/rss+xml" /><item>
+        <lastBuildDate>Mon, 02 Mar 2026 13:57:00 +0800</lastBuildDate><atom:link href="https://w2343419-del.github.io/WangScape/en/tags/dynamic-programming/index.xml" rel="self" type="application/rss+xml" /><item>
         <title>State Transition Equation, with Dynamic Programming</title>
         <link>https://w2343419-del.github.io/WangScape/en/p/state-transition-equation-with-dynamic-programming/</link>
         <pubDate>Mon, 02 Mar 2026 13:57:00 +0800</pubDate>
         
         <guid>https://w2343419-del.github.io/WangScape/en/p/state-transition-equation-with-dynamic-programming/</guid>
         <description>&lt;p&gt;In algorithmic problems, we can often see the shadow of dynamic programming, so here is a summary of dynamic programming (DP) and a very important part of it - the state transition equation.&lt;/p&gt;
-&lt;h2 id=&#34;一何为动态规划&#34;&gt;一、何为动态规划
+&lt;h2 id=&#34;1-what-is-dynamic-programming&#34;&gt;1. What is Dynamic Programming
 &lt;/h2&gt;&lt;p&gt;Dynamic Programming (DP) is an algorithmic idea that solves the original problem by decomposing it into sub-problems.&lt;/p&gt;
 &lt;p&gt;Dynamic planning is not some specific data structure, but a way of thinking.&lt;/p&gt;
 &lt;p&gt;DP needs to meet the following two properties:&lt;/p&gt;
-&lt;h3 id=&#34;1-最优子结构&#34;&gt;1. 最优子结构
+&lt;h3 id=&#34;1-optimal-substructure&#34;&gt;1. Optimal Substructure
 &lt;/h3&gt;&lt;p&gt;The optimal solution of the original problem contains the optimal solution of the subproblem.&lt;/p&gt;
-&lt;h3 id=&#34;2-重叠子问题&#34;&gt;2. 重叠子问题
+&lt;h3 id=&#34;2-overlapping-subproblems&#34;&gt;2. Overlapping Subproblems
 &lt;/h3&gt;&lt;p&gt;Subquestions are computed iteratively and can be cached to avoid duplication.&lt;/p&gt;
-&lt;h2 id=&#34;二何为状态转移方程&#34;&gt;二、何为状态转移方程
+&lt;h2 id=&#34;2-what-is-state-transition-equation&#34;&gt;2. What is State Transition Equation
 &lt;/h2&gt;&lt;p&gt;To understand the state transition equation, you should first know what a &amp;ldquo;state&amp;rdquo; is.&lt;/p&gt;
-&lt;h3 id=&#34;1-状态&#34;&gt;1. &amp;ldquo;状态&amp;rdquo;
+&lt;h3 id=&#34;1-state&#34;&gt;1. &amp;ldquo;State&amp;rdquo;
 &lt;/h3&gt;&lt;p&gt;Status is a description of the problem at a certain stage, usually denoted by &lt;code&gt;dp [i]&lt;/code&gt; or &lt;code&gt;dp [i] [j]&lt;/code&gt;.&lt;/p&gt;
 &lt;p&gt;For example:&lt;/p&gt;
 &lt;ul&gt;
@@ -31,12 +31,12 @@
 &lt;li&gt;&lt;code&gt;dp [i] [j]&lt;/code&gt; = optimal solution from position i to position j&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;dp [i] [w]&lt;/code&gt; = optimal solution considering the first i items with remaining capacity w&lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;2-状态转移方程&#34;&gt;2. 状态转移方程
+&lt;h3 id=&#34;2-state-transition-equation&#34;&gt;2. State Transition Equation
 &lt;/h3&gt;&lt;p&gt;The state transition equation can be roughly written as:&lt;/p&gt;
 &lt;p&gt;__ code_block_0 __&lt;/p&gt;
 &lt;p&gt;What the state transition equation does is determine what options are available for that step, as well as the sub-problems behind the choices (which can be understood as recursive).&lt;/p&gt;
-&lt;h2 id=&#34;三典型例题&#34;&gt;三、典型例题
-&lt;/h2&gt;&lt;h3 id=&#34;1-线性-dp爬楼梯&#34;&gt;1. 线性 DP：爬楼梯
+&lt;h2 id=&#34;3-typical-examples&#34;&gt;3. Typical Examples
+&lt;/h2&gt;&lt;h3 id=&#34;1-linear-dp-climbing-stairs&#34;&gt;1. Linear DP: Climbing Stairs
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -64,7 +64,7 @@
 &lt;li&gt;Code implementation (take climbing 5 layers as an example):&lt;/li&gt;
 &lt;/ol&gt;
 &lt;p&gt;__ code_block_3 __&lt;/p&gt;
-&lt;h3 id=&#34;2-线性-dp打家劫舍&#34;&gt;2. 线性 DP：打家劫舍
+&lt;h3 id=&#34;2-linear-dp-house-robber&#34;&gt;2. Linear DP: House Robber
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -91,7 +91,7 @@
 &lt;li&gt;Code Implementation:&lt;/li&gt;
 &lt;/ol&gt;
 &lt;p&gt;__ code_block_6 __&lt;/p&gt;
-&lt;h3 id=&#34;3-背包-dp01-背包&#34;&gt;3. 背包 DP：0/1 背包
+&lt;h3 id=&#34;3-knapsack-dp-01-knapsack&#34;&gt;3. Knapsack DP: 0/1 Knapsack
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -124,7 +124,7 @@
 &lt;/ol&gt;
 &lt;p&gt;The two-dimensional dp can be compressed in one dimension, and the inner loop * * must be reversed * * to prevent the same item from being repeatedly placed:&lt;/p&gt;
 &lt;p&gt;__ code_block_10 __&lt;/p&gt;
-&lt;h3 id=&#34;4-序列-dp最长公共子序列lcs&#34;&gt;4. 序列 DP：最长公共子序列（LCS）
+&lt;h3 id=&#34;4-sequence-dp-longest-common-subsequence-lcs&#34;&gt;4. Sequence DP: Longest Common Subsequence (LCS)
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -151,7 +151,7 @@
 &lt;li&gt;Code Implementation:&lt;/li&gt;
 &lt;/ol&gt;
 &lt;p&gt;__ code_block_13 __&lt;/p&gt;
-&lt;h3 id=&#34;5-区间-dp戳气球&#34;&gt;5. 区间 DP：戳气球
+&lt;h3 id=&#34;5-interval-dp-burst-balloons&#34;&gt;5. Interval DP: Burst Balloons
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -175,7 +175,7 @@
 &lt;li&gt;Code Implementation:&lt;/li&gt;
 &lt;/ol&gt;
 &lt;p&gt;__ code_block_15 __&lt;/p&gt;
-&lt;h2 id=&#34;四模型总结&#34;&gt;四、模型总结
+&lt;h2 id=&#34;4-model-summary&#34;&gt;4. Model Summary
 &lt;/h2&gt;&lt;p&gt;__ code_block_16 __&lt;/p&gt;
 </description>
         </item>
