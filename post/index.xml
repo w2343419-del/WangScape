@@ -377,12 +377,13 @@ $$dp[i][j] = \max(dp[i-1][j], dp[i-1][j - w[i]] + v[i])$$&lt;ol start=&#34;4&#34
 &lt;/ul&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;状态转移方程：&lt;/p&gt;
+&lt;p&gt;状态转移方程：当 s1[i-1] == s2[j-1] 时，&lt;code&gt;dp[i][j] = dp[i-1][j-1] + 1&lt;/code&gt;；否则 &lt;code&gt;dp[i][j] = max(dp[i-1][j], dp[i][j-1])&lt;/code&gt;&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ol&gt;
+&lt;p&gt;或用分段函数表示：&lt;/p&gt;
 $$dp[i][j] = \begin{cases}
-dp[i-1][j-1] + 1 &amp; \text{if } s1[i-1] = s2[j-1] \\
-\max(dp[i-1][j], dp[i][j-1]) &amp; \text{otherwise}
+\text{dp[i-1][j-1] + 1} &amp; \text{相等时} \\
+\text{max(dp[i-1][j], dp[i][j-1])} &amp; \text{不相等时}
 \end{cases}$$&lt;ol start=&#34;4&#34;&gt;
 &lt;li&gt;图解：&lt;/li&gt;
 &lt;/ol&gt;
@@ -624,28 +625,28 @@ $$dp[i][j] = \max_{i &lt; k &lt; j}(dp[i][k] + dp[k][j] + nums[i] \times nums[k]
   &lt;tbody&gt;
       &lt;tr&gt;
           &lt;td&gt;&lt;strong&gt;线性 DP&lt;/strong&gt;&lt;/td&gt;
-          &lt;td&gt;$dp[i] = f(dp[i-1], dp[i-2], \ldots)$&lt;/td&gt;
+          &lt;td&gt;递推关系&lt;/td&gt;
           &lt;td&gt;$O(n)$&lt;/td&gt;
           &lt;td&gt;$O(n)$&lt;/td&gt;
           &lt;td&gt;爬楼梯、打家劫舍&lt;/td&gt;
       &lt;/tr&gt;
       &lt;tr&gt;
           &lt;td&gt;&lt;strong&gt;背包 DP&lt;/strong&gt;&lt;/td&gt;
-          &lt;td&gt;$dp[i][j] = \max(\text{不放}, \text{放})$&lt;/td&gt;
+          &lt;td&gt;选择最大值&lt;/td&gt;
           &lt;td&gt;$O(nW)$&lt;/td&gt;
           &lt;td&gt;$O(nW)$&lt;/td&gt;
           &lt;td&gt;0/1 背包、完全背包&lt;/td&gt;
       &lt;/tr&gt;
       &lt;tr&gt;
           &lt;td&gt;&lt;strong&gt;序列 DP&lt;/strong&gt;&lt;/td&gt;
-          &lt;td&gt;$dp[i][j] = f(dp[i-1][j-1], ..)$&lt;/td&gt;
+          &lt;td&gt;两指针递推&lt;/td&gt;
           &lt;td&gt;$O(mn)$&lt;/td&gt;
           &lt;td&gt;$O(mn)$&lt;/td&gt;
           &lt;td&gt;LCS、编辑距离&lt;/td&gt;
       &lt;/tr&gt;
       &lt;tr&gt;
           &lt;td&gt;&lt;strong&gt;区间 DP&lt;/strong&gt;&lt;/td&gt;
-          &lt;td&gt;$dp[i][j] = \max_k(dp[i][k] + dp[k][j])$&lt;/td&gt;
+          &lt;td&gt;区间分割递推&lt;/td&gt;
           &lt;td&gt;$O(n^3)$&lt;/td&gt;
           &lt;td&gt;$O(n^2)$&lt;/td&gt;
           &lt;td&gt;戳气球、矩阵链乘&lt;/td&gt;
