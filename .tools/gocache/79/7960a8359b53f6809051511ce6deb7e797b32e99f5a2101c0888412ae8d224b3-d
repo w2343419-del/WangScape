@@ -1,0 +1,4 @@
+./asm_stub.go
+./test.go
+./asm.s
+./asm_amd64.s

@@ -1,0 +1,5 @@
+./exec.go
+./opt.go
+./testenv.go
+./testenv_notunix.go
+./testenv_windows.go

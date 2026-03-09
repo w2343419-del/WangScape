@@ -1,0 +1,10 @@
+./aead.go
+./allocations.go
+./block.go
+./blockmode.go
+./fetchmodule.go
+./fips140.go
+./hash.go
+./implementations.go
+./methods.go
+./stream.go

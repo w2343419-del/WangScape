@@ -1,0 +1,6 @@
+./doc.go
+./event.go
+./reader.go
+./textreader.go
+./textwriter.go
+./writer.go

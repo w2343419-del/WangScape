@@ -1,0 +1,4 @@
+./switch.go
+./switch_posix.go
+./switch_windows.go
+./sys_windows.go

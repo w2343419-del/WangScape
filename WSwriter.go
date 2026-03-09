@@ -2570,8 +2570,8 @@ func checkGitHubRateLimit(resp *http.Response) error {
 		resetTime := time.Unix(resetUnix, 0)
 		duration := resetTime.Sub(time.Now())
 		
-		log.Printf("[GITHUB-API] Rate Limit - Remaining: %d/%s, Reset in: %v", 
-			remainingInt, limit, duration)
+		log.Printf("[GITHUB-API] Rate Limit - Remaining: %d/%d, Reset in: %v", 
+			remainingInt, limitInt, duration)
 		
 		if remainingInt == 0 {
 			return fmt.Errorf("GitHub API rate limit exceeded - reset in %v", duration)
@@ -6245,126 +6245,94 @@ var htmlTemplate = `<!DOCTYPE html>
             currentMetadata.comments = document.getElementById('comments-checkbox').checked;
             currentMetadata.hidden = document.getElementById('hidden-checkbox').checked;
             currentMetadata.pinned = document.getElementById('pinned-checkbox').checked;
-            currentMetadata.pinned = document.getElementById('pinned-checkbox').checked;
 
             // 获取当前文章内容
             const content = document.getElementById('editor-textarea').value;
             
-            // 更新frontmatter
-            const fmMatch = content.match(/^(---\n[\s\S]*?\n---\n)([\s\S]*)$/);
+            // 从content中提取body（排除frontmatter）
+            const fmMatch = content.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
             if (!fmMatch) {
                 alert('⚠️ 未找到frontmatter，无法更新');
                 return;
             }
+            const bodyContent = fmMatch[1];
 
-            const oldFm = fmMatch[1];
-            const bodyContent = fmMatch[2];
-            
-            // 构建新的frontmatter
-            let newFm = oldFm;
-            
-            // 更新title
-            if (currentMetadata.title) {
-                newFm = newFm.replace(/title:\s*["']?[^"'\n]+["']?/, 'title: "' + currentMetadata.title.replace(/"/g, '\\"') + '"');
+            // 提取现有的同步哈希值（如果有）
+            const oldFmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+            let syncHash = '';
+            if (oldFmMatch) {
+                const hashMatch = oldFmMatch[1].match(/ws_sync_zh_hash:\s*["']?([^"'\n]+)["']?/);
+                if (hashMatch) {
+                    syncHash = hashMatch[1];
+                }
             }
-
-            // 更新date (转换为Hugo格式)
+            
+            // 完全重建frontmatter，确保格式正确
+            let newFmLines = ['---'];
+            newFmLines.push('pinned: ' + currentMetadata.pinned);
+            
+            // tags（使用YAML列表格式）
+            if (currentMetadata.tags.length > 0) {
+                newFmLines.push('tags:');
+                currentMetadata.tags.forEach(tag => {
+                    newFmLines.push('    - ' + tag);
+                });
+            }
+            
+            // categories（使用YAML列表格式）
+            if (currentMetadata.categories.length > 0) {
+                newFmLines.push('categories:');
+                currentMetadata.categories.forEach(cat => {
+                    newFmLines.push('    - ' + cat);
+                });
+            }
+            
+            // title
+            const escapedTitle = currentMetadata.title.replace(/"/g, '\\"');
+            newFmLines.push('title: "' + escapedTitle + '"');
+            
+            // description
+            if (currentMetadata.description) {
+                const escapedDesc = currentMetadata.description.replace(/"/g, '\\"');
+                newFmLines.push('description: "' + escapedDesc + '"');
+            }
+            
+            // date（转换为Hugo格式）
             if (currentMetadata.date) {
                 const hugoDate = currentMetadata.date + ':00+08:00';
-                newFm = newFm.replace(/date:\s*[\w\-:+]+/, 'date: ' + hugoDate);
+                newFmLines.push('date: ' + hugoDate);
             }
             
-            // 更新categories
-            if (currentMetadata.categories.length > 0) {
-                const catYaml = 'categories:\n' + currentMetadata.categories.map(c => '    - ' + c.replace(/"/g, '\\"')).join('\n');
-                // 删除旧的categories及其子项（仅匹配缩进的列表项）
-                newFm = newFm.replace(/categories:\n((?:    - [^\n]*\n)*)/g, catYaml + '\n');
-                if (!newFm.includes('categories:')) {
-                    newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + catYaml + '\n');
-                }
-            } else {
-                // 删除categories及所有子项
-                newFm = newFm.replace(/categories:\n((?:    - [^\n]*\n)*)/g, '');
+            // image
+            newFmLines.push('image: "' + (currentMetadata.image || '') + '"');
+            
+            // math
+            newFmLines.push('math: ' + currentMetadata.math);
+            
+            // license
+            newFmLines.push('license: "' + (currentMetadata.license || '') + '"');
+            
+            // hidden
+            newFmLines.push('hidden: ' + currentMetadata.hidden);
+            
+            // comments
+            newFmLines.push('comments: ' + currentMetadata.comments);
+            
+            // draft
+            newFmLines.push('draft: ' + currentMetadata.draft);
+            
+            // 保留同步哈希值
+            if (syncHash) {
+                newFmLines.push('ws_sync_zh_hash: "' + syncHash + '"');
             }
-
-            // 更新tags
-            if (currentMetadata.tags.length > 0) {
-                const tagYaml = 'tags:\n' + currentMetadata.tags.map(t => '    - ' + t.replace(/"/g, '\\"')).join('\n');
-                // 删除旧的tags及其子项（仅匹配缩进的列表项）
-                newFm = newFm.replace(/tags:\n((?:    - [^\n]*\n)*)/g, tagYaml + '\n');
-                if (!newFm.includes('tags:')) {
-                    newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + tagYaml + '\n');
-                }
-            } else {
-                // 删除tags及所有子项
-                newFm = newFm.replace(/tags:\n((?:    - [^\n]*\n)*)/g, '');
-            }
-
-            // 更新description
-            if (currentMetadata.description) {
-                newFm = newFm.replace(/description:\s*[^\n]*/, 'description: "' + currentMetadata.description.replace(/"/g, '\\"') + '"');
-                if (!newFm.includes('description:')) {
-                    newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'description: "' + currentMetadata.description.replace(/"/g, '\\"') + '"\n');
-                }
-            } else {
-                // 删除空的description字段
-                newFm = newFm.replace(/description:\s*[^\n]*\n?/, '');
-            }
-
-            // 更新image
-            if (currentMetadata.image) {
-                newFm = newFm.replace(/image:\s*[^\n]*/, 'image: "' + currentMetadata.image.replace(/"/g, '\\"') + '"');
-                if (!newFm.includes('image:')) {
-                    newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'image: "' + currentMetadata.image.replace(/"/g, '\\"') + '"\n');
-                }
-            } else {
-                // 删除空的image字段
-                newFm = newFm.replace(/image:\s*[^\n]*\n?/, '');
-            }
-
-            // 更新draft
-            newFm = newFm.replace(/draft:\s*[^\n]*/, 'draft: ' + currentMetadata.draft);
-            if (!newFm.includes('draft:')) {
-                newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'draft: ' + currentMetadata.draft + '\n');
-            }
-
-            // 更新license
-            if (currentMetadata.license) {
-                newFm = newFm.replace(/license:\s*[^\n]*/, 'license: "' + currentMetadata.license.replace(/"/g, '\\"') + '"');
-                if (!newFm.includes('license:')) {
-                    newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'license: "' + currentMetadata.license.replace(/"/g, '\\"') + '"\n');
-                }
-            } else {
-                // 删除空的license字段
-                newFm = newFm.replace(/license:\s*[^\n]*\n?/, '');
-            }
-
-            // 更新math
-            newFm = newFm.replace(/math:\s*[^\n]*/, 'math: ' + currentMetadata.math);
-            if (!newFm.includes('math:')) {
-                newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'math: ' + currentMetadata.math + '\n');
-            }
-
-            // 更新comments
-            newFm = newFm.replace(/comments:\s*[^\n]*/, 'comments: ' + currentMetadata.comments);
-            if (!newFm.includes('comments:')) {
-                newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'comments: ' + currentMetadata.comments + '\n');
-            }
-
-            // 更新hidden
-            newFm = newFm.replace(/hidden:\s*[^\n]*/, 'hidden: ' + currentMetadata.hidden);
-            if (!newFm.includes('hidden:')) {
-                newFm = newFm.replace(/(pinned:[^\n]*\n)/, '$1' + 'hidden: ' + currentMetadata.hidden + '\n');
-            }
-
-            // 更新pinned
-            newFm = newFm.replace(/pinned:\s*[^\n]*/, 'pinned: ' + currentMetadata.pinned);
-            if (!newFm.includes('pinned:')) {
-                newFm = newFm.replace(/(---\n)/, '$1' + 'pinned: ' + currentMetadata.pinned + '\n');
-            }
-
+            
+            newFmLines.push('---');
+            
+            // 组合新内容
+            const newContent = newFmLines.join('\n') + '\n' + bodyContent;
+            
             // 更新编辑器内容
-            document.getElementById('editor-textarea').value = newFm + bodyContent;
+            document.getElementById('editor-textarea').value = newContent;
             
             alert('✅ 元数据已应用到编辑器，请点击保存按钮保存文件');
         }

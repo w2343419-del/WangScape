@@ -1,0 +1,5 @@
+./gen.go
+./gp.go
+./regalloc.go
+./simd.go
+./val.go
