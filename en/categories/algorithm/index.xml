@@ -1,0 +1,426 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>Algorithm on WangScape</title>
+        <link>https://w2343419-del.github.io/WangScape/en/categories/algorithm/</link>
+        <description>Recent content in Algorithm on WangScape</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>en</language>
+        <lastBuildDate>Mon, 09 Mar 2026 10:32:00 +0800</lastBuildDate><atom:link href="https://w2343419-del.github.io/WangScape/en/categories/algorithm/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>Time and Space Complexity</title>
+        <link>https://w2343419-del.github.io/WangScape/en/p/time-and-space-complexity/</link>
+        <pubDate>Mon, 09 Mar 2026 10:32:00 +0800</pubDate>
+        
+        <guid>https://w2343419-del.github.io/WangScape/en/p/time-and-space-complexity/</guid>
+        <description>&lt;h1 id=&#34;complete-guide-to-algorithmic-complexity---time-space-and-asymptotic-time-complexity&#34;&gt;Complete Guide to Algorithmic Complexity - Time, Space, and Asymptotic Time Complexity
+&lt;/h1&gt;&lt;p&gt;Complexity analysis is a core tool for measuring algorithmic efficiency, helping us to anticipate performance bottlenecks before writing code. This article systematically explains the time complexity, space complexity, and the meaning and application of the three progressive symbols $ O $, $\ Omega $, and $\ Theta $, and explains them with a complete sample.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;什么是复杂度&#34;&gt;什么是复杂度
+&lt;/h2&gt;&lt;p&gt;When we evaluate an algorithm, we can&amp;rsquo;t just look at whether it can get the right results, but also how it performs when * * the amount of data increases * *. Complexity is a mathematical tool used to describe &amp;ldquo;the changing trend of the resources required by the algorithm as it grows with the input size $ n $&amp;rdquo;.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Time complexity * *: how many steps does the algorithm take?&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Space complexity * *: How much additional memory does the algorithm take up?&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Both are expressed using * * progressive symbols * * - ignoring constant coefficients and focusing only on growth trends. The calculation rules are as follows:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Keep only the highest sub-item: $3n ^ 2 + 2n + 1\ Rightarrow O (n ^ 2) $&lt;/li&gt;
+&lt;li&gt;Ignore constant coefficient: $5n\ Rightarrow O (n) $&lt;/li&gt;
+&lt;li&gt;Loop nested multiplication: $ n $ runs on both levels $\ Rightarrow O (n ^ 2) $&lt;/li&gt;
+&lt;li&gt;Max sequential structure: $ O (n) + O (n ^ 2)\ Rightarrow O (n ^ 2) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;三种渐进时间复杂度&#34;&gt;三种渐进时间复杂度
+&lt;/h2&gt;&lt;p&gt;The same algorithm may behave very differently under different inputs. The three asymptotic time complexity describes the behavioral boundaries of the algorithm from three angles: * * upper bound, lower bound, and tight bound * *.&lt;/p&gt;
+&lt;h3 id=&#34;大-o-符号上界最坏情况&#34;&gt;大 O 符号（上界，最坏情况）
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Mathematical definition * *: there are constants $ c &amp;gt; 0$ and $ n_0$, when $ n\ geq n_0$, there is always:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;$ $ f (n)\ leq c\ cdot g (n) $ $&lt;/p&gt;
+&lt;p&gt;The running time of the algorithm * * up to * * is a constant multiple of $ g (n) $, which is the * * cap commitment * * of the growth rate - guarantee not to be slower than this. The most widely used in everyday development, saying &amp;ldquo;this algorithm is $ O (n ^ 2) $&amp;rdquo; usually refers to the worst-case scenario.&lt;/p&gt;
+&lt;p&gt;__ code_block_0 __&lt;/p&gt;
+&lt;h3 id=&#34;大-ω-符号下界最好情况&#34;&gt;大 Ω 符号（下界，最好情况）
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Mathematical definition * *: there are constants $ c &amp;gt; 0$ and $ n_0$, when $ n\ geq n_0$, there is always:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;$ $ f (n)\ geq c\ cdot g (n) $ $&lt;/p&gt;
+&lt;p&gt;The running time of the algorithm * * at least * * is a constant multiple of $ g (n) $, which is the * * lower bound commitment * * of the growth rate - guaranteed not to be faster than this.&lt;/p&gt;
+&lt;p&gt;__ code_block_1 __&lt;/p&gt;
+&lt;p&gt;Classic conclusion: Any * * comparison-based sorting algorithm * *, the lower bound is $\ Omega (n\ log n) $, which is the mathematically provable limit and cannot be broken.&lt;/p&gt;
+&lt;h3 id=&#34;大-θ-符号紧确界精确描述&#34;&gt;大 Θ 符号（紧确界，精确描述）
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Mathematical definition * *: there are constants $ c_1, c_2 &amp;gt; 0$ and $ n_0$, when $ n\ geq n_0$, there is always:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;$ $ c_1\ cdot g (n)\ leq f (n)\ leq c_2\ cdot g (n) $ $&lt;/p&gt;
+&lt;p&gt;The algorithm is clamped by $ g (n) $ from the * * top and bottom sides at the same time * *, which is the most accurate description. $\ Theta $ holds if and only if $ O $ and $\ Omega $ hold together and have the same order.&lt;/p&gt;
+&lt;p&gt;__ code_block_2 __&lt;/p&gt;
+&lt;h3 id=&#34;三种符号对比&#34;&gt;三种符号对比
+&lt;/h3&gt;&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;Symbols&lt;/th&gt;
+          &lt;th&gt;Meaning&lt;/th&gt;
+          &lt;th&gt;Intuitive Memory&lt;/th&gt;
+          &lt;th&gt;Linear Find Example&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;$ O (g) $&lt;/td&gt;
+          &lt;td&gt;Upper bound&lt;/td&gt;
+          &lt;td&gt;Slowest not exceeding this speed&lt;/td&gt;
+          &lt;td&gt;$ O (n) $, worst traversal all&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;$\ Omega (g) $&lt;/td&gt;
+          &lt;td&gt;Lower bound&lt;/td&gt;
+          &lt;td&gt;Fastest not less than this speed&lt;/td&gt;
+          &lt;td&gt;$\ Omega (1) $, best found first&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;$\ Theta (g) $&lt;/td&gt;
+          &lt;td&gt;Exact&lt;/td&gt;
+          &lt;td&gt;This speed&lt;/td&gt;
+          &lt;td&gt;Does not exist (upper and lower levels)&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;There is no $\ Theta $ for linear search, because it is better to be different from the worst case order, and the upper and lower bounds cannot be closed.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;时间复杂度&#34;&gt;时间复杂度
+&lt;/h2&gt;&lt;p&gt;Time complexity description algorithm * * Number of steps executed * * Growth trend with input size $ n $.&lt;/p&gt;
+&lt;h3 id=&#34;常见阶数对比&#34;&gt;常见阶数对比
+&lt;/h3&gt;&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;Complexity&lt;/th&gt;
+          &lt;th&gt;Name&lt;/th&gt;
+          &lt;th&gt;Typical Scenario&lt;/th&gt;
+          &lt;th&gt;$ n = magnitude at 10 ^ 6$&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;$ O (1) $&lt;/td&gt;
+          &lt;td&gt;Constant time&lt;/td&gt;
+          &lt;td&gt;Array access by subscript, hash table lookup&lt;/td&gt;
+          &lt;td&gt;1 time&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;$ O (\ log n) $&lt;/td&gt;
+          &lt;td&gt;Logarithmic time&lt;/td&gt;
+          &lt;td&gt;Binary lookup, balanced binary tree operations&lt;/td&gt;
+          &lt;td&gt;~ 20 times&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;$ O (n) $&lt;/td&gt;
+          &lt;td&gt;Linear time&lt;/td&gt;
+          &lt;td&gt;Traversal array, linear lookup&lt;/td&gt;
+          &lt;td&gt;$10 ^ 6$ times&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;$ O (n\ log n) $&lt;/td&gt;
+          &lt;td&gt;Linear logarithm&lt;/td&gt;
+          &lt;td&gt;Merge sort, heap sort&lt;/td&gt;
+          &lt;td&gt;~ $2\ times 10 ^ 7$ times&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;$ O (n ^ 2) $&lt;/td&gt;
+          &lt;td&gt;square time&lt;/td&gt;
+          &lt;td&gt;bubbling sort, select sort&lt;/td&gt;
+          &lt;td&gt;$10 ^ {12} $ times ⚠️&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;$ O (2 ^ n) $&lt;/td&gt;
+          &lt;td&gt;Exponential time&lt;/td&gt;
+          &lt;td&gt;Violent recursive subset enumeration&lt;/td&gt;
+          &lt;td&gt;Not acceptable 🚫&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;Growth rate: $ O (1) &amp;lt; O (\ log n) &amp;lt; O (n) &amp;lt; O (n\ log n) &amp;lt; O (n ^ 2) &amp;lt; O (2 ^ n) $&lt;/p&gt;
+&lt;h3 id=&#34;代码示例&#34;&gt;代码示例
+&lt;/h3&gt;&lt;p&gt;__ code_block_3 __&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;空间复杂度&#34;&gt;空间复杂度
+&lt;/h2&gt;&lt;p&gt;The spatial complexity describes the growth trend of the * * additional memory usage * * with the input scale (excluding the input data itself) when the algorithm is running.&lt;/p&gt;
+&lt;h3 id=&#34;常见阶数对比-1&#34;&gt;常见阶数对比
+&lt;/h3&gt;&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;Complexity&lt;/th&gt;
+          &lt;th&gt;Meaning&lt;/th&gt;
+          &lt;th&gt;Typical Scenario&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;$ O (1) $&lt;/td&gt;
+          &lt;td&gt;Fixed space&lt;/td&gt;
+          &lt;td&gt;Sort in place, with a few temporary variables&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;$ O (\ log n) $&lt;/td&gt;
+          &lt;td&gt;Logarithmic space&lt;/td&gt;
+          &lt;td&gt;Recursive call stack (binary, fast average)&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;$ O (n) $&lt;/td&gt;
+          &lt;td&gt;Linear space&lt;/td&gt;
+          &lt;td&gt;Copy array, hash table, BFS queue&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;$ O (n ^ 2) $&lt;/td&gt;
+          &lt;td&gt;Square Space&lt;/td&gt;
+          &lt;td&gt;Create $ n\ times n $ Matrix, Adjacency Matrix&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3 id=&#34;代码示例-1&#34;&gt;代码示例
+&lt;/h3&gt;&lt;p&gt;__ code_block_4 __&lt;/p&gt;
+&lt;p&gt;Each recursive function call allocates a stack frame on the call stack, and the * * recursive depth is the space complexity * *. Deep recursion can lead to stack overflow in extreme cases.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;综合样例分析两数之和&#34;&gt;综合样例分析：两数之和
+&lt;/h2&gt;&lt;p&gt;Complete the analysis of the three progressive symbols and spatio-temporal complexity with a classical problem.&lt;/p&gt;
+&lt;h2 id=&#34;问题&#34;&gt;问题
+&lt;/h2&gt;&lt;h3 id=&#34;问题描述&#34;&gt;问题描述
+&lt;/h3&gt;&lt;p&gt;Given the integer array &lt;code&gt;arr&lt;/code&gt; and the target value &lt;code&gt;target&lt;/code&gt;, find the subscript * * for the two numbers in the array * * and &lt;code&gt;target&lt;/code&gt;. There is only one answer per input and the same element cannot be used twice.&lt;/p&gt;
+&lt;h3 id=&#34;输入输出&#34;&gt;输入输出
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;Input: &lt;code&gt;arr = [2, 7, 11, 15]&lt;/code&gt;, &lt;code&gt;target = 9&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;Output: &lt;code&gt;[0, 1]&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;约束条件&#34;&gt;约束条件
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;$2\ leq n\ leq 10 ^ 4$&lt;/li&gt;
+&lt;li&gt;$ -10 ^ 9\ leq arr [i]\ leq10 ^ 9$&lt;/li&gt;
+&lt;li&gt;Guaranteed and only one answer&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;思路分析&#34;&gt;思路分析
+&lt;/h2&gt;&lt;h3 id=&#34;解法一暴力枚举&#34;&gt;解法一：暴力枚举
+&lt;/h3&gt;&lt;p&gt;Enumerate all pairs of numbers $ (i, j) $ and check if &lt;code&gt;arr [i] + arr [j] = = target&lt;/code&gt; is met. Direct thinking, no extra space needed, but time inefficient.&lt;/p&gt;
+&lt;h3 id=&#34;解法二哈希表优化&#34;&gt;解法二：哈希表优化
+&lt;/h3&gt;&lt;p&gt;When an array is traversed, values that have already been seen are stored in the hash table. For each element, check if its * * complement * * (&lt;code&gt;target - arr [i]&lt;/code&gt;) is already in the table. Returns directly if hit, otherwise table the current element.&lt;/p&gt;
+&lt;p&gt;This is typical * * space for time * *: $ O (n) $ extra space, reducing time from $ O (n ^ 2) $ to $ O (n) $.&lt;/p&gt;
+&lt;h2 id=&#34;代码实现&#34;&gt;代码实现
+&lt;/h2&gt;&lt;h3 id=&#34;解法一暴力枚举-1&#34;&gt;解法一：暴力枚举
+&lt;/h3&gt;&lt;p&gt;__ code_block_5 __&lt;/p&gt;
+&lt;h3 id=&#34;解法二哈希表&#34;&gt;解法二：哈希表
+&lt;/h3&gt;&lt;p&gt;__ code_block_6 __&lt;/p&gt;
+&lt;h2 id=&#34;复杂度与优缺点&#34;&gt;复杂度与优缺点
+&lt;/h2&gt;&lt;h3 id=&#34;解法一暴力枚举-2&#34;&gt;解法一：暴力枚举
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Time: $ O (n ^ 2) $ (worst), $\ Omega (1) $ (best, hit first pair), none $\ Theta $&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Space: $\ Theta (1) $&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;✅ No extra space, memory friendly&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Simple ✅ implementation, no hash function required&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Poor ❌ time efficiency, $ n = 10 ^ 4$ has 100 million operations&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;❌ Not suitable for large scale data&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;解法二哈希表-1&#34;&gt;解法二：哈希表
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Time: $\ Theta (n) $ (must be traversed once, hash lookup is $ O (1) $)&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Space: $\ Theta (n) $ (maximum of $ n $ elements in hash table)&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;✅ Time efficient, linear scan once&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;✅ Suitable for large scale data&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;❌ Extra $ O (n) $ memory required&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;❌ Hash collisions can degenerate in extreme cases&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;对比总结&#34;&gt;对比总结
+&lt;/h3&gt;&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;&lt;/th&gt;
+          &lt;th&gt;Time (Worst)&lt;/th&gt;
+          &lt;th&gt;Time (Best)&lt;/th&gt;
+          &lt;th&gt;Time ($\ Theta $)&lt;/th&gt;
+          &lt;th&gt;Space&lt;/th&gt;
+          &lt;th&gt;Suggested Scenarios&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Violent Enumeration&lt;/td&gt;
+          &lt;td&gt;$ O (n ^ 2) $&lt;/td&gt;
+          &lt;td&gt;$\ Omega (1) $&lt;/td&gt;
+          &lt;td&gt;—&lt;/td&gt;
+          &lt;td&gt;$ O (1) $&lt;/td&gt;
+          &lt;td&gt;Extremely Limited Memory&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Hashtable&lt;/td&gt;
+          &lt;td&gt;$ O (n) $&lt;/td&gt;
+          &lt;td&gt;$\ Omega (n) $&lt;/td&gt;
+          &lt;td&gt;$\ Theta (n) $&lt;/td&gt;
+          &lt;td&gt;$ O (n) $&lt;/td&gt;
+          &lt;td&gt;General Business Systems&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;时间与空间的权衡&#34;&gt;时间与空间的权衡
+&lt;/h2&gt;&lt;p&gt;In actual engineering, time and space are often * * not optimal * * at the same time, and trade-offs need to be made according to the scene.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Spaces for time * * (most common): hash tables, caches, dynamically planned memorized arrays.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Swap time for space * *: Read large files line by line while streaming, avoiding loading all data into memory at once.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;Scenarios&lt;/th&gt;
+          &lt;th&gt;Recommendation Strategies&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Real-time response, high concurrency systems&lt;/td&gt;
+          &lt;td&gt;Sacrificing space, optimizing time&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Embedded Devices, Memory-Constrained Environments&lt;/td&gt;
+          &lt;td&gt;Sacrifice Time, Save Space&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;General business systems&lt;/td&gt;
+          &lt;td&gt;Prioritize optimizing time, space is sufficient&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;常见算法复杂度速查&#34;&gt;常见算法复杂度速查
+&lt;/h2&gt;&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;Algorithm&lt;/th&gt;
+          &lt;th&gt;Time ($O$)&lt;/th&gt;
+          &lt;th&gt;Time ($\Omega$)&lt;/th&gt;
+          &lt;th&gt;Time ($\Theta$)&lt;/th&gt;
+          &lt;th&gt;Space&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Array access&lt;/td&gt;
+          &lt;td&gt;$O(1)$&lt;/td&gt;
+          &lt;td&gt;$\Omega(1)$&lt;/td&gt;
+          &lt;td&gt;$\Theta(1)$&lt;/td&gt;
+          &lt;td&gt;$O(1)$&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Linear search&lt;/td&gt;
+          &lt;td&gt;$O(n)$&lt;/td&gt;
+          &lt;td&gt;$\Omega(1)$&lt;/td&gt;
+          &lt;td&gt;—&lt;/td&gt;
+          &lt;td&gt;$O(1)$&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Binary search&lt;/td&gt;
+          &lt;td&gt;$O(\log n)$&lt;/td&gt;
+          &lt;td&gt;$\Omega(1)$&lt;/td&gt;
+          &lt;td&gt;—&lt;/td&gt;
+          &lt;td&gt;$O(1)$&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Bubble sort&lt;/td&gt;
+          &lt;td&gt;$O(n^2)$&lt;/td&gt;
+          &lt;td&gt;$\Omega(n)$&lt;/td&gt;
+          &lt;td&gt;$\Theta(n^2)$&lt;/td&gt;
+          &lt;td&gt;$O(1)$&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Merge sort&lt;/td&gt;
+          &lt;td&gt;$O(n \log n)$&lt;/td&gt;
+          &lt;td&gt;$\Omega(n \log n)$&lt;/td&gt;
+          &lt;td&gt;$\Theta(n \log n)$&lt;/td&gt;
+          &lt;td&gt;$O(n)$&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Quick sort&lt;/td&gt;
+          &lt;td&gt;$O(n^2)$&lt;/td&gt;
+          &lt;td&gt;$\Omega(n \log n)$&lt;/td&gt;
+          &lt;td&gt;—&lt;/td&gt;
+          &lt;td&gt;$O(\log n)$&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Hash table lookup&lt;/td&gt;
+          &lt;td&gt;$O(n)$&lt;/td&gt;
+          &lt;td&gt;$\Omega(1)$&lt;/td&gt;
+          &lt;td&gt;—&lt;/td&gt;
+          &lt;td&gt;$O(n)$&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;There is no $\ Theta $ for quick sorting and linear searching, because it is better to be different from the worst case order, and the upper and lower bounds cannot be closed.&lt;/p&gt;
+&lt;hr&gt;
+</description>
+        </item>
+        
+    </channel>
+</rss>
