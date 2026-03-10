@@ -13,9 +13,9 @@
         
         <guid>https://w2343419-del.github.io/WangScape/en/p/time-and-space-complexity/</guid>
         <description>&lt;h1 id=&#34;complete-guide-to-algorithmic-complexity---time-space-and-asymptotic-time-complexity&#34;&gt;Complete Guide to Algorithmic Complexity - Time, Space, and Asymptotic Time Complexity
-&lt;/h1&gt;&lt;p&gt;Complexity analysis is a core tool for measuring algorithmic efficiency, helping us to anticipate performance bottlenecks before writing code. This article systematically explains the time complexity, space complexity, and the meaning and application of the three progressive symbols $ O $, $\ Omega $, and $\ Theta $, and explains them with a complete sample.&lt;/p&gt;
+&lt;/h1&gt;&lt;p&gt;Complexity analysis is a core tool for measuring algorithmic efficiency and helps us anticipate performance bottlenecks before we write code. This article will systematically explain the time complexity, space complexity, and the meaning and application of the three progressive symbols $ O $, $\ Omega $, and $\ Theta $, and explain them with a complete example.&lt;/p&gt;
 &lt;hr&gt;
-&lt;h2 id=&#34;什么是复杂度&#34;&gt;什么是复杂度
+&lt;h2 id=&#34;what-is-complexity&#34;&gt;What is Complexity
 &lt;/h2&gt;&lt;p&gt;When we evaluate an algorithm, we can&amp;rsquo;t just look at whether it can get the right results, but also how it performs when * * the amount of data increases * *. Complexity is a mathematical tool used to describe &amp;ldquo;the changing trend of the resources required by the algorithm as it grows with the input size $ n $&amp;rdquo;.&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -45,9 +45,9 @@
 &lt;li&gt;Max sequential structure: $ O (n) + O (n ^ 2)\ Rightarrow O (n ^ 2) $&lt;/li&gt;
 &lt;/ul&gt;
 &lt;hr&gt;
-&lt;h2 id=&#34;三种渐进时间复杂度&#34;&gt;三种渐进时间复杂度
+&lt;h2 id=&#34;three-asymptotic-time-complexities&#34;&gt;Three Asymptotic Time Complexities
 &lt;/h2&gt;&lt;p&gt;The same algorithm may behave very differently under different inputs. The three asymptotic time complexity describes the behavioral boundaries of the algorithm from three angles: * * upper bound, lower bound, and tight bound * *.&lt;/p&gt;
-&lt;h3 id=&#34;大-o-符号上界最坏情况&#34;&gt;大 O 符号（上界，最坏情况）
+&lt;h3 id=&#34;big-o-symbol-upper-bound-worst-case&#34;&gt;Big O symbol (upper bound, worst case)
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -58,7 +58,7 @@
 &lt;p&gt;$ $ f (n)\ leq c\ cdot g (n) $ $&lt;/p&gt;
 &lt;p&gt;The running time of the algorithm * * up to * * is a constant multiple of $ g (n) $, which is the * * cap commitment * * of the growth rate - guarantee not to be slower than this. The most widely used in everyday development, saying &amp;ldquo;this algorithm is $ O (n ^ 2) $&amp;rdquo; usually refers to the worst-case scenario.&lt;/p&gt;
 &lt;p&gt;__ code_block_0 __&lt;/p&gt;
-&lt;h3 id=&#34;大-ω-符号下界最好情况&#34;&gt;大 Ω 符号（下界，最好情况）
+&lt;h3 id=&#34;large-ω-symbol-lower-bound-best-case&#34;&gt;Large Ω symbol (lower bound, best case)
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -70,7 +70,7 @@
 &lt;p&gt;The running time of the algorithm * * at least * * is a constant multiple of $ g (n) $, which is the * * lower bound commitment * * of the growth rate - guaranteed not to be faster than this.&lt;/p&gt;
 &lt;p&gt;__ code_block_1 __&lt;/p&gt;
 &lt;p&gt;Classic conclusion: Any * * comparison-based sorting algorithm * *, the lower bound is $\ Omega (n\ log n) $, which is the mathematically provable limit and cannot be broken.&lt;/p&gt;
-&lt;h3 id=&#34;大-θ-符号紧确界精确描述&#34;&gt;大 Θ 符号（紧确界，精确描述）
+&lt;h3 id=&#34;large-θ-symbol-exact-bounds-precise-description&#34;&gt;Large θ symbol (exact bounds, precise description)
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -81,7 +81,7 @@
 &lt;p&gt;$ $ c_1\ cdot g (n)\ leq f (n)\ leq c_2\ cdot g (n) $ $&lt;/p&gt;
 &lt;p&gt;The algorithm is clamped by $ g (n) $ from the * * top and bottom sides at the same time * *, which is the most accurate description. $\ Theta $ holds if and only if $ O $ and $\ Omega $ hold together and have the same order.&lt;/p&gt;
 &lt;p&gt;__ code_block_2 __&lt;/p&gt;
-&lt;h3 id=&#34;三种符号对比&#34;&gt;三种符号对比
+&lt;h3 id=&#34;comparison-of-the-three-symbols&#34;&gt;Comparison of the three symbols
 &lt;/h3&gt;&lt;table&gt;
   &lt;thead&gt;
       &lt;tr&gt;
@@ -114,9 +114,9 @@
 &lt;/table&gt;
 &lt;p&gt;There is no $\ Theta $ for linear search, because it is better to be different from the worst case order, and the upper and lower bounds cannot be closed.&lt;/p&gt;
 &lt;hr&gt;
-&lt;h2 id=&#34;时间复杂度&#34;&gt;时间复杂度
+&lt;h2 id=&#34;time-complexity&#34;&gt;Time complexity
 &lt;/h2&gt;&lt;p&gt;Time complexity description algorithm * * Number of steps executed * * Growth trend with input size $ n $.&lt;/p&gt;
-&lt;h3 id=&#34;常见阶数对比&#34;&gt;常见阶数对比
+&lt;h3 id=&#34;common-order-comparison&#34;&gt;Common Order Comparison
 &lt;/h3&gt;&lt;table&gt;
   &lt;thead&gt;
       &lt;tr&gt;
@@ -166,12 +166,12 @@
   &lt;/tbody&gt;
 &lt;/table&gt;
 &lt;p&gt;Growth rate: $ O (1) &amp;lt; O (\ log n) &amp;lt; O (n) &amp;lt; O (n\ log n) &amp;lt; O (n ^ 2) &amp;lt; O (2 ^ n) $&lt;/p&gt;
-&lt;h3 id=&#34;代码示例&#34;&gt;代码示例
+&lt;h3 id=&#34;code-examples&#34;&gt;Code Examples
 &lt;/h3&gt;&lt;p&gt;__ code_block_3 __&lt;/p&gt;
 &lt;hr&gt;
-&lt;h2 id=&#34;空间复杂度&#34;&gt;空间复杂度
+&lt;h2 id=&#34;spatial-complexity&#34;&gt;Spatial Complexity
 &lt;/h2&gt;&lt;p&gt;The spatial complexity describes the growth trend of the * * additional memory usage * * with the input scale (excluding the input data itself) when the algorithm is running.&lt;/p&gt;
-&lt;h3 id=&#34;常见阶数对比-1&#34;&gt;常见阶数对比
+&lt;h3 id=&#34;common-order-comparison-1&#34;&gt;Common Order Comparison
 &lt;/h3&gt;&lt;table&gt;
   &lt;thead&gt;
       &lt;tr&gt;
@@ -203,39 +203,39 @@
       &lt;/tr&gt;
   &lt;/tbody&gt;
 &lt;/table&gt;
-&lt;h3 id=&#34;代码示例-1&#34;&gt;代码示例
+&lt;h3 id=&#34;code-examples-1&#34;&gt;Code Examples
 &lt;/h3&gt;&lt;p&gt;__ code_block_4 __&lt;/p&gt;
 &lt;p&gt;Each recursive function call allocates a stack frame on the call stack, and the * * recursive depth is the space complexity * *. Deep recursion can lead to stack overflow in extreme cases.&lt;/p&gt;
 &lt;hr&gt;
-&lt;h2 id=&#34;综合样例分析两数之和&#34;&gt;综合样例分析：两数之和
+&lt;h2 id=&#34;integrated-sample-analysis-sum-of-two-numbers&#34;&gt;Integrated Sample Analysis: Sum of Two Numbers
 &lt;/h2&gt;&lt;p&gt;Complete the analysis of the three progressive symbols and spatio-temporal complexity with a classical problem.&lt;/p&gt;
-&lt;h2 id=&#34;问题&#34;&gt;问题
-&lt;/h2&gt;&lt;h3 id=&#34;问题描述&#34;&gt;问题描述
+&lt;h2 id=&#34;questions&#34;&gt;Questions
+&lt;/h2&gt;&lt;h3 id=&#34;description-of-problem&#34;&gt;Description of problem
 &lt;/h3&gt;&lt;p&gt;Given the integer array &lt;code&gt;arr&lt;/code&gt; and the target value &lt;code&gt;target&lt;/code&gt;, find the subscript * * for the two numbers in the array * * and &lt;code&gt;target&lt;/code&gt;. There is only one answer per input and the same element cannot be used twice.&lt;/p&gt;
-&lt;h3 id=&#34;输入输出&#34;&gt;输入输出
+&lt;h3 id=&#34;inputoutput&#34;&gt;Input/Output
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;Input: &lt;code&gt;arr = [2, 7, 11, 15]&lt;/code&gt;, &lt;code&gt;target = 9&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;Output: &lt;code&gt;[0, 1]&lt;/code&gt;&lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;约束条件&#34;&gt;约束条件
+&lt;h3 id=&#34;binding-effect&#34;&gt;BINDING EFFECT
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;$2\ leq n\ leq 10 ^ 4$&lt;/li&gt;
 &lt;li&gt;$ -10 ^ 9\ leq arr [i]\ leq10 ^ 9$&lt;/li&gt;
 &lt;li&gt;Guaranteed and only one answer&lt;/li&gt;
 &lt;/ul&gt;
-&lt;h2 id=&#34;思路分析&#34;&gt;思路分析
-&lt;/h2&gt;&lt;h3 id=&#34;解法一暴力枚举&#34;&gt;解法一：暴力枚举
+&lt;h2 id=&#34;idea-analysis&#34;&gt;Idea Analysis
+&lt;/h2&gt;&lt;h3 id=&#34;solution-1-violent-enumeration&#34;&gt;Solution 1: Violent Enumeration
 &lt;/h3&gt;&lt;p&gt;Enumerate all pairs of numbers $ (i, j) $ and check if &lt;code&gt;arr [i] + arr [j] = = target&lt;/code&gt; is met. Direct thinking, no extra space needed, but time inefficient.&lt;/p&gt;
-&lt;h3 id=&#34;解法二哈希表优化&#34;&gt;解法二：哈希表优化
+&lt;h3 id=&#34;solution-2-hashtable-optimization&#34;&gt;Solution 2: Hashtable optimization
 &lt;/h3&gt;&lt;p&gt;When an array is traversed, values that have already been seen are stored in the hash table. For each element, check if its * * complement * * (&lt;code&gt;target - arr [i]&lt;/code&gt;) is already in the table. Returns directly if hit, otherwise table the current element.&lt;/p&gt;
 &lt;p&gt;This is typical * * space for time * *: $ O (n) $ extra space, reducing time from $ O (n ^ 2) $ to $ O (n) $.&lt;/p&gt;
-&lt;h2 id=&#34;代码实现&#34;&gt;代码实现
-&lt;/h2&gt;&lt;h3 id=&#34;解法一暴力枚举-1&#34;&gt;解法一：暴力枚举
+&lt;h2 id=&#34;code-implementation&#34;&gt;Code Implementation
+&lt;/h2&gt;&lt;h3 id=&#34;solution-1-violent-enumeration-1&#34;&gt;Solution 1: Violent Enumeration
 &lt;/h3&gt;&lt;p&gt;__ code_block_5 __&lt;/p&gt;
-&lt;h3 id=&#34;解法二哈希表&#34;&gt;解法二：哈希表
+&lt;h3 id=&#34;solution-2-hashtable&#34;&gt;Solution 2: Hashtable
 &lt;/h3&gt;&lt;p&gt;__ code_block_6 __&lt;/p&gt;
-&lt;h2 id=&#34;复杂度与优缺点&#34;&gt;复杂度与优缺点
-&lt;/h2&gt;&lt;h3 id=&#34;解法一暴力枚举-2&#34;&gt;解法一：暴力枚举
+&lt;h2 id=&#34;complexity-and-advantages-and-disadvantages&#34;&gt;Complexity and Advantages and Disadvantages
+&lt;/h2&gt;&lt;h3 id=&#34;solution-1-violent-enumeration-2&#34;&gt;Solution 1: Violent Enumeration
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;p&gt;Time: $ O (n ^ 2) $ (worst), $\ Omega (1) $ (best, hit first pair), none $\ Theta $&lt;/p&gt;
@@ -256,7 +256,7 @@
 &lt;p&gt;❌ Not suitable for large scale data&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;解法二哈希表-1&#34;&gt;解法二：哈希表
+&lt;h3 id=&#34;solution-2-hashtable-1&#34;&gt;Solution 2: Hashtable
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;p&gt;Time: $\ Theta (n) $ (must be traversed once, hash lookup is $ O (1) $)&lt;/p&gt;
@@ -277,7 +277,7 @@
 &lt;p&gt;❌ Hash collisions can degenerate in extreme cases&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;对比总结&#34;&gt;对比总结
+&lt;h3 id=&#34;comparative-summary&#34;&gt;Comparative Summary
 &lt;/h3&gt;&lt;table&gt;
   &lt;thead&gt;
       &lt;tr&gt;
@@ -309,7 +309,7 @@
   &lt;/tbody&gt;
 &lt;/table&gt;
 &lt;hr&gt;
-&lt;h2 id=&#34;时间与空间的权衡&#34;&gt;时间与空间的权衡
+&lt;h2 id=&#34;time-and-space-trade-offs&#34;&gt;Time and space trade-offs
 &lt;/h2&gt;&lt;p&gt;In actual engineering, time and space are often * * not optimal * * at the same time, and trade-offs need to be made according to the scene.&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -354,7 +354,7 @@
   &lt;/tbody&gt;
 &lt;/table&gt;
 &lt;hr&gt;
-&lt;h2 id=&#34;常见算法复杂度速查&#34;&gt;常见算法复杂度速查
+&lt;h2 id=&#34;quick-check-of-common-algorithmic-complexity&#34;&gt;Quick Check of Common Algorithmic Complexity
 &lt;/h2&gt;&lt;table&gt;
   &lt;thead&gt;
       &lt;tr&gt;
