@@ -778,20 +778,25 @@ func isBase64(s string) bool {
 
 var jwtSecret []byte
 
-// initJWTSecret 初始化JWT密钥（强制环境变量配置）
-// ⚠️ 安全性改进：不再从文件读取或自动生成，确保密钥安全管理
+// initJWTSecret 初始化JWT密钥。
+// 当环境变量缺失时，回退为进程内临时随机密钥，避免本地双击启动直接退出。
 func initJWTSecret() {
 	secretEnv := os.Getenv("JWT_SECRET")
 	if secretEnv == "" {
-		log.Fatalf("[FATAL] JWT_SECRET environment variable not set.\n"+
-			"Please set it with: export JWT_SECRET=$(openssl rand -hex 32)\n"+
-			"Or for Windows PowerShell: $env:JWT_SECRET = (openssl rand -hex 32)\n"+
-			"This is a breaking change for security reasons - secrets must NOT be stored in files.")
+        temp := make([]byte, 32)
+        if _, err := rand.Read(temp); err != nil {
+            log.Fatalf("[FATAL] failed to generate temporary JWT secret: %v", err)
+        }
+        jwtSecret = temp
+        log.Printf("[WARN] JWT_SECRET not set; using a temporary in-memory secret for this run")
+        return
 	}
 	
 	// 验证密钥长度（至少64个hex字符 = 32字节）
 	if len(secretEnv) < 64 {
-		log.Fatalf("[FATAL] JWT_SECRET must be at least 64 hex characters (32 bytes). Current length: %d", len(secretEnv))
+        log.Printf("[WARN] JWT_SECRET is shorter than recommended 64 hex chars; using it as raw bytes")
+        jwtSecret = []byte(secretEnv)
+        return
 	}
 	
 	// 尝试从hex字符串解码（推荐方式）
