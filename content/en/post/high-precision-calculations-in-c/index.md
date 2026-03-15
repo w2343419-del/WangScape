@@ -13,16 +13,12 @@ license: ""
 hidden: false
 comments: true
 draft: false
-ws_sync_zh_hash: "9182f3f9355f829c21321b75205d18ac76dcc094993a5e8309fe0452e4984436"
----
+ws_sync_zh_hash: "2683299ea1e1d17c7503c62991843efa2eab949339b30d12b3302d24af24be23"
+---The maximum built-in integer `unsigned long long` in C is about $1.8\ times 10 ^ {19} $, which will overflow once the number exceeds this range. The high-precision calculation uses an integer array to store each bit of the large number, and cooperates with the loop simulation vertical operation to break the limit of the number of bits.
 
-# C language high precision calculation
+# Questions
 
-The maximum built-in integer `unsigned long long` in C is about $1.8\ times 10 ^ {19} $, which will overflow once the number exceeds this range. The high-precision calculation uses an integer array to store each bit of the large number, and cooperates with the loop simulation vertical operation to break the limit of the number of bits.
-
-## Questions
-
-### Background
+## Background
 
 Standard shapes are often inadequate in competition and engineering, and typical scenarios include:
 
@@ -30,22 +26,22 @@ Standard shapes are often inadequate in competition and engineering, and typical
 - Large power operations (e.g. RSA key generation)
 - Financial calculations requiring precise results
 
-### Core issues
+## Core issues
 
 For two non-negative integers of arbitrary length, add, subtract, multiply, and divide four operations are implemented, and the results are accurate.
 
-### BINDING EFFECT
+## BINDING EFFECT
 
 - Up to $10 ^ 3$ digits (adjustable `MAXN` extension)
 - This article only deals with non-negative integers; negative numbers require the addition of symbol bits
 
-## Idea Analysis
+# Idea Analysis
 
-### Core Ideas
+## Core Ideas
 
 Save each digit of the large number * * in reverse order * * into the `int' array: `d [0]` for one digit, `d [1]` for ten digits, and so on. The advantage of reverse order is that the carry direction (low → high) is consistent with the growth direction of the array subscript, and the loop is the most natural to write.
 
-### Data Structures
+## Data Structures
 
 __ code_block_0 __
 
@@ -55,7 +51,7 @@ Layout of the number `12345` in the array:
 |:----:|:----:|:----:|:----:|:----:|:----:|
 | Value | 5 | 4 | 3 | 2 | 1 |
 
-### Key points of each operation
+## Key points of each operation
 
 * * Addition * *: add bit by bit, record the carry with the variable `carry`, and loop until the highest carry is also processed.
 
@@ -65,35 +61,35 @@ Layout of the number `12345` in the array:
 
 * * Divide by a small integer * *: starting from the highest position, maintain the remainder `r`, `r = r * 10 + d [i]` at each step, the quotient is` r/b `, and the remainder is updated to` r % b `.
 
-## Code Implementation
+# Code Implementation
 
-### Initialization and I/O
+## Initialization and I/O
 
 __ code_block_1 __
 
-### Addition and Subtraction
+## Addition and Subtraction
 
 __ code_block_2 __
 
-### Multiplication
+## Multiplication
 
 __ code_block_3 __
 
-### Divide by small integer
+## Divide by small integer
 
 __ code_block_4 __
 
-### Full Demo Program
+## Full Demo Program
 
 __ code_block_5 __
 
-### Application: Calculating Factors
+## Application: Calculating Factors
 
 __ code_block_6 __
 
-## Complexity and Advantages and Disadvantages
+# Complexity and Advantages and Disadvantages
 
-### Time complexity
+## Time complexity
 
 Set large digits to $ n $:
 
@@ -104,23 +100,23 @@ Set large digits to $ n $:
 | Divide by small integer | $ O (n) $ | — |
 | Factor $ n! $ | $ O (n ^ 2\ cdot\ log n) $ | — |
 
-### Spatial Complexity
+## Spatial Complexity
 
 $ O (n) $, which is the size of the `d [MAXN]` array in the structure.
 
-### Pros
+## Pros
 
 - The principle is intuitive, fully corresponds to the manual vertical, easy to understand and debug
 - Pure C implementation without any external dependencies
 - Addition and subtraction $ O (n) $, fully adequate for medium size ($\ leq 10 ^ 4$ bits)
 
-### disadvantages
+## disadvantages
 
 - Multiplication $ O (n ^ 2) $, slower for very large numbers ($ > 10 ^ 5$ bits)
 - Only 1 bit per lattice, the constant factor is too large; it can be changed to 10,000 (4 bits per lattice) to increase the speed by about 4 times
 - Negative numbers are not supported for the time being, additional symbolic bit processing needs to be introduced
 
-### Introduction to Perpetual Optimization
+## Introduction to Perpetual Optimization
 
 Change `base` from 10 to 10000 and store 4 decimal digits per array element:
 
