@@ -733,11 +733,19 @@
         
         try {
             const targetLang = isZhCN ? 'zh-CN' : 'en';
-            const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=` + encodeURIComponent(originalText));
+            const response = await fetch('/api/translate_text', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: originalText,
+                    sourceLang: 'auto',
+                    targetLang
+                })
+            });
             const data = await response.json();
             
-            if (data && data[0]) {
-                const translatedText = data[0].map(item => item[0]).join('');
+            if (response.ok && data && data.success && data.data && data.data.translated) {
+                const translatedText = String(data.data.translated);
                 translationDiv.innerHTML = '<div style="padding: 10px; background: #f0f8ff; border-left: 3px solid #2b579a; border-radius: 4px; margin-top: 10px;">' + 
                     escapeHtml(translatedText).replace(/\n/g, '<br>') + '</div>';
                 translationDiv.dataset.translated = 'true';
@@ -745,7 +753,7 @@
                 contentDiv.style.display = 'none';
                 translateBtn.textContent = i18n.showOriginal;
             } else {
-                throw new Error('Translation failed');
+                throw new Error((data && data.message) ? data.message : 'Translation failed');
             }
         } catch (e) {
             translationDiv.innerHTML = '<div style="color: #f44336; font-size: 12px; margin-top: 5px;">' + i18n.translateFailed + '</div>';

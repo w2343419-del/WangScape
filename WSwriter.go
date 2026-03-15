@@ -2304,6 +2304,9 @@ func handleCommand(cmd string) (map[string]interface{}, error) {
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+    w.Header().Set("Pragma", "no-cache")
+    w.Header().Set("Expires", "0")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, htmlTemplate)
 }
@@ -3721,31 +3724,32 @@ func handleSyncTranslate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 检查英文版本是否存在
-	enFullPath := filepath.Join(hugoPath, data.EnPath)
+    // 读取英文版本（若不存在则在后续自动创建）
+    enFullPath := filepath.Join(hugoPath, data.EnPath)
     enRaw, err := os.ReadFile(enFullPath)
-    if err != nil {
-		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "English version not found"})
-		return
-	}
-    enExisting := string(enRaw)
+    enExisting := ""
+    if err == nil {
+        enExisting = string(enRaw)
+    } else if !os.IsNotExist(err) {
+        respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: fmt.Sprintf("Failed to read English version: %v", err)})
+        return
+    }
 
-	// 解析 frontmatter 和内容
-	parts := strings.Split(data.Content, "---")
-	if len(parts) < 3 {
-		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid markdown format"})
-		return
-	}
-
-	// 获取中文版本的 frontmatter
-	zhFrontmatter := parts[1]
-	zhBody := strings.Join(parts[2:], "---")
+    // 解析中文 frontmatter 和正文（格式异常时自动降级，避免同步中断）
+    zhFrontmatter, zhBody, ok := splitMarkdownFrontmatter(data.Content)
+    if !ok {
+        log.Printf("[WARN] sync_translate: invalid markdown frontmatter, fallback to body-only translation: %s", data.ZhPath)
+        zhFrontmatter = fmt.Sprintf("title: \"Untitled\"\ndate: %s\n", time.Now().Format(time.RFC3339))
+        zhBody = data.Content
+    }
     zhContentHash := computeSyncHash(data.Content)
 
-    if enFrontmatter, _, ok := splitMarkdownFrontmatter(enExisting); ok {
-        if oldHash := getFrontmatterValue(enFrontmatter, "ws_sync_zh_hash"); oldHash != "" && oldHash == zhContentHash {
-            respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "内容无变化，已跳过重复翻译"})
-            return
+    if enExisting != "" {
+        if enFrontmatter, _, ok := splitMarkdownFrontmatter(enExisting); ok {
+            if oldHash := getFrontmatterValue(enFrontmatter, "ws_sync_zh_hash"); oldHash != "" && oldHash == zhContentHash {
+                respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "内容无变化，已跳过重复翻译"})
+                return
+            }
         }
     }
 
@@ -3812,6 +3816,12 @@ func handleSyncTranslate(w http.ResponseWriter, r *http.Request) {
 	// 组装英文版本
 	enContent := "---" + enFrontmatter + "---" + translatedBody
 
+    // 确保英文目录存在（首次同步时自动创建）
+    if err := os.MkdirAll(filepath.Dir(enFullPath), 0755); err != nil {
+        respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: fmt.Sprintf("Failed to prepare directory: %v", err)})
+        return
+    }
+
 	// 保存英文版本
 	if err := os.WriteFile(enFullPath, []byte(enContent), 0644); err != nil {
 		respondJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: fmt.Sprintf("Failed to save: %v", err)})
@@ -3819,6 +3829,51 @@ func handleSyncTranslate(w http.ResponseWriter, r *http.Request) {
 	}
     writeAuditLog("sync_translate", r, map[string]interface{}{ "zh_path": data.ZhPath, "en_path": data.EnPath })
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Content translated and synced"})
+}
+
+// handleTranslateText 提供统一的文本翻译API（供前端评论翻译调用）
+func handleTranslateText(w http.ResponseWriter, r *http.Request) {
+    var data struct {
+        Text       string `json:"text"`
+        SourceLang string `json:"sourceLang"`
+        TargetLang string `json:"targetLang"`
+    }
+
+    if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Invalid request"})
+        return
+    }
+
+    text := strings.TrimSpace(data.Text)
+    if text == "" {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Text is required"})
+        return
+    }
+    if len(text) > 5000 {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Text too long"})
+        return
+    }
+
+    sourceLang := strings.TrimSpace(data.SourceLang)
+    if sourceLang == "" {
+        sourceLang = "auto"
+    }
+
+    targetLang := strings.TrimSpace(data.TargetLang)
+    if targetLang == "" {
+        respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Target language is required"})
+        return
+    }
+
+    translated := translateText(text, sourceLang, targetLang)
+    if strings.TrimSpace(translated) == "" || translated == text {
+        respondJSON(w, http.StatusBadGateway, APIResponse{Success: false, Message: "Translation failed"})
+        return
+    }
+
+    respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]string{
+        "translated": translated,
+    }})
 }
 
 func computeSyncHash(content string) string {
@@ -4333,6 +4388,7 @@ func main() {
     rootMux.HandleFunc("/api/delete_post", withCORS(withAuth(limitRequestBody(handleDeletePost, 1<<20))))
     rootMux.HandleFunc("/api/create_sync", withCORS(withAuth(limitRequestBody(handleCreateSync, 5<<20))))
     rootMux.HandleFunc("/api/sync_translate", withCORS(withAuth(limitRequestBody(handleSyncTranslate, 5<<20))))
+    rootMux.HandleFunc("/api/translate_text", withCORS(limitRequestBody(handleTranslateText, 16<<10)))
     rootMux.HandleFunc("/api/command", withCORS(withAuth(limitRequestBody(handleCommandAPI, 512))))
     rootMux.HandleFunc("/api/comments", withCORS(handleGetComments))
     rootMux.HandleFunc("/api/add_comment", withCORS(limitRequestBody(handleAddComment, 1<<20)))
@@ -6372,23 +6428,44 @@ var htmlTemplate = `<!DOCTYPE html>
                     if(currentDocPath.includes('zh-cn')) {
                         statusEl.textContent = "⏳ 正在翻译英文版本...";
                         const enPath = currentDocPath.replace(/zh-cn/g, 'en');
-                        
-                        // 调用翻译同步接口
-                        const syncRes = await authFetch('/api/sync_translate', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                zhPath: currentDocPath, 
-                                enPath: enPath,
-                                content: content 
-                            })
+
+                        const payload = JSON.stringify({
+                            zhPath: currentDocPath,
+                            enPath: enPath,
+                            content: content
                         });
-                        const syncData = await syncRes.json();
-                        if(syncData.success) {
-                            const msg = syncData.message ? String(syncData.message) : '已同步翻译';
+
+                        async function callSyncTranslateOnce() {
+                            const res = await authFetch('/api/sync_translate', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: payload
+                            });
+
+                            let body = null;
+                            try {
+                                body = await res.json();
+                            } catch (_) {
+                                body = null;
+                            }
+
+                            return { res, body };
+                        }
+
+                        // 网络抖动或临时认证状态异常时自动重试一次
+                        let syncResult = await callSyncTranslateOnce();
+                        if (!(syncResult.res.ok && syncResult.body && syncResult.body.success)) {
+                            await new Promise(resolve => setTimeout(resolve, 800));
+                            syncResult = await callSyncTranslateOnce();
+                        }
+
+                        if (syncResult.res.ok && syncResult.body && syncResult.body.success) {
+                            const msg = syncResult.body.message ? String(syncResult.body.message) : '已同步翻译';
                             statusEl.textContent = "✅ 已保存（" + msg + "） " + new Date().toLocaleTimeString();
                         } else {
-                            statusEl.textContent = "✅ 已保存（翻译失败）";
+                            const backendMsg = (syncResult.body && syncResult.body.message) ? String(syncResult.body.message) : '';
+                            const detail = backendMsg || ('HTTP ' + syncResult.res.status + ' ' + syncResult.res.statusText);
+                            statusEl.textContent = "✅ 已保存（英文同步失败: " + detail + "）";
                         }
                     }
                     
