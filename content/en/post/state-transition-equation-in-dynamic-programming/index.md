@@ -1,23 +1,23 @@
 ---
 title: "State Transition Equations and Dynamic Programming"
 date: 2026-03-02T13:57:00+08:00
-description: "对动态规划与状态转移方程的总结，及常见模型"
+description: "Summary of Dynamic Programming and State Transition Equations, and Common Models"
 tags:
-    - 动态规划
-    - 状态转移方程
+    - Dynamic programming
+    - - State transition equation
 categories:
-    - 算法
+    - Algorithm
 draft: false
 math: true
 comments: true
 hidden: false
 pinned: false
-ws_sync_zh_hash: "d38b34f10b8f70f4b3a79526440c6e91496baf719c5c32efd5de19dd592f8034"
+ws_sync_zh_hash: "a7c155fdc63ccf4509bc9ba68b36bc28b34b4503d05caa22ec93c2699583044f"
 ---
 
 In algorithmic problems, we can often see the shadow of dynamic programming, so here is a summary of dynamic programming (DP) and a very important part of it - the state transition equation.
 
-## 一、何为动态规划
+## I. What is Dynamic Planning
 
 Dynamic Programming (DP) is an algorithmic idea that solves the original problem by decomposing it into sub-problems.
 
@@ -25,19 +25,19 @@ Dynamic planning is not some specific data structure, but a way of thinking.
 
 DP needs to meet the following two properties:
 
-### 1. 最优子结构
+### 1. Optimal Substructure
 
 The optimal solution of the original problem contains the optimal solution of the subproblem.
 
-### 2. 重叠子问题
+### 2. Overlapping subquestions
 
 Subquestions are computed iteratively and can be cached to avoid duplication.
 
-## 二、何为状态转移方程
+## II. What is the state transition equation?
 
 To understand the state transition equation, you should first know what a "state" is.
 
-### 1. "状态"
+### 1- STATE
 
 Status is a description of the problem at a certain stage, usually denoted by `dp [i]` or `dp [i] [j]`.
 
@@ -46,7 +46,7 @@ For example:
 - `dp [i] [j]` = optimal solution from position i to position j
 - `dp [i] [w]` = optimal solution considering the first i items with remaining capacity w
 
-### 2. 状态转移方程
+### 2. State transition equation
 
 The state transition equation can be roughly written as:
 
@@ -54,17 +54,15 @@ __ code_block_0 __
 
 What the state transition equation does is determine what options are available for that step, as well as the sub-problems behind the choices (which can be understood as recursive).
 
-## 三、典型例题
+## III. Typical Examples
 
-## 三、典型例题
+### Example 1: Linear DP - climbing stairs
 
-### 例 1：线性 DP - 爬楼梯
-
-#### 问题
+#### Questions
 
 How many ways can you climb 1 or 2 steps at a time to reach step n?
 
-#### 思路分析
+#### Idea Analysis
 
 1. Define status: `dp [i]` = Number of methods to climb to level i
 2. Last step analysis: to reach step i, you can only come from step i-1 (step 1) or step i-2 (step 2)
@@ -78,11 +76,11 @@ Note: There are two more boundary states in this state transition equation: `dp 
 
 __ code_block_1 __
 
-#### 代码实现
+#### Code Implementation
 
 __ code_block_2 __
 
-#### 时间复杂度与优缺点
+#### Time Complexity and Advantages and Disadvantages
 
 * * Time complexity * *: $ O (n) $  
 * * Space complexity * *: $ O (n) $
@@ -96,13 +94,13 @@ __ code_block_2 __
 
 ---
 
-### 例 2：线性 DP - 打家劫舍
+### Example 2: Linear DP - Burglary
 
-#### 问题
+#### Questions
 
 A row of houses can not rob neighbors, ask for the maximum amount. The given array `nums` represents the amounts for each house.
 
-#### 思路分析
+#### Idea Analysis
 
 1. Define status: `dp [i]` = the maximum amount you can get for grabbing room i
 2. Last step analysis: room i, either rob or not rob
@@ -116,11 +114,11 @@ $ $ dp [i] =\ max (dp [i-1], dp [i-2] + nums [i]) $ $
 
 __ code_block_3 __
 
-#### 代码实现
+#### Code Implementation
 
 __ code_block_4 __
 
-#### 时间复杂度与优缺点
+#### Time Complexity and Advantages and Disadvantages
 
 * * Time complexity * *: $ O (n) $  
 * * Space complexity * *: $ O (n) $, optimized for $ O (1) $ (only the first two are retained)
@@ -134,13 +132,13 @@ __ code_block_4 __
 
 ---
 
-### 例 3：背包 DP - 0/1 背包
+### Example 3: Backpack DP - 0/1 Backpack
 
-#### 问题
+#### Questions
 
 n items, weight `w []`, value `v []`, back capacity W, for maximum value.
 
-#### 思路分析
+#### Idea Analysis
 
 1. Define status: `dp [i] [j]` = maximum value considering the first i items, capacity j
 2. Last step analysis: the ith item, put or not put
@@ -156,7 +154,7 @@ Items: (w = 2, v = 3), (w = 3, v = 4), (w = 4, v = 5) Back carrying capacity W =
 
 __ code_block_5 __
 
-#### 代码实现
+#### Code Implementation
 
 __ code_block_6 __
 
@@ -164,7 +162,7 @@ __ code_block_6 __
 
 __ code_block_7 __
 
-#### 时间复杂度与优缺点
+#### Time Complexity and Advantages and Disadvantages
 
 * * Time complexity * *: $ O (nW) $  
 * * Space complexity * *: $ O (nW) $, optimized to $ O (W) $
@@ -178,13 +176,13 @@ __ code_block_7 __
 
 ---
 
-### 例 4：序列 DP - 最长公共子序列（LCS）
+### Example 4: Sequence DP - Longest Common Subsequence (LCS)
 
-#### 问题
+#### Questions
 
 Two strings for the length of the longest common subsequence. Example: `"abcde"` and `"ace"` → length is 3 (`ace`)
 
-#### 思路分析
+#### Idea Analysis
 
 1. Define the status: `dp [i] [j]` = LCS length of the first i characters of s1 and the first j characters of s2
 2. Last step analysis: Are s1 [i] and s2 [j] equal:
@@ -206,11 +204,11 @@ s1 = "abcde" s2 = "ace"
 
 __ code_block_8 __
 
-#### 代码实现
+#### Code Implementation
 
 __ code_block_9 __
 
-#### 时间复杂度与优缺点
+#### Time Complexity and Advantages and Disadvantages
 
 * * Time complexity * *: $ O (mn) $  
 * * Space complexity * *: $ O (mn) $, optimized for $ O (\ min (m, n)) $ (scrolling array)
@@ -224,13 +222,13 @@ __ code_block_9 __
 
 ---
 
-### 例 5：区间 DP - 戳气球
+### Example 5: Interval DP - Poke Balloon
 
-#### 问题
+#### Questions
 
 Poke the balloon i score = `nums [i-1] * nums [i] * nums [i +1]` to get the maximum total score.
 
-#### 思路分析
+#### Idea Analysis
 
 1. * * Key ideas * *: Do not want to "poke which first", but "poke which last * * in the interval (i, j)", so that the boundaries on both sides are known to avoid confusion
 
@@ -242,11 +240,11 @@ $ $ dp [i] [j] =\ max_{i < k < j} (dp [i] [k] + dp [k] [j] + nums [i]\ nums [k]\
 
 where k is the last poked balloon in interval (i, j).
 
-#### 代码实现
+#### Code Implementation
 
 __ code_block_10 __
 
-#### 时间复杂度与优缺点
+#### Time Complexity and Advantages and Disadvantages
 
 * * Time complexity * *: $ O (n ^ 3) $  
 * * Space complexity * *: $ O (n ^ 2) $
@@ -262,7 +260,7 @@ __ code_block_10 __
 
 ---
 
-## 四、DP 模型总结
+## IV. DP Model Summary
 
 DP Model Comparison Summary:
 
@@ -275,7 +273,7 @@ DP Model Comparison Summary:
 
 ---
 
-## 总结与建议
+## Summary & Suggestions
 
 1. * * From the question * *: Determine if DP can be used (with optimal sub-structure and overlapping sub-problems)
 2. * * Define status * *: clearly define what `dp [...]` means
