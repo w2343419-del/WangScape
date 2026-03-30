@@ -3,13 +3,14 @@
     (function() {
         // 加载卜算子统计脚本（不蒜子官方CDN）
         const script = document.createElement('script');
-        script.async = true;
+        script.defer = true;
         script.src = 'https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js';
         script.onerror = function () {
             // 统计脚本不可用时静默降级，避免影响页面主功能。
             window.busuanzi = window.busuanzi || { pageCount: 0, sitePV: 0, siteUV: 0 };
         };
-        document.body.appendChild(script);
+        // custom.html 位于 head，body 可能尚未创建；注入到 head 更稳妥。
+        document.head.appendChild(script);
     })();
 </script>
 
