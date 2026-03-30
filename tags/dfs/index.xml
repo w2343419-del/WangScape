@@ -609,13 +609,13 @@
 &lt;/ul&gt;
 &lt;p&gt;&lt;strong&gt;优点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ 思路清晰，易于理解&lt;/li&gt;
-&lt;li&gt;✅ 一次遍历解决问题&lt;/li&gt;
-&lt;li&gt;✅ 代码相对简洁&lt;/li&gt;
+&lt;li&gt;思路清晰，易于理解&lt;/li&gt;
+&lt;li&gt;一次遍历解决问题&lt;/li&gt;
+&lt;li&gt;代码相对简洁&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;&lt;strong&gt;缺点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;❌ 空间占用较大（N=9 时约 1.3MB）&lt;/li&gt;
+&lt;li&gt;空间占用较大（N=9 时约 1.3MB）&lt;/li&gt;
 &lt;/ul&gt;
 &lt;h3 id=&#34;解法二dfs--记忆化搜索-2&#34;&gt;解法二：DFS + 记忆化搜索
 &lt;/h3&gt;&lt;p&gt;&lt;strong&gt;时间复杂度&lt;/strong&gt; ：$O(N^3)$&lt;/p&gt;
@@ -629,14 +629,14 @@
 &lt;/ul&gt;
 &lt;p&gt;&lt;strong&gt;优点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ 逻辑自然，从上向下思考&lt;/li&gt;
-&lt;li&gt;✅ 易于添加剪枝（虽然此题中剪枝不多）&lt;/li&gt;
-&lt;li&gt;✅ 可灵活调整状态定义&lt;/li&gt;
+&lt;li&gt;逻辑自然，从上向下思考&lt;/li&gt;
+&lt;li&gt;易于添加剪枝（虽然此题中剪枝不多）&lt;/li&gt;
+&lt;li&gt;可灵活调整状态定义&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;&lt;strong&gt;缺点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;❌ 递归调用栈深度为 $O(N)$（栈空间）&lt;/li&gt;
-&lt;li&gt;❌ 空间复杂度与 DP 相同&lt;/li&gt;
+&lt;li&gt;递归调用栈深度为 $O(N)$（栈空间）&lt;/li&gt;
+&lt;li&gt;空间复杂度与 DP 相同&lt;/li&gt;
 &lt;/ul&gt;
 &lt;h3 id=&#34;解法三费用流&#34;&gt;解法三：费用流
 &lt;/h3&gt;&lt;p&gt;&lt;strong&gt;时间复杂度&lt;/strong&gt; ：$O(Flow \times SPFA) = O(2 \times E \log V) = O(N^2 \times N^2) = O(N^4)$&lt;/p&gt;
@@ -650,15 +650,15 @@
 &lt;/ul&gt;
 &lt;p&gt;&lt;strong&gt;优点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ 适用于更一般的场景（多条路径、带限制的图等）&lt;/li&gt;
-&lt;li&gt;✅ 代码框架可复用于其他费用流问题&lt;/li&gt;
-&lt;li&gt;✅ 空间占用相对较少&lt;/li&gt;
+&lt;li&gt;适用于更一般的场景（多条路径、带限制的图等）&lt;/li&gt;
+&lt;li&gt;代码框架可复用于其他费用流问题&lt;/li&gt;
+&lt;li&gt;空间占用相对较少&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;&lt;strong&gt;缺点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;❌ 时间复杂度最高（约 $O(N^4)$ vs $O(N^3)$）&lt;/li&gt;
-&lt;li&gt;❌ 代码长且复杂，易出错&lt;/li&gt;
-&lt;li&gt;❌ 难度陡升，超出竞赛难度范围&lt;/li&gt;
+&lt;li&gt;时间复杂度最高（约 $O(N^4)$ vs $O(N^3)$）&lt;/li&gt;
+&lt;li&gt;代码长且复杂，易出错&lt;/li&gt;
+&lt;li&gt;难度陡升，超出竞赛难度范围&lt;/li&gt;
 &lt;/ul&gt;
 &lt;h3 id=&#34;对比与总结&#34;&gt;对比与总结
 &lt;/h3&gt;&lt;table&gt;

@@ -120,12 +120,12 @@ $$dp[i] = dp[i-1] + dp[i-2]$$&lt;p&gt;注意：此状态转移方程还有两个
 &lt;strong&gt;空间复杂度&lt;/strong&gt; ：$O(n)$&lt;/p&gt;
 &lt;p&gt;&lt;strong&gt;优点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ 问题简单，易于理解&lt;/li&gt;
-&lt;li&gt;✅ 状态定义直观&lt;/li&gt;
+&lt;li&gt;问题简单，易于理解&lt;/li&gt;
+&lt;li&gt;状态定义直观&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;&lt;strong&gt;缺点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;❌ 只能计算一固定地方的值，若要计算多次则需多次递推&lt;/li&gt;
+&lt;li&gt;只能计算一固定地方的值，若要计算多次则需多次递推&lt;/li&gt;
 &lt;/ul&gt;
 &lt;hr&gt;
 &lt;h3 id=&#34;例-2线性-dp---打家劫舍&#34;&gt;例 2：线性 DP - 打家劫舍
@@ -352,12 +352,12 @@ $$dp[i][j] = \max(dp[i-1][j], dp[i-1][j - w[i]] + v[i])$$&lt;ol start=&#34;4&#34
 &lt;strong&gt;空间复杂度&lt;/strong&gt; ：$O(nW)$，优化后为 $O(W)$&lt;/p&gt;
 &lt;p&gt;&lt;strong&gt;优点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ DP 框架经典，易于扩展&lt;/li&gt;
-&lt;li&gt;✅ 可一次性解决所有容量的最优值&lt;/li&gt;
+&lt;li&gt;DP 框架经典，易于扩展&lt;/li&gt;
+&lt;li&gt;可一次性解决所有容量的最优值&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;&lt;strong&gt;缺点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;❌ 物品数量或容量很大时，时间空间压力大&lt;/li&gt;
+&lt;li&gt;物品数量或容量很大时，时间空间压力大&lt;/li&gt;
 &lt;/ul&gt;
 &lt;hr&gt;
 &lt;h3 id=&#34;例-4序列-dp---最长公共子序列lcs&#34;&gt;例 4：序列 DP - 最长公共子序列（LCS）
@@ -485,12 +485,12 @@ $$dp[i][j] = \begin{cases}
 &lt;strong&gt;空间复杂度&lt;/strong&gt; ：$O(mn)$，可优化为 $O(\min(m,n))$（滚动数组）&lt;/p&gt;
 &lt;p&gt;&lt;strong&gt;优点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ 框架适用于序列对齐问题&lt;/li&gt;
-&lt;li&gt;✅ 可扩展到 LCS 具体字符（回溯）&lt;/li&gt;
+&lt;li&gt;框架适用于序列对齐问题&lt;/li&gt;
+&lt;li&gt;可扩展到 LCS 具体字符（回溯）&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;&lt;strong&gt;缺点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;❌ m、n 都很大时空间压力大&lt;/li&gt;
+&lt;li&gt;m、n 都很大时空间压力大&lt;/li&gt;
 &lt;/ul&gt;
 &lt;hr&gt;
 &lt;h3 id=&#34;例-5区间-dp---戳气球&#34;&gt;例 5：区间 DP - 戳气球
@@ -599,14 +599,14 @@ $$dp[i][j] = \max_{i &lt; k &lt; j}(dp[i][k] + dp[k][j] + nums[i] \times nums[k]
 &lt;strong&gt;空间复杂度&lt;/strong&gt; ：$O(n^2)$&lt;/p&gt;
 &lt;p&gt;&lt;strong&gt;优点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ 区间 DP 的经典例题&lt;/li&gt;
-&lt;li&gt;✅ &amp;ldquo;最后一个&amp;quot;的思路极具启发性&lt;/li&gt;
-&lt;li&gt;✅ 可通过回溯得到具体戳的顺序&lt;/li&gt;
+&lt;li&gt;区间 DP 的经典例题&lt;/li&gt;
+&lt;li&gt;&amp;ldquo;最后一个&amp;quot;的思路极具启发性&lt;/li&gt;
+&lt;li&gt;可通过回溯得到具体戳的顺序&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;&lt;strong&gt;缺点&lt;/strong&gt; ：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;❌ 思路相对复杂，初次接触易困惑&lt;/li&gt;
-&lt;li&gt;❌ 时间复杂度为立方级&lt;/li&gt;
+&lt;li&gt;思路相对复杂，初次接触易困惑&lt;/li&gt;
+&lt;li&gt;时间复杂度为立方级&lt;/li&gt;
 &lt;/ul&gt;
 &lt;hr&gt;
 &lt;h2 id=&#34;四dp-模型总结&#34;&gt;四、DP 模型总结

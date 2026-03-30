@@ -384,16 +384,16 @@
 &lt;p&gt;Space: $\ Theta (1) $&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;✅ No extra space, memory friendly&lt;/p&gt;
+&lt;p&gt;No extra space, memory friendly&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;Simple ✅ implementation, no hash function required&lt;/p&gt;
+&lt;p&gt;Simple implementation, no hash function required&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;Poor ❌ time efficiency, $ n = 10 ^ 4$ has 100 million operations&lt;/p&gt;
+&lt;p&gt;Poor time efficiency, $ n = 10 ^ 4$ has 100 million operations&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;❌ Not suitable for large scale data&lt;/p&gt;
+&lt;p&gt;Not suitable for large scale data&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;h3 id=&#34;solution-2-hashtable-1&#34;&gt;Solution 2: Hashtable
@@ -405,16 +405,16 @@
 &lt;p&gt;Space: $\ Theta (n) $ (maximum of $ n $ elements in hash table)&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;✅ Time efficient, linear scan once&lt;/p&gt;
+&lt;p&gt;Time efficient, linear scan once&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;✅ Suitable for large scale data&lt;/p&gt;
+&lt;p&gt;Suitable for large scale data&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;❌ Extra $ O (n) $ memory required&lt;/p&gt;
+&lt;p&gt;Extra $ O (n) $ memory required&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;❌ Hash collisions can degenerate in extreme cases&lt;/p&gt;
+&lt;p&gt;Hash collisions can degenerate in extreme cases&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;h3 id=&#34;comparative-summary&#34;&gt;Comparative Summary
@@ -627,8 +627,8 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ The question is simple and easy to understand&lt;/li&gt;
-&lt;li&gt;✅ Status definition is intuitive&lt;/li&gt;
+&lt;li&gt;The question is simple and easy to understand&lt;/li&gt;
+&lt;li&gt;Status definition is intuitive&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -638,7 +638,7 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;Values ❌ can only be calculated in one fixed place and need to be recursed multiple times to calculate multiple times&lt;/li&gt;
+&lt;li&gt;Values can only be calculated in one fixed place and need to be recursed multiple times to calculate multiple times&lt;/li&gt;
 &lt;/ul&gt;
 &lt;hr&gt;
 &lt;h3 id=&#34;example-2-linear-dp---burglary&#34;&gt;Example 2: Linear DP - Burglary
@@ -744,8 +744,8 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ DP framework is classic and easy to expand&lt;/li&gt;
-&lt;li&gt;Optimal values for all capacities ✅ can be solved at once&lt;/li&gt;
+&lt;li&gt;DP framework is classic and easy to expand&lt;/li&gt;
+&lt;li&gt;Optimal values for all capacities can be solved at once&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -755,7 +755,7 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;When the number or capacity of ❌ items is large, the pressure in time and space is high&lt;/li&gt;
+&lt;li&gt;When the number or capacity of items is large, the pressure in time and space is high&lt;/li&gt;
 &lt;/ul&gt;
 &lt;hr&gt;
 &lt;h3 id=&#34;example-4-sequence-dp---longest-common-subsequence-lcs&#34;&gt;Example 4: Sequence DP - Longest Common Subsequence (LCS)
@@ -808,8 +808,8 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ Frame for sequence alignment problems&lt;/li&gt;
-&lt;li&gt;✅ Scalable to LCS specific characters (backtracking)&lt;/li&gt;
+&lt;li&gt;Frame for sequence alignment problems&lt;/li&gt;
+&lt;li&gt;Scalable to LCS specific characters (backtracking)&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -819,7 +819,7 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;When ❌ m and n are large, the spatial pressure is large&lt;/li&gt;
+&lt;li&gt;When m and n are large, the spatial pressure is large&lt;/li&gt;
 &lt;/ul&gt;
 &lt;hr&gt;
 &lt;h3 id=&#34;example-5-interval-dp---poke-balloon&#34;&gt;Example 5: Interval DP - Poke Balloon
@@ -866,9 +866,9 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;Classic example of an ✅ interval DP&lt;/li&gt;
-&lt;li&gt;The idea of the ✅ &amp;ldquo;last one&amp;rdquo; is very enlightening&lt;/li&gt;
-&lt;li&gt;✅ The order in which specific stamps can be obtained by backtracking&lt;/li&gt;
+&lt;li&gt;Classic example of an interval DP&lt;/li&gt;
+&lt;li&gt;The idea of the &amp;ldquo;last one&amp;rdquo; is very enlightening&lt;/li&gt;
+&lt;li&gt;The order in which specific stamps can be obtained by backtracking&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -878,8 +878,8 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;The ❌ idea is relatively complex and confusing to the first contact&lt;/li&gt;
-&lt;li&gt;❌ Time complexity is cubic&lt;/li&gt;
+&lt;li&gt;The idea is relatively complex and confusing to the first contact&lt;/li&gt;
+&lt;li&gt;Time complexity is cubic&lt;/li&gt;
 &lt;/ul&gt;
 &lt;hr&gt;
 &lt;h2 id=&#34;iv-dp-model-summary&#34;&gt;IV. DP Model Summary
@@ -974,6 +974,321 @@
 &lt;/ul&gt;
 &lt;/li&gt;
 &lt;/ol&gt;
+</description>
+        </item>
+        <item>
+        <title>P1004 [NOIP 2000 improvement group] grid score analysis and summary</title>
+        <link>https://w2343419-del.github.io/WangScape/en/p/p1004-noip-2000-improvement-group-grid-score-analysis-and-summary/</link>
+        <pubDate>Sat, 28 Feb 2026 11:31:00 +0800</pubDate>
+        
+        <guid>https://w2343419-del.github.io/WangScape/en/p/p1004-noip-2000-improvement-group-grid-score-analysis-and-summary/</guid>
+        <description>&lt;p&gt;This is a classic but difficult chessboard problem. Although it is the topic of NOIP in 2000, it is still quite difficult for first-time contacts as the final topic. This paper summarizes three different solutions: Dynamic Planning, DFS Memorization, and Minimum Cost Maximum Flow, which unfolds gradually from easy to difficult.&lt;/p&gt;
+&lt;h2 id=&#34;questions&#34;&gt;Questions
+&lt;/h2&gt;&lt;h3 id=&#34;题目来源&#34;&gt;题目来源
+&lt;/h3&gt;&lt;p&gt;NOIP 2000 提高组 T4&lt;/p&gt;
+&lt;h3 id=&#34;description-of-problem&#34;&gt;Description of problem
+&lt;/h3&gt;&lt;p&gt;There is a square diagram of N × N (N ≤ 9), some of which we fill in positive integers, while others put the number 0.
+Someone starts at point A (0, 0) in the top left corner of the diagram and can walk down or to the right until they reach point B (N, N) in the bottom right corner.On the way he walks, he can take the number in the square (which becomes the number 0).
+This person walked from point A to point B twice, trying to find 2 such paths, so that the sum of the obtained numbers is the maximum.&lt;/p&gt;
+&lt;h3 id=&#34;inputoutput&#34;&gt;Input/Output
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Input format * *: The first line of input is an integer N (representing the grid diagram of N × N), and each subsequent line has three integers, the first two represent the position, and the third number is the number placed on the position. A separate line of 0 indicates the end of the input.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Output format * *: Just output an integer representing the maximum sum obtained on the 2 paths.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;example&#34;&gt;Example
+&lt;/h3&gt;&lt;p&gt;Input:
+__ code_block_0 __&lt;/p&gt;
+&lt;p&gt;Output:
+__ code_block_1 __&lt;/p&gt;
+&lt;h3 id=&#34;约束条件&#34;&gt;约束条件
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;数据范围：1≤N≤9&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;problem-analysis&#34;&gt;Problem analysis
+&lt;/h3&gt;&lt;p&gt;Why can&amp;rsquo;t I enumerate twice (i.e. find an optimal path first, then find the second one in the remaining cells)? Because one path changes the map (takes the number) and affects the result of the second, the two paths must be considered in conjunction and cannot be optimized independently.&lt;/p&gt;
+&lt;h2 id=&#34;idea-analysis&#34;&gt;Idea Analysis
+&lt;/h2&gt;&lt;p&gt;The ideas for the three solutions are as follows:&lt;/p&gt;
+&lt;h3 id=&#34;solution-1-dynamic-planning&#34;&gt;Solution 1: Dynamic planning
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Core idea * *: Advance both paths simultaneously, simulating two people walking at the same time with one DP.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;State design * *: set &lt;code&gt;dp [k] [x1] [x2]&lt;/code&gt;, where:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;k is the number of steps currently taken (i.e. the value of x + y, from 2 to 2N)&lt;/li&gt;
+&lt;li&gt;x1 and x2 are the line numbers where the two people are currently located&lt;/li&gt;
+&lt;li&gt;y = k - x can be derived from k and x (key optimization, this step reduces the dimension), so column numbers do not need to be stored separately&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Deduplication * *: When two people are in the same cell (x1 = = x2, y1 = = y2), the cell is taken only once.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;State transition * *: Two people each can choose to move to the right or down for a total of 4 combinations. Each state dp [k] [x1] [x2] represents the sum of the maximum values at line x1 and line x2 for human 1 and 2, respectively, going to step k.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;solution-2-dfs--memory-search&#34;&gt;Solution 2: DFS + Memory Search
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Core idea * *: Similar to the DP algorithm (deep search and DP are essentially one thing after all), but adds memorized search to avoid double counting. If there is no memorized search, the amount of calculation will be an exponential explosion, about $4 ^ {16} $ times at N = 9.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Implementation * *: Starting from the initial state, all possible transitions are attempted recursively, while the calculated state is cached with the memo array, avoiding duplication. Returns 0 when the end point is reached and returns the maximum value layer by layer.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;solution-3-cost-flow-minimum-cost-maximum-flow&#34;&gt;Solution 3: Cost flow (minimum cost maximum flow)
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Core Idea * *: Convert &amp;ldquo;maximize two paths&amp;rdquo; into a network flow problem.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Modeling ideas * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Two paths from A to B = 2 flows from the source to the sink&lt;/li&gt;
+&lt;li&gt;Fetch up to once per cell = Capacity limit per node&lt;/li&gt;
+&lt;li&gt;Get number max = cost max (min to min)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Split point processing * *: Each grid (i, j) is split into two nodes in and out:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;in → out capacity 1, cost - map [i] [j] (first path taken)&lt;/li&gt;
+&lt;li&gt;in → out plus capacity 1, cost 0 (second path through but not counted)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Connecting edges * *: (i, j) out connects (i +1, j) in and (i, j +1) in, capacity 2, cost 0.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;code-implementation&#34;&gt;Code Implementation
+&lt;/h2&gt;&lt;h3 id=&#34;solution-1-dynamic-planning-1&#34;&gt;Solution 1: Dynamic planning
+&lt;/h3&gt;&lt;p&gt;Full Code
+__ code_block_2 __&lt;/p&gt;
+&lt;h3 id=&#34;solution-2-dfs--memory-search-1&#34;&gt;Solution 2: DFS + Memory Search
+&lt;/h3&gt;&lt;p&gt;__ code_block_3 __&lt;/p&gt;
+&lt;h3 id=&#34;solution-3-cost-flow-minimum-cost-maximum-flow-1&#34;&gt;Solution 3: Cost flow (minimum cost maximum flow)
+&lt;/h3&gt;&lt;p&gt;__ code_block_4 __&lt;/p&gt;
+&lt;h2 id=&#34;time-complexity-and-advantages-and-disadvantages&#34;&gt;Time Complexity and Advantages and Disadvantages
+&lt;/h2&gt;&lt;h3 id=&#34;solution-1-dynamic-planning-2&#34;&gt;Solution 1: Dynamic planning
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Time complexity * *: $ O (N ^ 3) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Number of states: $ O (N ^ 2)\ times O (N ^ 2)/2 = O (N ^ 4) $, but due to the constraints of dimensionality reduction and x1 and x2, it is actually $ O (N ^ 3) $&lt;/li&gt;
+&lt;li&gt;4 transitions per state&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Space complexity * *: $ O (N ^ 3) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;dp array size is $2N\ times N\ times N $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Benefits * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Clear thinking and easy to understand&lt;/li&gt;
+&lt;li&gt;Problem solving in one iteration&lt;/li&gt;
+&lt;li&gt;The code is relatively simple&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Cons * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Large footprint (approx. 1.3MB at N = 9)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;solution-2-dfs--memory-search-2&#34;&gt;Solution 2: DFS + Memory Search
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Time complexity * *: $ O (N ^ 3) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Same number of statuses as DP&lt;/li&gt;
+&lt;li&gt;Up to one calculation per state (memorization)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Space complexity * *: $ O (N ^ 3) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Memo and visited arrays account for $ O (N ^ 3) $ each&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Benefits * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Logical and natural, thinking from top to bottom&lt;/li&gt;
+&lt;li&gt;Easy to add pruning (although there are not many pruning in this question)&lt;/li&gt;
+&lt;li&gt;Flexible state definition&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Cons * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;The recursive call stack depth is $ O (N) $ (stack space)&lt;/li&gt;
+&lt;li&gt;Same space complexity as DP&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;solution-3-expense-flow&#34;&gt;Solution 3: Expense Flow
+&lt;/h3&gt;&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Time complexity * *: $ O (Flow\ times SPFA) = O (2\ times E\ log V) = O (N ^ 2\ times N ^ 2) = O (N ^ 4) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Flow is 2&lt;/li&gt;
+&lt;li&gt;SPFA $ O (V\ log V) $ each time, where $ V = O (N ^ 2) $, $ E = O (N ^ 2) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Space complexity * *: $ O (V + E) = O (N ^ 2) $&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Storage space for diagrams&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Benefits * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Suitable for more general scenarios (multiple paths, restricted diagrams, etc.)&lt;/li&gt;
+&lt;li&gt;Code frameworks can be reused for other expense stream issues&lt;/li&gt;
+&lt;li&gt;Relatively sparsely occupied space&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Cons * *:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul&gt;
+&lt;li&gt;Highest time complexity (about $ O (N ^ 4) $ vs $ O (N ^ 3) $)&lt;/li&gt;
+&lt;li&gt;The code is long, complex and error-prone&lt;/li&gt;
+&lt;li&gt;Difficulty has skyrocketed beyond the limits of the competition&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;comparison-and-summary&#34;&gt;Comparison and Summary
+&lt;/h3&gt;&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;Features&lt;/th&gt;
+          &lt;th&gt;Solution 1 DP&lt;/th&gt;
+          &lt;th&gt;Solution 2 DFS&lt;/th&gt;
+          &lt;th&gt;Solution 3 Cost Flow&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Ease of Understanding&lt;/td&gt;
+          &lt;td&gt;★★★★☆&lt;/td&gt;
+          &lt;td&gt;★★★★☆&lt;/td&gt;
+          &lt;td&gt;★☆☆☆☆&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Difficulty&lt;/td&gt;
+          &lt;td&gt;★★☆☆☆&lt;/td&gt;
+          &lt;td&gt;★★☆☆☆&lt;/td&gt;
+          &lt;td&gt;★★★★★&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Time Complexity&lt;/td&gt;
+          &lt;td&gt;$ O (N ^ 3) $&lt;/td&gt;
+          &lt;td&gt;$ O (N ^ 3) $&lt;/td&gt;
+          &lt;td&gt;$ O (N ^ 4) $&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Space Complexity&lt;/td&gt;
+          &lt;td&gt;$ O (N ^ 3) $&lt;/td&gt;
+          &lt;td&gt;$ O (N ^ 3) $&lt;/td&gt;
+          &lt;td&gt;$ O (N ^ 2) $&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Recommendation Index&lt;/td&gt;
+          &lt;td&gt;★★★★★&lt;/td&gt;
+          &lt;td&gt;★★★★☆&lt;/td&gt;
+          &lt;td&gt;★★☆☆☆&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;ul&gt;
+&lt;li&gt;Conclusion * *: For this question, * * Solution 1 (DP) * * is the best choice, which is clear, efficient and not overly complicated. Solution 2 is for students who want to practice DFS. Solution 3 Although elegant, it is not as efficient as DP for the scale of N ≤ 9, and only extends knowledge.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
 </description>
         </item>
         

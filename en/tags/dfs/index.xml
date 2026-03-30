@@ -13,14 +13,14 @@
         
         <guid>https://w2343419-del.github.io/WangScape/en/p/p1004-noip-2000-improvement-group-grid-score-analysis-and-summary/</guid>
         <description>&lt;p&gt;This is a classic but difficult chessboard problem. Although it is the topic of NOIP in 2000, it is still quite difficult for first-time contacts as the final topic. This paper summarizes three different solutions: Dynamic Planning, DFS Memorization, and Minimum Cost Maximum Flow, which unfolds gradually from easy to difficult.&lt;/p&gt;
-&lt;h2 id=&#34;问题&#34;&gt;问题
+&lt;h2 id=&#34;questions&#34;&gt;Questions
 &lt;/h2&gt;&lt;h3 id=&#34;题目来源&#34;&gt;题目来源
 &lt;/h3&gt;&lt;p&gt;NOIP 2000 提高组 T4&lt;/p&gt;
-&lt;h3 id=&#34;问题描述&#34;&gt;问题描述
+&lt;h3 id=&#34;description-of-problem&#34;&gt;Description of problem
 &lt;/h3&gt;&lt;p&gt;There is a square diagram of N × N (N ≤ 9), some of which we fill in positive integers, while others put the number 0.
 Someone starts at point A (0, 0) in the top left corner of the diagram and can walk down or to the right until they reach point B (N, N) in the bottom right corner.On the way he walks, he can take the number in the square (which becomes the number 0).
 This person walked from point A to point B twice, trying to find 2 such paths, so that the sum of the obtained numbers is the maximum.&lt;/p&gt;
-&lt;h3 id=&#34;输入输出&#34;&gt;输入输出
+&lt;h3 id=&#34;inputoutput&#34;&gt;Input/Output
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -33,7 +33,7 @@ This person walked from point A to point B twice, trying to find 2 such paths, s
 &lt;/ul&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;样例&#34;&gt;样例
+&lt;h3 id=&#34;example&#34;&gt;Example
 &lt;/h3&gt;&lt;p&gt;Input:
 __ code_block_0 __&lt;/p&gt;
 &lt;p&gt;Output:
@@ -42,11 +42,11 @@ __ code_block_1 __&lt;/p&gt;
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;数据范围：1≤N≤9&lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;问题分析&#34;&gt;问题分析
+&lt;h3 id=&#34;problem-analysis&#34;&gt;Problem analysis
 &lt;/h3&gt;&lt;p&gt;Why can&amp;rsquo;t I enumerate twice (i.e. find an optimal path first, then find the second one in the remaining cells)? Because one path changes the map (takes the number) and affects the result of the second, the two paths must be considered in conjunction and cannot be optimized independently.&lt;/p&gt;
-&lt;h2 id=&#34;思路分析&#34;&gt;思路分析
+&lt;h2 id=&#34;idea-analysis&#34;&gt;Idea Analysis
 &lt;/h2&gt;&lt;p&gt;The ideas for the three solutions are as follows:&lt;/p&gt;
-&lt;h3 id=&#34;解法一动态规划&#34;&gt;解法一：动态规划
+&lt;h3 id=&#34;solution-1-dynamic-planning&#34;&gt;Solution 1: Dynamic planning
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -76,7 +76,7 @@ __ code_block_1 __&lt;/p&gt;
 &lt;/ul&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;解法二dfs--记忆化搜索&#34;&gt;解法二：DFS + 记忆化搜索
+&lt;h3 id=&#34;solution-2-dfs--memory-search&#34;&gt;Solution 2: DFS + Memory Search
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -89,7 +89,7 @@ __ code_block_1 __&lt;/p&gt;
 &lt;/ul&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;解法三费用流最小费用最大流&#34;&gt;解法三：费用流（最小费用最大流）
+&lt;h3 id=&#34;solution-3-cost-flow-minimum-cost-maximum-flow&#34;&gt;Solution 3: Cost flow (minimum cost maximum flow)
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -125,16 +125,16 @@ __ code_block_1 __&lt;/p&gt;
 &lt;/ul&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
-&lt;h2 id=&#34;代码实现&#34;&gt;代码实现
-&lt;/h2&gt;&lt;h3 id=&#34;解法一动态规划-1&#34;&gt;解法一：动态规划
+&lt;h2 id=&#34;code-implementation&#34;&gt;Code Implementation
+&lt;/h2&gt;&lt;h3 id=&#34;solution-1-dynamic-planning-1&#34;&gt;Solution 1: Dynamic planning
 &lt;/h3&gt;&lt;p&gt;Full Code
 __ code_block_2 __&lt;/p&gt;
-&lt;h3 id=&#34;解法二dfs--记忆化搜索-1&#34;&gt;解法二：DFS + 记忆化搜索
+&lt;h3 id=&#34;solution-2-dfs--memory-search-1&#34;&gt;Solution 2: DFS + Memory Search
 &lt;/h3&gt;&lt;p&gt;__ code_block_3 __&lt;/p&gt;
-&lt;h3 id=&#34;解法三费用流最小费用最大流-1&#34;&gt;解法三：费用流（最小费用最大流）
+&lt;h3 id=&#34;solution-3-cost-flow-minimum-cost-maximum-flow-1&#34;&gt;Solution 3: Cost flow (minimum cost maximum flow)
 &lt;/h3&gt;&lt;p&gt;__ code_block_4 __&lt;/p&gt;
-&lt;h2 id=&#34;时间复杂度与优缺点&#34;&gt;时间复杂度与优缺点
-&lt;/h2&gt;&lt;h3 id=&#34;解法一动态规划-2&#34;&gt;解法一：动态规划
+&lt;h2 id=&#34;time-complexity-and-advantages-and-disadvantages&#34;&gt;Time Complexity and Advantages and Disadvantages
+&lt;/h2&gt;&lt;h3 id=&#34;solution-1-dynamic-planning-2&#34;&gt;Solution 1: Dynamic planning
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -164,9 +164,9 @@ __ code_block_2 __&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;Clear ✅ thinking and easy to understand&lt;/li&gt;
-&lt;li&gt;Problem solving in ✅ one iteration&lt;/li&gt;
-&lt;li&gt;✅ The code is relatively simple&lt;/li&gt;
+&lt;li&gt;Clear thinking and easy to understand&lt;/li&gt;
+&lt;li&gt;Problem solving in one iteration&lt;/li&gt;
+&lt;li&gt;The code is relatively simple&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -176,9 +176,9 @@ __ code_block_2 __&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;Large ❌ footprint (approx. 1.3MB at N = 9)&lt;/li&gt;
+&lt;li&gt;Large footprint (approx. 1.3MB at N = 9)&lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;解法二dfs--记忆化搜索-2&#34;&gt;解法二：DFS + 记忆化搜索
+&lt;h3 id=&#34;solution-2-dfs--memory-search-2&#34;&gt;Solution 2: DFS + Memory Search
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -208,9 +208,9 @@ __ code_block_2 __&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ Logical and natural, thinking from top to bottom&lt;/li&gt;
-&lt;li&gt;✅ Easy to add pruning (although there are not many pruning in this question)&lt;/li&gt;
-&lt;li&gt;✅ Flexible state definition&lt;/li&gt;
+&lt;li&gt;Logical and natural, thinking from top to bottom&lt;/li&gt;
+&lt;li&gt;Easy to add pruning (although there are not many pruning in this question)&lt;/li&gt;
+&lt;li&gt;Flexible state definition&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -220,10 +220,10 @@ __ code_block_2 __&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;The ❌ recursive call stack depth is $ O (N) $ (stack space)&lt;/li&gt;
-&lt;li&gt;Same ❌ space complexity as DP&lt;/li&gt;
+&lt;li&gt;The recursive call stack depth is $ O (N) $ (stack space)&lt;/li&gt;
+&lt;li&gt;Same space complexity as DP&lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;解法三费用流&#34;&gt;解法三：费用流
+&lt;h3 id=&#34;solution-3-expense-flow&#34;&gt;Solution 3: Expense Flow
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -253,9 +253,9 @@ __ code_block_2 __&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ Suitable for more general scenarios (multiple paths, restricted diagrams, etc.)&lt;/li&gt;
-&lt;li&gt;✅ Code frameworks can be reused for other expense stream issues&lt;/li&gt;
-&lt;li&gt;Relatively sparsely occupied ✅ space&lt;/li&gt;
+&lt;li&gt;Suitable for more general scenarios (multiple paths, restricted diagrams, etc.)&lt;/li&gt;
+&lt;li&gt;Code frameworks can be reused for other expense stream issues&lt;/li&gt;
+&lt;li&gt;Relatively sparsely occupied space&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -265,11 +265,11 @@ __ code_block_2 __&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;Highest ❌ time complexity (about $ O (N ^ 4) $ vs $ O (N ^ 3) $)&lt;/li&gt;
-&lt;li&gt;❌ The code is long, complex and error-prone&lt;/li&gt;
-&lt;li&gt;❌ Difficulty has skyrocketed beyond the limits of the competition&lt;/li&gt;
+&lt;li&gt;Highest time complexity (about $ O (N ^ 4) $ vs $ O (N ^ 3) $)&lt;/li&gt;
+&lt;li&gt;The code is long, complex and error-prone&lt;/li&gt;
+&lt;li&gt;Difficulty has skyrocketed beyond the limits of the competition&lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;对比与总结&#34;&gt;对比与总结
+&lt;h3 id=&#34;comparison-and-summary&#34;&gt;Comparison and Summary
 &lt;/h3&gt;&lt;table&gt;
   &lt;thead&gt;
       &lt;tr&gt;

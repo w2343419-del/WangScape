@@ -147,231 +147,6 @@
 </description>
         </item>
         <item>
-        <title>Java Swing Layout Manager Explained in Detail</title>
-        <link>https://w2343419-del.github.io/WangScape/en/p/java-swing-layout-manager-explained-in-detail/</link>
-        <pubDate>Thu, 12 Mar 2026 20:00:00 +0800</pubDate>
-        
-        <guid>https://w2343419-del.github.io/WangScape/en/p/java-swing-layout-manager-explained-in-detail/</guid>
-        <description>&lt;p&gt;Java Swing uses the * * Layout Manager * * to automatically arrange the components in the container, rather than manually specifying pixel coordinates. Through the example code, this paper summarizes the characteristics and usage of three common layout managers, and introduces the idea of panel nesting to achieve complex layout.&lt;/p&gt;
-&lt;h2 id=&#34;basic-concepts&#34;&gt;Basic Concepts
-&lt;/h2&gt;&lt;h3 id=&#34;component-hierarchy&#34;&gt;Component Hierarchy
-&lt;/h3&gt;&lt;p&gt;A typical Swing window consists of the following layers:&lt;/p&gt;
-&lt;p&gt;__ code_block_0 __&lt;/p&gt;
-&lt;p&gt;The &lt;code&gt;JFrame&lt;/code&gt; itself does not directly host the layout, and usually sets a configured &lt;code&gt;JPanel&#39; as the main content panel via &lt;/code&gt;frame.setContentPane (panel)&#39;.&lt;/p&gt;
-&lt;h3 id=&#34;jframe-window-base-setup&#34;&gt;JFrame Window Base Setup
-&lt;/h3&gt;&lt;p&gt;The following lines of code are the standard endings for almost every Swing window:&lt;/p&gt;
-&lt;p&gt;__ code_block_1 __&lt;/p&gt;
-&lt;p&gt;&lt;code&gt;setLocationRelativeTo (null)&lt;/code&gt; Incoming &lt;code&gt;null&lt;/code&gt; indicates that it is centered relative to the screen; if another component is passed in, it is centered relative to that component.&lt;/p&gt;
-&lt;hr&gt;
-&lt;h2 id=&#34;flowlayout&#34;&gt;FlowLayout
-&lt;/h2&gt;&lt;h3 id=&#34;core-features&#34;&gt;Core Features
-&lt;/h3&gt;&lt;p&gt;FlowLayout arranges components in a * * left-to-right, top-to-bottom * * order, wrapping naturally like text typography. When the container is not wide enough, the component is automatically switched to the next line.&lt;/p&gt;
-&lt;h3 id=&#34;construction-method&#34;&gt;Construction method
-&lt;/h3&gt;&lt;p&gt;__ code_block_2 __&lt;/p&gt;
-&lt;table&gt;
-  &lt;thead&gt;
-      &lt;tr&gt;
-          &lt;th&gt;Parameters&lt;/th&gt;
-          &lt;th&gt;Meaning&lt;/th&gt;
-      &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-      &lt;tr&gt;
-          &lt;td&gt;&lt;code&gt;align&lt;/code&gt;&lt;/td&gt;
-          &lt;td&gt;Alignment: &lt;code&gt;FlowLayout.LEFT&#39;/&lt;/code&gt;center&lt;code&gt;/&lt;/code&gt;right`&lt;/td&gt;
-      &lt;/tr&gt;
-      &lt;tr&gt;
-          &lt;td&gt;&lt;code&gt;hgap&lt;/code&gt;&lt;/td&gt;
-          &lt;td&gt;Horizontal spacing between components (px)&lt;/td&gt;
-      &lt;/tr&gt;
-      &lt;tr&gt;
-          &lt;td&gt;&lt;code&gt;vgap&lt;/code&gt;&lt;/td&gt;
-          &lt;td&gt;Vertical spacing between components (px)&lt;/td&gt;
-      &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-&lt;h3 id=&#34;example&#34;&gt;EXAMPLE
-&lt;/h3&gt;&lt;p&gt;__ code_block_3 __&lt;/p&gt;
-&lt;h3 id=&#34;notice&#34;&gt;Notice
-&lt;/h3&gt;&lt;ul&gt;
-&lt;li&gt;FlowLayout is the * * default layout * * of &lt;code&gt;JPanel&lt;/code&gt; and does not need to be set again when creating &lt;code&gt;new JPanel ()&lt;/code&gt;.&lt;/li&gt;
-&lt;li&gt;FlowLayout * * respects * * the component&amp;rsquo;s &lt;code&gt;PreferredSize&lt;/code&gt; and does not force stretch.&lt;/li&gt;
-&lt;li&gt;When the window is scaled, the components are rearranged, and the typography is flexible but not precise.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;hr&gt;
-&lt;h2 id=&#34;borderlayout&#34;&gt;BorderLayout
-&lt;/h2&gt;&lt;h3 id=&#34;core-features-1&#34;&gt;Core Features
-&lt;/h3&gt;&lt;p&gt;BorderLayout divides containers into * * five zones * *: North (&lt;code&gt;North&lt;/code&gt;), South (&lt;code&gt;South&lt;/code&gt;), West (&lt;code&gt;West&lt;/code&gt;), East (&lt;code&gt;East&lt;/code&gt;), and Center (&lt;code&gt;Center&lt;/code&gt;). Put up to one component per area.&lt;/p&gt;
-&lt;p&gt;__ code_block_4 __&lt;/p&gt;
-&lt;h3 id=&#34;construction-method-1&#34;&gt;Construction method
-&lt;/h3&gt;&lt;p&gt;__ code_block_5 __&lt;/p&gt;
-&lt;p&gt;&lt;code&gt;hgap&lt;/code&gt; and &lt;code&gt;vgap&lt;/code&gt; are horizontal and vertical spacing between components, respectively.&lt;/p&gt;
-&lt;h3 id=&#34;example-1&#34;&gt;EXAMPLE
-&lt;/h3&gt;&lt;p&gt;__ code_block_6 __&lt;/p&gt;
-&lt;h3 id=&#34;notice-1&#34;&gt;Notice
-&lt;/h3&gt;&lt;ul&gt;
-&lt;li&gt;BorderLayout is the * * default layout * * for the &lt;code&gt;JFrame&lt;/code&gt; content panel.&lt;/li&gt;
-&lt;li&gt;BorderLayout * * disrespects * * &lt;code&gt;PreferredSize&lt;/code&gt; and will * * stretch * * the component to fill the area.
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;North&lt;/code&gt;/&lt;code&gt;South&lt;/code&gt;: Stretch horizontally and keep height &lt;code&gt;PreferredSize&lt;/code&gt;.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;West&lt;/code&gt;/&lt;code&gt;East&lt;/code&gt;: stretch longitudinally and keep the width &lt;code&gt;PreferredSize&lt;/code&gt;.&lt;/li&gt;
-&lt;li&gt;&lt;code&gt;center&lt;/code&gt;: stretches in both directions, occupying all remaining space.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;li&gt;All five zones are optional - zones without added components will be occupied by components in other zones.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;hr&gt;
-&lt;h2 id=&#34;gridlayout&#34;&gt;GridLayout
-&lt;/h2&gt;&lt;h3 id=&#34;core-features-2&#34;&gt;Core Features
-&lt;/h3&gt;&lt;p&gt;GridLayout divides containers into * * rectangular meshes * * of equal width and height, and components fill each cell in turn, * * from left to right, top to bottom * *. All cells are exactly the same size.&lt;/p&gt;
-&lt;h3 id=&#34;construction-method-2&#34;&gt;Construction method
-&lt;/h3&gt;&lt;p&gt;__ code_block_7 __&lt;/p&gt;
-&lt;table&gt;
-  &lt;thead&gt;
-      &lt;tr&gt;
-          &lt;th&gt;Parameters&lt;/th&gt;
-          &lt;th&gt;Meaning&lt;/th&gt;
-      &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-      &lt;tr&gt;
-          &lt;td&gt;&lt;code&gt;rows&lt;/code&gt;&lt;/td&gt;
-          &lt;td&gt;Number of rows (set to 0 for unlimited rows)&lt;/td&gt;
-      &lt;/tr&gt;
-      &lt;tr&gt;
-          &lt;td&gt;&lt;code&gt;cols&lt;/code&gt;&lt;/td&gt;
-          &lt;td&gt;Number of columns (set to 0 for unlimited columns)&lt;/td&gt;
-      &lt;/tr&gt;
-      &lt;tr&gt;
-          &lt;td&gt;&lt;code&gt;hgap&lt;/code&gt;&lt;/td&gt;
-          &lt;td&gt;Horizontal Spacing Between Lattices&lt;/td&gt;
-      &lt;/tr&gt;
-      &lt;tr&gt;
-          &lt;td&gt;&lt;code&gt;vgap&lt;/code&gt;&lt;/td&gt;
-          &lt;td&gt;Vertical Spacing Between Lattices&lt;/td&gt;
-      &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-&lt;h3 id=&#34;example-2&#34;&gt;EXAMPLE
-&lt;/h3&gt;&lt;p&gt;__ code_block_8 __&lt;/p&gt;
-&lt;h3 id=&#34;notice-2&#34;&gt;Notice
-&lt;/h3&gt;&lt;ul&gt;
-&lt;li&gt;GridLayout * * disrespect * * &lt;code&gt;PreferredSize&lt;/code&gt;, all squares are forced to aliquot container space.&lt;/li&gt;
-&lt;li&gt;If the number of components actually added is less than the total number of cells, the extra cells will be left blank.&lt;/li&gt;
-&lt;li&gt;Suitable for creating a * * evenly arranged * * interface for calculator button areas, square menus, etc.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;hr&gt;
-&lt;h2 id=&#34;panel-nesting&#34;&gt;Panel Nesting
-&lt;/h2&gt;&lt;h3 id=&#34;why-panel-nesting-is-required&#34;&gt;Why panel nesting is required
-&lt;/h3&gt;&lt;p&gt;A single layout manager often fails to meet the needs of complex interfaces. For example, place * * three vertically aligned buttons * * in the &lt;code&gt;West&lt;/code&gt; area of BorderLayout, while only one component can be placed in the &lt;code&gt;West&lt;/code&gt; area.&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;
-&lt;ul&gt;
-&lt;li&gt;Solution * *: Place a sub &lt;code&gt;JPanel&lt;/code&gt; in the target area, set up the layout manager separately for the sub-panel, and add multiple components to the sub-panel.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-&lt;h3 id=&#34;example-3&#34;&gt;EXAMPLE
-&lt;/h3&gt;&lt;p&gt;__ code_block_9 __&lt;/p&gt;
-&lt;h3 id=&#34;benefits-and-scenarios&#34;&gt;Benefits and scenarios
-&lt;/h3&gt;&lt;ul&gt;
-&lt;li&gt;Panel nesting can be stacked in infinite layers to build any complex layout.&lt;/li&gt;
-&lt;li&gt;Each sub-panel manages its own layout independently, with clear code and clear responsibilities.&lt;/li&gt;
-&lt;li&gt;Common combinations: outer &lt;code&gt;BorderLayout&lt;/code&gt; + inner &lt;code&gt;GridLayout&lt;/code&gt;/&lt;code&gt;FlowLayout&lt;/code&gt;.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;hr&gt;
-&lt;h2 id=&#34;jbutton-mnemonic&#34;&gt;JButton Mnemonic
-&lt;/h2&gt;&lt;p&gt;The mnemonic allows the user to trigger buttons via the keyboard shortcut * * &lt;code&gt;Alt + letters&lt;/code&gt; * * to increase accessibility.&lt;/p&gt;
-&lt;p&gt;__ code_block_10 __&lt;/p&gt;
-&lt;p&gt;Constants such as&lt;code&gt; KeyEvent.VK_O &#39;and&lt;/code&gt; KeyEvent.VK_C &amp;lsquo;are defined in&lt;code&gt;java.awt.event.KeyEvent&lt;/code&gt;, corresponding to the letter keys on the keyboard. The button label is used to write mnemonic letters in parentheses to prompt the user, such as&lt;code&gt;&amp;quot;OK&amp;quot;&lt;/code&gt;.&lt;/p&gt;
-&lt;hr&gt;
-&lt;h2 id=&#34;comparison-of-three-layout-managers&#34;&gt;Comparison of Three Layout Managers
-&lt;/h2&gt;&lt;table&gt;
-  &lt;thead&gt;
-      &lt;tr&gt;
-          &lt;th&gt;Features&lt;/th&gt;
-          &lt;th&gt;FlowLayout&lt;/th&gt;
-          &lt;th&gt;BorderLayout&lt;/th&gt;
-          &lt;th&gt;GridLayout&lt;/th&gt;
-      &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-      &lt;tr&gt;
-          &lt;td&gt;Arrangement&lt;/td&gt;
-          &lt;td&gt;Streaming, Wrap&lt;/td&gt;
-          &lt;td&gt;Five Fixed Areas&lt;/td&gt;
-          &lt;td&gt;Equal Width Equal Height Grid&lt;/td&gt;
-      &lt;/tr&gt;
-      &lt;tr&gt;
-          &lt;td&gt;Respect PreferredSize&lt;/td&gt;
-          &lt;td&gt;Yes&lt;/td&gt;
-          &lt;td&gt;Partial Respect&lt;/td&gt;
-          &lt;td&gt;No&lt;/td&gt;
-      &lt;/tr&gt;
-      &lt;tr&gt;
-          &lt;td&gt;Applicable Scenarios&lt;/td&gt;
-          &lt;td&gt;Toolbars, Button Groups&lt;/td&gt;
-          &lt;td&gt;Main Window Structure&lt;/td&gt;
-          &lt;td&gt;Calculator, Table Buttons&lt;/td&gt;
-      &lt;/tr&gt;
-      &lt;tr&gt;
-          &lt;td&gt;Dynamic Adjustment&lt;/td&gt;
-          &lt;td&gt;Better&lt;/td&gt;
-          &lt;td&gt;Average&lt;/td&gt;
-          &lt;td&gt;Better&lt;/td&gt;
-      &lt;/tr&gt;
-      &lt;tr&gt;
-          &lt;td&gt;Limit number of components&lt;/td&gt;
-          &lt;td&gt;None&lt;/td&gt;
-          &lt;td&gt;1 per area&lt;/td&gt;
-          &lt;td&gt;None&lt;/td&gt;
-      &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-&lt;hr&gt;
-&lt;h2 id=&#34;conclusion&#34;&gt;Conclusion
-&lt;/h2&gt;&lt;ul&gt;
-&lt;li&gt;
-&lt;ul&gt;
-&lt;li&gt;
-&lt;ul&gt;
-&lt;li&gt;FlowLayout * *: Simple, flexible, respectful of component size, suitable for small button group arrangement.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;ul&gt;
-&lt;li&gt;
-&lt;ul&gt;
-&lt;li&gt;BorderLayout * *: Clear structure, suitable for building &amp;ldquo;up, down, left, right, middle&amp;rdquo; classic main window frame.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;ul&gt;
-&lt;li&gt;
-&lt;ul&gt;
-&lt;li&gt;GridLayout * *: Uniformly divided, all cells are the same size, suitable for a regular matrix of buttons.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;ul&gt;
-&lt;li&gt;
-&lt;ul&gt;
-&lt;li&gt;Panel nesting * *: A combination of three layouts to address complex typographic needs that cannot be done with any single layout.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;Mastering these three layout managers and panel nesting ideas, it has been possible to achieve the interface layout of most desktop GUIs.&lt;/p&gt;
-</description>
-        </item>
-        <item>
         <title>Time and Space Complexity</title>
         <link>https://w2343419-del.github.io/WangScape/en/p/time-and-space-complexity/</link>
         <pubDate>Mon, 09 Mar 2026 10:32:00 +0800</pubDate>
@@ -609,16 +384,16 @@
 &lt;p&gt;Space: $\ Theta (1) $&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;✅ No extra space, memory friendly&lt;/p&gt;
+&lt;p&gt;No extra space, memory friendly&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;Simple ✅ implementation, no hash function required&lt;/p&gt;
+&lt;p&gt;Simple implementation, no hash function required&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;Poor ❌ time efficiency, $ n = 10 ^ 4$ has 100 million operations&lt;/p&gt;
+&lt;p&gt;Poor time efficiency, $ n = 10 ^ 4$ has 100 million operations&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;❌ Not suitable for large scale data&lt;/p&gt;
+&lt;p&gt;Not suitable for large scale data&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;h3 id=&#34;solution-2-hashtable-1&#34;&gt;Solution 2: Hashtable
@@ -630,16 +405,16 @@
 &lt;p&gt;Space: $\ Theta (n) $ (maximum of $ n $ elements in hash table)&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;✅ Time efficient, linear scan once&lt;/p&gt;
+&lt;p&gt;Time efficient, linear scan once&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;✅ Suitable for large scale data&lt;/p&gt;
+&lt;p&gt;Suitable for large scale data&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;❌ Extra $ O (n) $ memory required&lt;/p&gt;
+&lt;p&gt;Extra $ O (n) $ memory required&lt;/p&gt;
 &lt;/li&gt;
 &lt;li&gt;
-&lt;p&gt;❌ Hash collisions can degenerate in extreme cases&lt;/p&gt;
+&lt;p&gt;Hash collisions can degenerate in extreme cases&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;h3 id=&#34;comparative-summary&#34;&gt;Comparative Summary
@@ -852,8 +627,8 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ The question is simple and easy to understand&lt;/li&gt;
-&lt;li&gt;✅ Status definition is intuitive&lt;/li&gt;
+&lt;li&gt;The question is simple and easy to understand&lt;/li&gt;
+&lt;li&gt;Status definition is intuitive&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -863,7 +638,7 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;Values ❌ can only be calculated in one fixed place and need to be recursed multiple times to calculate multiple times&lt;/li&gt;
+&lt;li&gt;Values can only be calculated in one fixed place and need to be recursed multiple times to calculate multiple times&lt;/li&gt;
 &lt;/ul&gt;
 &lt;hr&gt;
 &lt;h3 id=&#34;example-2-linear-dp---burglary&#34;&gt;Example 2: Linear DP - Burglary
@@ -969,8 +744,8 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ DP framework is classic and easy to expand&lt;/li&gt;
-&lt;li&gt;Optimal values for all capacities ✅ can be solved at once&lt;/li&gt;
+&lt;li&gt;DP framework is classic and easy to expand&lt;/li&gt;
+&lt;li&gt;Optimal values for all capacities can be solved at once&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -980,7 +755,7 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;When the number or capacity of ❌ items is large, the pressure in time and space is high&lt;/li&gt;
+&lt;li&gt;When the number or capacity of items is large, the pressure in time and space is high&lt;/li&gt;
 &lt;/ul&gt;
 &lt;hr&gt;
 &lt;h3 id=&#34;example-4-sequence-dp---longest-common-subsequence-lcs&#34;&gt;Example 4: Sequence DP - Longest Common Subsequence (LCS)
@@ -1033,8 +808,8 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ Frame for sequence alignment problems&lt;/li&gt;
-&lt;li&gt;✅ Scalable to LCS specific characters (backtracking)&lt;/li&gt;
+&lt;li&gt;Frame for sequence alignment problems&lt;/li&gt;
+&lt;li&gt;Scalable to LCS specific characters (backtracking)&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -1044,7 +819,7 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;When ❌ m and n are large, the spatial pressure is large&lt;/li&gt;
+&lt;li&gt;When m and n are large, the spatial pressure is large&lt;/li&gt;
 &lt;/ul&gt;
 &lt;hr&gt;
 &lt;h3 id=&#34;example-5-interval-dp---poke-balloon&#34;&gt;Example 5: Interval DP - Poke Balloon
@@ -1091,9 +866,9 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;Classic example of an ✅ interval DP&lt;/li&gt;
-&lt;li&gt;The idea of the ✅ &amp;ldquo;last one&amp;rdquo; is very enlightening&lt;/li&gt;
-&lt;li&gt;✅ The order in which specific stamps can be obtained by backtracking&lt;/li&gt;
+&lt;li&gt;Classic example of an interval DP&lt;/li&gt;
+&lt;li&gt;The idea of the &amp;ldquo;last one&amp;rdquo; is very enlightening&lt;/li&gt;
+&lt;li&gt;The order in which specific stamps can be obtained by backtracking&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -1103,8 +878,8 @@
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;The ❌ idea is relatively complex and confusing to the first contact&lt;/li&gt;
-&lt;li&gt;❌ Time complexity is cubic&lt;/li&gt;
+&lt;li&gt;The idea is relatively complex and confusing to the first contact&lt;/li&gt;
+&lt;li&gt;Time complexity is cubic&lt;/li&gt;
 &lt;/ul&gt;
 &lt;hr&gt;
 &lt;h2 id=&#34;iv-dp-model-summary&#34;&gt;IV. DP Model Summary
@@ -1208,14 +983,14 @@
         
         <guid>https://w2343419-del.github.io/WangScape/en/p/p1004-noip-2000-improvement-group-grid-score-analysis-and-summary/</guid>
         <description>&lt;p&gt;This is a classic but difficult chessboard problem. Although it is the topic of NOIP in 2000, it is still quite difficult for first-time contacts as the final topic. This paper summarizes three different solutions: Dynamic Planning, DFS Memorization, and Minimum Cost Maximum Flow, which unfolds gradually from easy to difficult.&lt;/p&gt;
-&lt;h2 id=&#34;问题&#34;&gt;问题
+&lt;h2 id=&#34;questions&#34;&gt;Questions
 &lt;/h2&gt;&lt;h3 id=&#34;题目来源&#34;&gt;题目来源
 &lt;/h3&gt;&lt;p&gt;NOIP 2000 提高组 T4&lt;/p&gt;
-&lt;h3 id=&#34;问题描述&#34;&gt;问题描述
+&lt;h3 id=&#34;description-of-problem&#34;&gt;Description of problem
 &lt;/h3&gt;&lt;p&gt;There is a square diagram of N × N (N ≤ 9), some of which we fill in positive integers, while others put the number 0.
 Someone starts at point A (0, 0) in the top left corner of the diagram and can walk down or to the right until they reach point B (N, N) in the bottom right corner.On the way he walks, he can take the number in the square (which becomes the number 0).
 This person walked from point A to point B twice, trying to find 2 such paths, so that the sum of the obtained numbers is the maximum.&lt;/p&gt;
-&lt;h3 id=&#34;输入输出&#34;&gt;输入输出
+&lt;h3 id=&#34;inputoutput&#34;&gt;Input/Output
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -1228,7 +1003,7 @@ This person walked from point A to point B twice, trying to find 2 such paths, s
 &lt;/ul&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;样例&#34;&gt;样例
+&lt;h3 id=&#34;example&#34;&gt;Example
 &lt;/h3&gt;&lt;p&gt;Input:
 __ code_block_0 __&lt;/p&gt;
 &lt;p&gt;Output:
@@ -1237,11 +1012,11 @@ __ code_block_1 __&lt;/p&gt;
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;数据范围：1≤N≤9&lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;问题分析&#34;&gt;问题分析
+&lt;h3 id=&#34;problem-analysis&#34;&gt;Problem analysis
 &lt;/h3&gt;&lt;p&gt;Why can&amp;rsquo;t I enumerate twice (i.e. find an optimal path first, then find the second one in the remaining cells)? Because one path changes the map (takes the number) and affects the result of the second, the two paths must be considered in conjunction and cannot be optimized independently.&lt;/p&gt;
-&lt;h2 id=&#34;思路分析&#34;&gt;思路分析
+&lt;h2 id=&#34;idea-analysis&#34;&gt;Idea Analysis
 &lt;/h2&gt;&lt;p&gt;The ideas for the three solutions are as follows:&lt;/p&gt;
-&lt;h3 id=&#34;解法一动态规划&#34;&gt;解法一：动态规划
+&lt;h3 id=&#34;solution-1-dynamic-planning&#34;&gt;Solution 1: Dynamic planning
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -1271,7 +1046,7 @@ __ code_block_1 __&lt;/p&gt;
 &lt;/ul&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;解法二dfs--记忆化搜索&#34;&gt;解法二：DFS + 记忆化搜索
+&lt;h3 id=&#34;solution-2-dfs--memory-search&#34;&gt;Solution 2: DFS + Memory Search
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -1284,7 +1059,7 @@ __ code_block_1 __&lt;/p&gt;
 &lt;/ul&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;解法三费用流最小费用最大流&#34;&gt;解法三：费用流（最小费用最大流）
+&lt;h3 id=&#34;solution-3-cost-flow-minimum-cost-maximum-flow&#34;&gt;Solution 3: Cost flow (minimum cost maximum flow)
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -1320,16 +1095,16 @@ __ code_block_1 __&lt;/p&gt;
 &lt;/ul&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
-&lt;h2 id=&#34;代码实现&#34;&gt;代码实现
-&lt;/h2&gt;&lt;h3 id=&#34;解法一动态规划-1&#34;&gt;解法一：动态规划
+&lt;h2 id=&#34;code-implementation&#34;&gt;Code Implementation
+&lt;/h2&gt;&lt;h3 id=&#34;solution-1-dynamic-planning-1&#34;&gt;Solution 1: Dynamic planning
 &lt;/h3&gt;&lt;p&gt;Full Code
 __ code_block_2 __&lt;/p&gt;
-&lt;h3 id=&#34;解法二dfs--记忆化搜索-1&#34;&gt;解法二：DFS + 记忆化搜索
+&lt;h3 id=&#34;solution-2-dfs--memory-search-1&#34;&gt;Solution 2: DFS + Memory Search
 &lt;/h3&gt;&lt;p&gt;__ code_block_3 __&lt;/p&gt;
-&lt;h3 id=&#34;解法三费用流最小费用最大流-1&#34;&gt;解法三：费用流（最小费用最大流）
+&lt;h3 id=&#34;solution-3-cost-flow-minimum-cost-maximum-flow-1&#34;&gt;Solution 3: Cost flow (minimum cost maximum flow)
 &lt;/h3&gt;&lt;p&gt;__ code_block_4 __&lt;/p&gt;
-&lt;h2 id=&#34;时间复杂度与优缺点&#34;&gt;时间复杂度与优缺点
-&lt;/h2&gt;&lt;h3 id=&#34;解法一动态规划-2&#34;&gt;解法一：动态规划
+&lt;h2 id=&#34;time-complexity-and-advantages-and-disadvantages&#34;&gt;Time Complexity and Advantages and Disadvantages
+&lt;/h2&gt;&lt;h3 id=&#34;solution-1-dynamic-planning-2&#34;&gt;Solution 1: Dynamic planning
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -1359,9 +1134,9 @@ __ code_block_2 __&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;Clear ✅ thinking and easy to understand&lt;/li&gt;
-&lt;li&gt;Problem solving in ✅ one iteration&lt;/li&gt;
-&lt;li&gt;✅ The code is relatively simple&lt;/li&gt;
+&lt;li&gt;Clear thinking and easy to understand&lt;/li&gt;
+&lt;li&gt;Problem solving in one iteration&lt;/li&gt;
+&lt;li&gt;The code is relatively simple&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -1371,9 +1146,9 @@ __ code_block_2 __&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;Large ❌ footprint (approx. 1.3MB at N = 9)&lt;/li&gt;
+&lt;li&gt;Large footprint (approx. 1.3MB at N = 9)&lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;解法二dfs--记忆化搜索-2&#34;&gt;解法二：DFS + 记忆化搜索
+&lt;h3 id=&#34;solution-2-dfs--memory-search-2&#34;&gt;Solution 2: DFS + Memory Search
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -1403,9 +1178,9 @@ __ code_block_2 __&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ Logical and natural, thinking from top to bottom&lt;/li&gt;
-&lt;li&gt;✅ Easy to add pruning (although there are not many pruning in this question)&lt;/li&gt;
-&lt;li&gt;✅ Flexible state definition&lt;/li&gt;
+&lt;li&gt;Logical and natural, thinking from top to bottom&lt;/li&gt;
+&lt;li&gt;Easy to add pruning (although there are not many pruning in this question)&lt;/li&gt;
+&lt;li&gt;Flexible state definition&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -1415,10 +1190,10 @@ __ code_block_2 __&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;The ❌ recursive call stack depth is $ O (N) $ (stack space)&lt;/li&gt;
-&lt;li&gt;Same ❌ space complexity as DP&lt;/li&gt;
+&lt;li&gt;The recursive call stack depth is $ O (N) $ (stack space)&lt;/li&gt;
+&lt;li&gt;Same space complexity as DP&lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;解法三费用流&#34;&gt;解法三：费用流
+&lt;h3 id=&#34;solution-3-expense-flow&#34;&gt;Solution 3: Expense Flow
 &lt;/h3&gt;&lt;ul&gt;
 &lt;li&gt;
 &lt;ul&gt;
@@ -1448,9 +1223,9 @@ __ code_block_2 __&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;✅ Suitable for more general scenarios (multiple paths, restricted diagrams, etc.)&lt;/li&gt;
-&lt;li&gt;✅ Code frameworks can be reused for other expense stream issues&lt;/li&gt;
-&lt;li&gt;Relatively sparsely occupied ✅ space&lt;/li&gt;
+&lt;li&gt;Suitable for more general scenarios (multiple paths, restricted diagrams, etc.)&lt;/li&gt;
+&lt;li&gt;Code frameworks can be reused for other expense stream issues&lt;/li&gt;
+&lt;li&gt;Relatively sparsely occupied space&lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
 &lt;li&gt;
@@ -1460,11 +1235,11 @@ __ code_block_2 __&lt;/p&gt;
 &lt;/li&gt;
 &lt;/ul&gt;
 &lt;ul&gt;
-&lt;li&gt;Highest ❌ time complexity (about $ O (N ^ 4) $ vs $ O (N ^ 3) $)&lt;/li&gt;
-&lt;li&gt;❌ The code is long, complex and error-prone&lt;/li&gt;
-&lt;li&gt;❌ Difficulty has skyrocketed beyond the limits of the competition&lt;/li&gt;
+&lt;li&gt;Highest time complexity (about $ O (N ^ 4) $ vs $ O (N ^ 3) $)&lt;/li&gt;
+&lt;li&gt;The code is long, complex and error-prone&lt;/li&gt;
+&lt;li&gt;Difficulty has skyrocketed beyond the limits of the competition&lt;/li&gt;
 &lt;/ul&gt;
-&lt;h3 id=&#34;对比与总结&#34;&gt;对比与总结
+&lt;h3 id=&#34;comparison-and-summary&#34;&gt;Comparison and Summary
 &lt;/h3&gt;&lt;table&gt;
   &lt;thead&gt;
       &lt;tr&gt;
