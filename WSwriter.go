@@ -3214,6 +3214,188 @@ func handleGetAllComments(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: comments})
 }
 
+// ==================== 访问统计数据结构 ====================
+// VisitorIP 代表访客IP信息
+type VisitorIP struct {
+	IP           string `json:"ip"`              // 访客IP地址
+	CommentCount int    `json:"comment_count"`   // 该IP的评论数
+	FirstSeen    string `json:"first_seen"`      // 首次出现时间
+	LastSeen     string `json:"last_seen"`       // 最后出现时间
+}
+
+// PageStatistics 代表单个页面的访问统计
+type PageStatistics struct {
+	Path  string `json:"path"`        // 页面路径
+	Title string `json:"title"`       // 页面标题
+	Views int    `json:"views"`       // 页面访问次数
+	UV    int    `json:"uv,omitempty"` // 独立访客数（如果有的话）
+}
+
+// SiteStatistics 代表整个站点的统计信息
+type SiteStatistics struct {
+	TotalPages      int                  `json:"total_pages"`      // 总页面数
+	TotalViews      int                  `json:"total_views"`      // 站点总访问量
+	TotalComments   int                  `json:"total_comments"`   // 评论总数
+	PendingComments int                  `json:"pending_comments"` // 待审核评论数
+	UniqueIPs       int                  `json:"unique_ips"`       // 独立访客IP数
+	Pages           []PageStatistics     `json:"pages,omitempty"`  // 页面统计列表
+	Visitors        []VisitorIP          `json:"visitors,omitempty"` // 访客IP列表（仅管理员可见）
+}
+
+// ==================== 访问统计收集 ====================
+// collectPageStatistics 收集所有页面的访问统计
+// 这个函数会遍历所有发布的文章，统计它们的浏览量
+func collectPageStatistics() []PageStatistics {
+	var stats []PageStatistics
+	posts := getPosts()
+	
+	// 遍历所有文章
+	for _, post := range posts {
+		// 仅统计已发布的页面
+		if post.Status == "DRAFT" {
+			continue
+		}
+		
+		commentStats := getCommentStats(post.Path)
+		
+		pageStats := PageStatistics{
+			Path:  post.Path,
+			Title: post.Title,
+			Views: commentStats["total"], // 暂时用评论数作为访问指标
+		}
+		stats = append(stats, pageStats)
+	}
+	
+	// 按访问量排序（降序）
+	sort.Slice(stats, func(i, j int) bool {
+		return stats[i].Views > stats[j].Views
+	})
+	
+	return stats
+}
+
+// collectSiteStatistics 收集整个站点的统计信息
+func collectSiteStatistics() SiteStatistics {
+    allStats := getAllCommentsStats()
+    pageStats := collectPageStatistics()
+	
+    totalViews := 0
+    for _, p := range pageStats {
+        totalViews += p.Views
+    }
+	
+    // 收集访客IP信息
+    visitorMap := make(map[string]*VisitorIP)
+    posts := getPosts()
+	
+    for _, post := range posts {
+        comments, err := getComments(post.Path)
+        if err != nil {
+            continue
+        }
+		
+        for _, comment := range comments {
+            if comment.IPAddress != "" {
+                if visitor, exists := visitorMap[comment.IPAddress]; exists {
+                    visitor.CommentCount++
+                    visitor.LastSeen = comment.Timestamp
+                } else {
+                    visitorMap[comment.IPAddress] = &VisitorIP{
+                        IP:           comment.IPAddress,
+                        CommentCount: 1,
+                        FirstSeen:    comment.Timestamp,
+                        LastSeen:     comment.Timestamp,
+                    }
+                }
+            }
+        }
+    }
+	
+    // 转换为列表并排序（按评论数降序）
+    visitors := make([]VisitorIP, 0, len(visitorMap))
+    for _, v := range visitorMap {
+        visitors = append(visitors, *v)
+    }
+    sort.Slice(visitors, func(i, j int) bool {
+        return visitors[i].CommentCount > visitors[j].CommentCount
+    })
+	
+    stats := SiteStatistics{
+        TotalPages:      len(getPosts()),
+        TotalViews:      totalViews,
+        TotalComments:   allStats["total_comments"].(int),
+        PendingComments: allStats["total_pending"].(int),
+        UniqueIPs:       len(visitorMap),
+        Pages:           pageStats[:func() int {
+            if len(pageStats) > 10 {
+                return 10 // 只返回前10个最常访问的页面
+            }
+            return len(pageStats)
+        }()],
+        Visitors: visitors[:func() int {
+            if len(visitors) > 50 {
+                return 50 // 只返回前50个访客IP
+            }
+            return len(visitors)
+        }()],
+    }
+	
+    return stats
+}
+
+// ==================== 统计API处理函数 ====================
+// handleStatistics 处理访问统计请求
+// 需要认证访问，防止数据泄露
+func handleStatistics(w http.ResponseWriter, r *http.Request) {
+	// 仅允许本地访问或已认证的用户
+	if !requireLocal(w, r) {
+		return
+	}
+	
+	stats := collectSiteStatistics()
+	respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: stats})
+}
+
+// handlePageStatistics 处理单个页面的统计请求
+func handlePageStatistics(w http.ResponseWriter, r *http.Request) {
+	// 仅允许本地访问或已认证的用户
+	if !requireLocal(w, r) {
+		return
+	}
+	
+	path := r.URL.Query().Get("path")
+	if path == "" {
+		respondJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Missing path parameter"})
+		return
+	}
+	
+	// 获取页面信息
+	posts := getPosts()
+	var pageInfo *Post
+	for i := range posts {
+		if posts[i].Path == path {
+			pageInfo = &posts[i]
+			break
+		}
+	}
+	
+	if pageInfo == nil {
+		respondJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: "Page not found"})
+		return
+	}
+	
+	// 获取该页面的统计
+	commentStats := getCommentStats(path)
+	
+	pageStat := PageStatistics{
+		Path:  pageInfo.Path,
+		Title: pageInfo.Title,
+		Views: commentStats["total"],
+	}
+	
+	respondJSON(w, http.StatusOK, APIResponse{Success: true, Data: pageStat})
+}
+
 func handleCommentStats(w http.ResponseWriter, r *http.Request) {
 	// 仅允许本地访问敏感数据
 	if !requireLocal(w, r) {
@@ -4398,6 +4580,8 @@ func main() {
     rootMux.HandleFunc("/api/update_comment", withCORS(withAuth(limitRequestBody(handleUpdateComment, 2<<20))))
     rootMux.HandleFunc("/api/all_comments", withCORS(withAuth(handleGetAllComments)))
     rootMux.HandleFunc("/api/comment_stats", withCORS(withAuth(handleCommentStats)))
+    rootMux.HandleFunc("/api/statistics", withCORS(withAuth(handleStatistics)))
+    rootMux.HandleFunc("/api/page_statistics", withCORS(withAuth(handlePageStatistics)))
     rootMux.HandleFunc("/api/pending_comments", withCORS(withAuth(handleGetPendingComments)))
     rootMux.HandleFunc("/api/comment_settings", withCORS(withAuth(handleGetCommentSettings)))
     rootMux.HandleFunc("/api/save_comment_settings", withCORS(withAuth(limitRequestBody(handleSaveCommentSettings, 1<<20))))
@@ -5490,8 +5674,9 @@ var htmlTemplate = `<!DOCTYPE html>
             <button class="dash-btn primary" onclick="openCreateModal()">+ 新建文章 (双语同步)</button>
             <button class="dash-btn" onclick="runCommand('preview')">🌍 启动实时预览</button>
             <button class="dash-btn" onclick="runCommand('deploy')">🚀 一键提交推送</button>
+            <button class="dash-btn" onclick="switchView('statistics')">📊 访问统计</button>
             <button class="dash-btn" onclick="switchView('pending-comments')">💬 未审核评论</button>
-            <button class="dash-btn" onclick="switchView('history')">📊 操作历史</button>
+            <button class="dash-btn" onclick="switchView('history')">📋 操作历史</button>
             <button class="dash-btn" onclick="location.reload()">🔄 刷新列表</button>
             
             <div id="comment-stats-box" style="background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.3); border-radius: 12px; padding: 15px; margin-top: 20px; display: none;">
@@ -5523,6 +5708,63 @@ var htmlTemplate = `<!DOCTYPE html>
     </div>
 
     <div id="pending-comments-view" class="view-section">
+            <div id="statistics-view" class="view-section">
+                <div class="dash-sidebar">
+                    <div class="dash-logo">📊 访问统计</div>
+                    <button class="dash-btn" onclick="switchView('dashboard')">← 返回主面板</button>
+                    <button class="dash-btn" onclick="loadStatistics()">🔄 刷新数据</button>
+            
+                    <div id="auth-panel-stats" style="margin: 12px 0 8px; padding: 12px; background: rgba(79,70,229,0.08); border: 1px solid rgba(79,70,229,0.2); border-radius: 12px;">
+                        <div style="font-size: 12px; color: #4f46e5; font-weight: 700; margin-bottom: 8px;">🔐 登录状态</div>
+                        <div id="auth-status-stats" style="font-size: 12px; color: var(--dash-text); margin-bottom: 10px;">未登录</div>
+                        <div style="display:flex; gap:8px;">
+                            <button id="login-btn-stats" class="dash-btn" style="flex:1;" onclick="openLoginModal();">登录</button>
+                            <button id="logout-btn-stats" class="dash-btn" style="flex:1; display:none;" onclick="logout()">退出</button>
+                        </div>
+                    </div>
+            
+                    <div style="margin-top:auto; font-size:12px; color:var(--dash-text-dim); padding-top:20px; border-top: 1px solid var(--dash-border);">
+                        <div style="margin-bottom: 8px;">最后更新:</div>
+                        <div id="stats-update-time" style="font-weight: 600;">-</div>
+                    </div>
+                </div>
+                <div class="dash-main" style="overflow-y: auto;">
+                    <div style="padding: 20px;">
+                        <h1 class="dash-header">📊 访问统计概览</h1>
+                
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 30px;">
+                            <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--dash-border);">
+                                <div style="font-size: 14px; color: var(--dash-text-dim); margin-bottom: 5px;">总页面数</div>
+                                <div style="font-size: 32px; font-weight: 700; color: var(--dash-accent);" id="stat-total-pages">-</div>
+                            </div>
+                            <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--dash-border);">
+                                <div style="font-size: 14px; color: var(--dash-text-dim); margin-bottom: 5px;">总浏览量</div>
+                                <div style="font-size: 32px; font-weight: 700; color: #10b981;" id="stat-total-views">-</div>
+                            </div>
+                            <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--dash-border);">
+                                <div style="font-size: 14px; color: var(--dash-text-dim); margin-bottom: 5px;">评论总数</div>
+                                <div style="font-size: 32px; font-weight: 700; color: #f59e0b;" id="stat-total-comments">-</div>
+                            </div>
+                            <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--dash-border);">
+                                <div style="font-size: 14px; color: var(--dash-text-dim); margin-bottom: 5px;">独立IP数</div>
+                                <div style="font-size: 32px; font-weight: 700; color: #8b5cf6;" id="stat-unique-ips">-</div>
+                            </div>
+                        </div>
+                
+                        <h2 style="margin-top: 30px; font-size: 18px; font-weight: 600;">🏆 最受欢迎的文章 (前10)</h2>
+                        <div id="stat-top-pages" style="background: white; border-radius: 12px; border: 1px solid var(--dash-border); padding: 0; margin-bottom: 30px;">
+                            <!-- 页面列表会插入这里 -->
+                        </div>
+                
+                        <h2 style="margin-top: 30px; font-size: 18px; font-weight: 600;">👥 访客IP统计 (前50)</h2>
+                        <div id="stat-visitors" style="background: white; border-radius: 12px; border: 1px solid var(--dash-border); padding: 0;">
+                            <!-- 访客IP列表会插入这里 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="pending-comments-view" class="view-section">
         <div class="dash-sidebar">
             <div class="dash-logo">未审核评论</div>
             <button class="dash-btn" onclick="switchView('dashboard')">← 返回主面板</button>
@@ -5963,6 +6205,9 @@ var htmlTemplate = `<!DOCTYPE html>
                 loadCommentSettings();
             } else if (view === 'history') {
                 loadOperationHistory();
+                        else if (view === 'statistics') {
+                            loadStatistics();
+                        }
             }
         }
 
@@ -6735,6 +6980,84 @@ var htmlTemplate = `<!DOCTYPE html>
         }
 
         async function loadPendingComments() {
+                    async function loadStatistics() {
+                        try {
+                            const resp = await fetch('/api/statistics', {
+                                headers: {
+                                    'Authorization': 'Bearer ' + (localStorage.getItem('access_token') || ''),
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                
+                            if (!resp.ok) {
+                                alert('❌ 无权查看统计数据，请先登录');
+                                switchView('dashboard');
+                                return;
+                            }
+                
+                            const result = await resp.json();
+                            if (!result.success) {
+                                alert('❌ 加载统计失败: ' + result.message);
+                                return;
+                            }
+                
+                            const stats = result.data;
+                
+                            // 更新概览数字
+                            document.getElementById('stat-total-pages').innerText = stats.total_pages;
+                            document.getElementById('stat-total-views').innerText = stats.total_views;
+                            document.getElementById('stat-total-comments').innerText = stats.total_comments;
+                            document.getElementById('stat-unique-ips').innerText = stats.unique_ips;
+                            document.getElementById('stats-update-time').innerText = new Date().toLocaleString('zh-CN');
+                
+                            // 显示最受欢迎的文章
+                            const pagesEl = document.getElementById('stat-top-pages');
+                            if (stats.pages && stats.pages.length > 0) {
+                                pagesEl.innerHTML = '<table style="width:100%; border-collapse: collapse;">' +
+                                    '<tr style="background: #f8fafc; border-bottom: 1px solid var(--dash-border);">' +
+                                    '<th style="padding: 12px; text-align: left;">📄 页面标题</th>' +
+                                    '<th style="padding: 12px; text-align: center; width: 100px;">👁️ 浏览量</th>' +
+                                    '</tr>' +
+                                    stats.pages.map(function (p) {
+                                        return '<tr style="border-bottom: 1px solid var(--dash-border);">' +
+                                            '<td style="padding: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + p.title + '</td>' +
+                                            '<td style="padding: 12px; text-align: center; color: var(--dash-accent); font-weight: 700;">' + p.views + '</td>' +
+                                            '</tr>';
+                                    }).join('') +
+                                    '</table>';
+                            } else {
+                                pagesEl.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--dash-text-dim);">暂无数据</div>';
+                            }
+                
+                            // 显示访客IP统计
+                            const visitorsEl = document.getElementById('stat-visitors');
+                            if (stats.visitors && stats.visitors.length > 0) {
+                                visitorsEl.innerHTML = '<table style="width:100%; border-collapse: collapse;">' +
+                                    '<tr style="background: #f8fafc; border-bottom: 1px solid var(--dash-border);">' +
+                                    '<th style="padding: 12px; text-align: left; width: 150px;">🌐 IP地址</th>' +
+                                    '<th style="padding: 12px; text-align: center; width: 80px;">💬 评论数</th>' +
+                                    '<th style="padding: 12px; text-align: left; flex: 1;">⏱️ 首次出现</th>' +
+                                    '<th style="padding: 12px; text-align: left; flex: 1;">⏱️ 最后更新</th>' +
+                                    '</tr>' +
+                                    stats.visitors.map(function (v) {
+                                        return '<tr style="border-bottom: 1px solid var(--dash-border);">' +
+                                            '<td style="padding: 12px; font-family: monospace; font-weight: 600; color: #3b82f6;">' + v.ip + '</td>' +
+                                            '<td style="padding: 12px; text-align: center; color: var(--dash-accent); font-weight: 700;">' + v.comment_count + '</td>' +
+                                            '<td style="padding: 12px; font-size: 12px; color: var(--dash-text-dim);">' + v.first_seen + '</td>' +
+                                            '<td style="padding: 12px; font-size: 12px; color: var(--dash-text-dim);">' + v.last_seen + '</td>' +
+                                            '</tr>';
+                                    }).join('') +
+                                    '</table>';
+                            } else {
+                                visitorsEl.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--dash-text-dim);">暂无访客数据</div>';
+                            }
+                        } catch (e) {
+                            console.error('加载统计失败:', e);
+                            alert('❌ 加载统计失败: ' + e.message);
+                        }
+                    }
+
+                    async function loadPendingComments() {
             const listEl = document.getElementById('pending-comments-list');
             const countEl = document.getElementById('pending-total-count');
             const selectAll = document.getElementById('pending-select-all');
