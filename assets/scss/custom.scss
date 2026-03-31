@@ -178,9 +178,10 @@ body {
 .sidebar.left-sidebar header {
     flex-shrink: 0 !important;
     width: 100% !important;
-    padding: 20px 0 !important;
-    overflow: hidden !important;
-    height: 230px !important;
+    padding: 18px 0 10px 0 !important;
+    overflow: visible !important;
+    min-height: 270px !important;
+    height: auto !important;
 }
 
 .sidebar.left .site-info,
@@ -282,6 +283,34 @@ body {
     display: block !important;
     line-height: 1.2 !important;
     font-size: 14px !important;
+}
+
+/* 主题真实结构为 .site-meta / .site-description，这里显式兜底，避免文案被裁掉 */
+.sidebar.left .site-meta,
+.sidebar.left-sidebar .site-meta {
+    display: block !important;
+    text-align: center !important;
+    overflow: visible !important;
+    padding: 2px 8px 0 !important;
+}
+
+.sidebar.left .site-meta .site-description,
+.sidebar.left-sidebar .site-meta .site-description {
+    display: block !important;
+    margin: 6px 0 0 !important;
+    line-height: 1.45 !important;
+    font-size: 13px !important;
+    color: var(--body-text-color) !important;
+    opacity: 0.9 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+[data-scheme="dark"] .sidebar.left .site-meta .site-description,
+[data-scheme="dark"] .sidebar.left-sidebar .site-meta .site-description {
+    color: #e5e7eb !important;
+    opacity: 0.95 !important;
 }
 
 /* ===== 主菜单 ===== */
