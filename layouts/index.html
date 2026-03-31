@@ -8,6 +8,7 @@
 {{ $isZh := eq .Site.Language.Lang "zh-cn" }}
 {{ $heroTitle := cond $isZh "望境 WangScape" "WangScape" }}
 {{ $heroLine := cond $isZh "偏我去时花满楼，偏我来时不逢春" "When I left, flowers filled the tower. When I returned, spring was gone." }}
+{{ $heroPoetic := cond $isZh "春风不度玉门关" "Spring breeze never crosses Yumen Pass." }}
 {{ $pages := where .Site.RegularPages "Type" "in" .Site.Params.mainSections }}
 {{ $filtered := where $pages "Params.hidden" "!=" true }}
 {{ $recent := first 6 ($filtered.ByDate.Reverse) }}
@@ -19,14 +20,13 @@
 
 <section class="ws-home">
     <section class="ws-hero">
+        <canvas id="sakura-canvas" class="ws-sakura-canvas" aria-hidden="true"></canvas>
         <div class="ws-hero-overlay"></div>
-        <div class="ws-petals" aria-hidden="true">
-            <span></span><span></span><span></span><span></span><span></span><span></span>
-        </div>
 
         <div class="ws-hero-content">
             <h1>{{ $heroTitle }}</h1>
             <p class="ws-hero-line">{{ $heroLine }}</p>
+            <p class="ws-hero-poetic">{{ $heroPoetic }}</p>
 
             <div class="ws-hero-actions">
                 {{ range .Translations }}
@@ -42,19 +42,19 @@
     <section class="ws-entry-grid" aria-label="Main Sections">
         <a class="ws-entry-card" href="{{ $postPage.Permalink }}">
             <h3>{{ if $isZh }}文章{{ else }}Posts{{ end }}</h3>
-            <p>{{ if $isZh }}收纳所有思考与记录。{{ else }}Thoughts, essays, and notes.{{ end }}</p>
+            <p>{{ if $isZh }}最近：{{ else }}Recent: {{ end }}{{ with index $recent 0 }}{{ .Title }}{{ else }}{{ if $isZh }}暂无文章{{ else }}No posts yet{{ end }}{{ end }}</p>
         </a>
         <a class="ws-entry-card" href="{{ $searchPage.Permalink }}">
             <h3>{{ if $isZh }}搜索{{ else }}Search{{ end }}</h3>
-            <p>{{ if $isZh }}实时查找你想看的内容。{{ else }}Find exactly what you need, instantly.{{ end }}</p>
+            <p>{{ if $isZh }}标题、标签、摘要一键检索{{ else }}Find by title, tags, and snippets{{ end }}</p>
         </a>
         <a class="ws-entry-card" href="{{ $archivesPage.Permalink }}">
             <h3>{{ if $isZh }}归档{{ else }}Archive{{ end }}</h3>
-            <p>{{ if $isZh }}按时间阅读创作轨迹。{{ else }}Follow the writing timeline.{{ end }}</p>
+            <p>{{ if $isZh }}沿时间线回看写作轨迹{{ else }}Read along a timeline of writing{{ end }}</p>
         </a>
         <a class="ws-entry-card" href="{{ $linksPage.Permalink }}">
             <h3>{{ if $isZh }}友链{{ else }}Friends{{ end }}</h3>
-            <p>{{ if $isZh }}与同频的站点彼此照亮。{{ else }}Sites and people in resonance.{{ end }}</p>
+            <p>{{ if $isZh }}同频站点与长期收藏{{ else }}Resonant sites and long-term picks{{ end }}</p>
         </a>
     </section>
 
@@ -85,15 +85,74 @@
 </section>
 
 <script>
-// 创建全页樱花飘落动画
+// Hero Canvas Sakura + Theme Toggle
 (function () {
-    var petalContainer = document.createElement('div');
-    petalContainer.className = 'ws-global-petals';
-    for (var i = 0; i < 10; i++) {
-        var petal = document.createElement('span');
-        petalContainer.appendChild(petal);
+    var canvas = document.getElementById('sakura-canvas');
+    if (canvas) {
+        var ctx = canvas.getContext('2d');
+        var petals = [];
+        var maxPetals = 44;
+
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+
+        function createPetal(initialY) {
+            return {
+                x: Math.random() * canvas.width,
+                y: initialY != null ? initialY : -20,
+                size: Math.random() * 7 + 5,
+                speedY: Math.random() * 1.2 + 0.5,
+                sway: Math.random() * 0.8 + 0.2,
+                swayOffset: Math.random() * Math.PI * 2,
+                rotate: Math.random() * Math.PI,
+                rotateSpeed: (Math.random() - 0.5) * 0.02,
+                alpha: Math.random() * 0.35 + 0.45
+            };
+        }
+
+        function drawPetal(p) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotate);
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = '#f8cfdd';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, p.size, p.size * 0.62, Math.PI / 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function tick() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (petals.length < maxPetals) {
+                petals.push(createPetal(-20));
+            }
+
+            for (var i = petals.length - 1; i >= 0; i--) {
+                var p = petals[i];
+                p.y += p.speedY;
+                p.x += Math.sin((p.y / 42) + p.swayOffset) * p.sway;
+                p.rotate += p.rotateSpeed;
+
+                if (p.y > canvas.height + 30 || p.x < -30 || p.x > canvas.width + 30) {
+                    petals[i] = createPetal(-20);
+                    continue;
+                }
+                drawPetal(p);
+            }
+            requestAnimationFrame(tick);
+        }
+
+        resizeCanvas();
+        for (var i = 0; i < maxPetals; i++) {
+            petals.push(createPetal(Math.random() * canvas.height));
+        }
+        window.addEventListener('resize', resizeCanvas);
+        requestAnimationFrame(tick);
     }
-    document.body.appendChild(petalContainer);
 
     var toggleBtn = document.querySelector('[data-home-theme-toggle]');
     if (!toggleBtn) return;

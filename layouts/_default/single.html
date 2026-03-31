@@ -24,6 +24,7 @@
 {{ end }}
 
 {{ define "main" }}
+    <p class="ws-page-poetic-line">{{ if eq .Site.Language.Lang "zh-cn" }}人间忽晚，山河已秋{{ else }}Night falls on the world; mountains and rivers are already autumn.{{ end }}</p>
     {{ partial "article/article.html" . }}
 
     {{ if .Params.links }}

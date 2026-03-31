@@ -5,6 +5,7 @@
     <header class="ws-archives-header">
         <h1>{{ .Title }}</h1>
         <p>{{ if eq .Site.Language.Lang "zh-cn" }}按时间顺序阅读所有创作{{ else }}All writings, organized by time{{ end }}</p>
+        <p class="ws-page-poetic-line">{{ if eq .Site.Language.Lang "zh-cn" }}往事如烟{{ else }}The past drifts like smoke.{{ end }}</p>
     </header>
 
     {{- $taxonomy := $.Site.GetPage "taxonomyTerm" "categories" -}}

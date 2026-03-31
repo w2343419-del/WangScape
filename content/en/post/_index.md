@@ -1,5 +1,5 @@
 ---
-title: "文章"
+title: "Posts"
 aliases:
   - "/posts/"
 ---

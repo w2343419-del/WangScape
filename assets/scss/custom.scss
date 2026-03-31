@@ -2164,3 +2164,124 @@ article,
 [data-scheme="dark"] .ws-empty-state p {
     color: #f1dce8;
 }
+
+/* ===== WangScape v2 Optimized ===== */
+.wangscape-homepage .ws-home {
+    gap: 18px;
+}
+
+.wangscape-homepage .ws-hero {
+    min-height: 100vh;
+    border-radius: 20px;
+    display: grid;
+    place-items: center;
+    position: relative;
+    padding: 28px;
+}
+
+.wangscape-homepage .ws-sakura-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.wangscape-homepage .ws-hero-overlay {
+    z-index: 2;
+    background: linear-gradient(145deg, rgba(37, 22, 31, 0.62), rgba(108, 74, 98, 0.3));
+}
+
+.wangscape-homepage .ws-hero-content {
+    z-index: 3;
+    text-align: center;
+}
+
+.wangscape-homepage .ws-hero h1 {
+    font-size: clamp(2rem, 6vw, 4rem);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.wangscape-homepage .ws-hero-line {
+    font-size: clamp(1rem, 2.2vw, 1.45rem);
+    margin-top: 10px;
+}
+
+.wangscape-homepage .ws-hero-poetic {
+    margin: 8px 0 0;
+    color: rgba(255, 236, 244, 0.88);
+    font-size: 0.98rem;
+    letter-spacing: 0.08em;
+}
+
+.wangscape-homepage .ws-hero-actions {
+    justify-content: center;
+}
+
+.wangscape-homepage .ws-entry-grid {
+    gap: 16px;
+    padding: 0;
+}
+
+.wangscape-homepage .ws-entry-card {
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.48);
+    background: rgba(255, 246, 251, 0.44);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 12px 24px rgba(76, 41, 60, 0.1);
+}
+
+.wangscape-homepage .ws-entry-card h3 {
+    font-size: 1.18rem;
+}
+
+.wangscape-homepage .ws-recent {
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.52);
+    background: rgba(255, 246, 251, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.wangscape-homepage .ws-post-card {
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    background: rgba(255, 250, 253, 0.7);
+}
+
+.ws-page-poetic-line {
+    margin: 0 0 14px;
+    color: #604355;
+    font-size: 0.98rem;
+    letter-spacing: 0.08em;
+    text-align: center;
+}
+
+.ws-search-page .ws-search-wrap,
+.ws-archives-page .ws-archives-wrap,
+.ws-about-wrap {
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 246, 251, 0.48);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+@media screen and (max-width: 980px) {
+    .wangscape-homepage .ws-hero {
+        min-height: 82vh;
+    }
+}
+
+@media screen and (max-width: 680px) {
+    .wangscape-homepage .ws-hero {
+        min-height: 72vh;
+        border-radius: 14px;
+    }
+
+    .wangscape-homepage .ws-entry-grid {
+        gap: 10px;
+    }
+}
