@@ -1,0 +1,115 @@
+{{ define "body-class" }}wangscape-homepage{{ end }}
+
+{{ define "main" }}
+{{ $isZh := eq .Site.Language.Lang "zh-cn" }}
+{{ $heroTitle := cond $isZh "望境 WangScape" "WangScape" }}
+{{ $heroLine := cond $isZh "偏我去时花满楼，偏我来时不逢春" "When I left, flowers filled the tower. When I returned, spring was gone." }}
+{{ $heroDesc := cond $isZh "一个以诗意表达为优先的个人数字空间" "A poetic digital space where expression comes first." }}
+{{ $pages := where .Site.RegularPages "Type" "in" .Site.Params.mainSections }}
+{{ $filtered := where $pages "Params.hidden" "!=" true }}
+{{ $recent := first 6 ($filtered.ByDate.Reverse) }}
+
+<section class="ws-home">
+    <section class="ws-hero">
+        <div class="ws-hero-overlay"></div>
+        <div class="ws-petals" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+
+        <div class="ws-hero-content">
+            <p class="ws-hero-kicker">Sakura Poetic Theme</p>
+            <h1>{{ $heroTitle }}</h1>
+            <p class="ws-hero-line">{{ $heroLine }}</p>
+            <p class="ws-hero-desc">{{ $heroDesc }}</p>
+
+            <div class="ws-hero-actions">
+                {{ range .Translations }}
+                <a class="ws-btn ws-btn-ghost" href="{{ .Permalink }}">{{ .Language.LanguageName }}</a>
+                {{ end }}
+                <button class="ws-btn" type="button" data-home-theme-toggle>
+                    {{ if $isZh }}切换明暗{{ else }}Theme Mode{{ end }}
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section class="ws-entry-grid" aria-label="Main Sections">
+        <a class="ws-entry-card" href="{{ "/post/" | relLangURL }}">
+            <h3>{{ if $isZh }}文章{{ else }}Posts{{ end }}</h3>
+            <p>{{ if $isZh }}收纳所有思考与记录。{{ else }}Thoughts, essays, and notes.{{ end }}</p>
+        </a>
+        <a class="ws-entry-card" href="{{ "/page/search/" | relLangURL }}">
+            <h3>{{ if $isZh }}搜索{{ else }}Search{{ end }}</h3>
+            <p>{{ if $isZh }}实时查找你想看的内容。{{ else }}Find exactly what you need, instantly.{{ end }}</p>
+        </a>
+        <a class="ws-entry-card" href="{{ "/page/archives/" | relLangURL }}">
+            <h3>{{ if $isZh }}归档{{ else }}Archive{{ end }}</h3>
+            <p>{{ if $isZh }}按时间阅读创作轨迹。{{ else }}Follow the writing timeline.{{ end }}</p>
+        </a>
+        <a class="ws-entry-card" href="{{ "/page/links/" | relLangURL }}">
+            <h3>{{ if $isZh }}友链{{ else }}Friends{{ end }}</h3>
+            <p>{{ if $isZh }}与同频的站点彼此照亮。{{ else }}Sites and people in resonance.{{ end }}</p>
+        </a>
+    </section>
+
+    <section class="ws-about-link-wrap">
+        <a class="ws-about-link" href="{{ "/page/about/" | relLangURL }}">{{ if $isZh }}关于 WangScape{{ else }}About WangScape{{ end }}</a>
+    </section>
+
+    <section class="ws-recent">
+        <div class="ws-recent-head">
+            <h2>{{ if $isZh }}最近更新{{ else }}Recent Writings{{ end }}</h2>
+            <a href="{{ "/post/" | relLangURL }}">{{ if $isZh }}查看全部{{ else }}View all{{ end }}</a>
+        </div>
+
+        <div class="ws-recent-grid">
+            {{ range $recent }}
+            <article class="ws-post-card">
+                <a href="{{ .RelPermalink }}">
+                    <h3>{{ .Title }}</h3>
+                    <p>{{ .Summary | plainify | truncate 88 }}</p>
+                    <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006.01.02" }}</time>
+                </a>
+            </article>
+            {{ end }}
+        </div>
+    </section>
+
+    {{ partial "footer/footer" . }}
+</section>
+
+<script>
+(function () {
+    var toggleBtn = document.querySelector('[data-home-theme-toggle]');
+    if (!toggleBtn) return;
+
+    var key = 'StackColorScheme';
+    var order = ['light', 'dark', 'auto'];
+
+    function resolveScheme(mode) {
+        if (mode === 'auto') {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        return mode;
+    }
+
+    function nextMode(curr) {
+        var idx = order.indexOf(curr);
+        return order[(idx + 1) % order.length];
+    }
+
+    function applyMode(mode) {
+        var resolved = resolveScheme(mode);
+        document.documentElement.dataset.scheme = resolved;
+        window.dispatchEvent(new CustomEvent('onColorSchemeChange', { detail: resolved }));
+    }
+
+    toggleBtn.addEventListener('click', function () {
+        var current = localStorage.getItem(key) || 'auto';
+        var next = nextMode(current);
+        localStorage.setItem(key, next);
+        applyMode(next);
+    });
+})();
+</script>
+{{ end }}
