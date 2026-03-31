@@ -1550,11 +1550,18 @@ article,
 
 /* 文章详情页 - 诗意排版 */
 .article-page {
-    --article-max-width: 980px;
+    --article-max-width: 1220px;
 }
 
 .article-page .main {
     max-width: var(--article-max-width);
+    width: 100%;
+}
+
+@media screen and (min-width: 1800px) {
+    .article-page {
+        --article-max-width: 1320px;
+    }
 }
 
 .article-page .article-content {
