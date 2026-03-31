@@ -61,6 +61,50 @@ body {
     contain: layout !important;
 }
 
+/* ===== 尺寸与比例协调优化 ===== */
+.main-container {
+    min-height: 100dvh;
+    height: 100dvh;
+    align-items: stretch;
+    gap: clamp(16px, 2.2vw, 36px);
+    padding: clamp(12px, 2vw, 24px);
+}
+
+.sidebar.left,
+.sidebar.left-sidebar {
+    width: clamp(220px, 20vw, 280px) !important;
+    height: 100% !important;
+}
+
+.main {
+    width: 100%;
+    max-width: 980px;
+    height: 100%;
+    min-height: 0;
+    margin: 0 auto;
+    padding: clamp(14px, 1.8vw, 24px);
+}
+
+/* 保证文章和卡片中的媒体保持比例，不被拉伸 */
+.article-content img,
+.article-content video,
+.article-list .article-image img,
+.article-page img,
+.article-page video {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+}
+
+.article-content iframe,
+.article-page iframe {
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    height: auto;
+}
+
 /* ===== 主内容区域（唯一可滚动区域）===== */
 .main {
     flex: 1;
@@ -764,13 +808,13 @@ article .post-content,
 /* ===== 响应式设计 ===== */
 @media screen and (max-width: 1200px) {
     .main-container {
-        gap: 20px;
-        padding: 10px 20px;
+        gap: clamp(12px, 2vw, 20px);
+        padding: 12px;
     }
 
     .sidebar.left,
     .sidebar.left-sidebar {
-        width: 220px;
+        width: clamp(200px, 24vw, 240px) !important;
     }
 
     .sidebar.right,
@@ -783,6 +827,9 @@ article .post-content,
     .main-container {
         flex-direction: column;
         align-items: center;
+        justify-content: flex-start;
+        min-height: 100dvh;
+        height: 100dvh;
         padding: 10px;
     }
 
@@ -841,8 +888,10 @@ article .post-content,
     .main {
         width: 100%;
         max-width: 100%;
-        padding-bottom: 80px;
-        padding-top: 20px;
+        height: auto;
+        min-height: calc(100dvh - 96px);
+        padding-top: 12px;
+        padding-bottom: calc(88px + env(safe-area-inset-bottom));
         overflow-y: auto !important;
     }
 
