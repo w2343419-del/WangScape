@@ -11,11 +11,11 @@
 {{ $pages := where .Site.RegularPages "Type" "in" .Site.Params.mainSections }}
 {{ $filtered := where $pages "Params.hidden" "!=" true }}
 {{ $recent := first 6 ($filtered.ByDate.Reverse) }}
-{{ $postPage := site.GetPage "/post" }}
-{{ $searchPage := site.GetPage "/page/search" }}
-{{ $archivesPage := site.GetPage "/page/archives" }}
-{{ $linksPage := site.GetPage "/page/links" }}
-{{ $aboutPage := site.GetPage "/page/about" }}
+{{ $postPage := .Site.GetPage "/post" }}
+{{ $searchPage := .Site.GetPage "/page/search" }}
+{{ $archivesPage := .Site.GetPage "/page/archives" }}
+{{ $linksPage := .Site.GetPage "/page/links" }}
+{{ $aboutPage := .Site.GetPage "/page/about" }}
 
 <section class="ws-home">
     <section class="ws-hero">
