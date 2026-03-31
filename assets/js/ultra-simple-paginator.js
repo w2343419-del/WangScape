@@ -25,15 +25,13 @@
         try {
             // 查找元素
             paginator.mainElement = document.querySelector('.main');
-            paginator.containerElement = document.querySelector('.main > .container');
+            paginator.containerElement = document.querySelector('.main > .container') || document.querySelector('.main .article-page');
             
             // 检查元素是否存在
             if (!paginator.mainElement) {
-                console.log('未找到.main元素');
                 return;
             }
             if (!paginator.containerElement) {
-                console.log('未找到.main > .container元素');
                 return;
             }
             
@@ -51,7 +49,6 @@
     function setupPagination() {
         try {
             if (!paginator.mainElement || !paginator.containerElement) {
-                console.log('元素未找到，跳过设置');
                 return;
             }
             

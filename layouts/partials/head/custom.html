@@ -1,24 +1,51 @@
-<!-- 卜算子 (Busuanzi) 访问统计脚本 -->
+<!-- 本地访问统计（无外链，避免拦截插件报错） -->
 <script>
-    (function() {
-        // 优先使用官方脚本，失败后回退到本站静态文件。
-        const remoteSrc = 'https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js';
-        const localSrc = '{{ "js/busuanzi.pure.mini.js" | relURL }}';
+    (function () {
+        const SITE_PV_KEY = 'site_total_page_views';
+        const SITE_UV_KEY = 'site_unique_visitor_mark';
 
-        function appendScript(src, onerror) {
-            const script = document.createElement('script');
-            script.defer = true;
-            script.src = src;
-            script.onerror = onerror;
-            document.head.appendChild(script);
+        function safeNumber(value) {
+            const parsed = parseInt(value || '0', 10);
+            return Number.isFinite(parsed) ? parsed : 0;
         }
 
-        appendScript(remoteSrc, function () {
-            appendScript(localSrc, function () {
-                // 两个来源都不可用时静默降级，避免影响页面主功能。
-                window.busuanzi = window.busuanzi || { pageCount: 0, sitePV: 0, siteUV: 0 };
-            });
-        });
+        function getSitePV() {
+            return safeNumber(localStorage.getItem(SITE_PV_KEY));
+        }
+
+        function incrementSitePV() {
+            const next = getSitePV() + 1;
+            localStorage.setItem(SITE_PV_KEY, String(next));
+            return next;
+        }
+
+        function getSiteUV() {
+            if (!localStorage.getItem(SITE_UV_KEY)) {
+                localStorage.setItem(SITE_UV_KEY, '1');
+            }
+            return 1;
+        }
+
+        function updateSiteCounters() {
+            const pv = incrementSitePV();
+            const uv = getSiteUV();
+
+            const pvElement = document.getElementById('busuanzi_value_site_pv');
+            const uvElement = document.getElementById('busuanzi_value_site_uv');
+
+            if (pvElement) {
+                pvElement.innerText = String(pv);
+            }
+            if (uvElement) {
+                uvElement.innerText = String(uv);
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', updateSiteCounters);
+        } else {
+            updateSiteCounters();
+        }
     })();
 </script>
 
