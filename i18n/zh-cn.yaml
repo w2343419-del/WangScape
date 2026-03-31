@@ -1,6 +1,9 @@
 article:
     views:
         other: " 次阅读"
+list:
+    section:
+        other: "文章"
 selectLanguage:
     other: "English"
 darkMode:

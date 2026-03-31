@@ -13,29 +13,30 @@
         <p>{{ if eq .Site.Language.Lang "zh-cn" }}快速查找你想要的内容{{ else }}Find exactly what you need{{ end }}</p>
     </header>
 
-    <form action="{{ .RelPermalink }}" class="ws-search-form" {{ with .OutputFormats.Get "json" }}data-json="{{ .RelPermalink }}"{{ end }}>
-        <div class="ws-search-input-wrap">
-            <input 
+    <form action="{{ .RelPermalink }}" class="search-form ws-search-form" {{ with .OutputFormats.Get "json" -}} data-json="{{ .RelPermalink }}"{{- end }}>
+        <p class="ws-search-input-wrap">
+            <label>{{ T "search.title" }}</label>
+            <input
                 type="text"
-                name="keyword" 
+                name="keyword"
                 class="ws-search-input"
-                placeholder="{{ if eq .Site.Language.Lang "zh-cn" }}输入关键词...{{ else }}Type keywords...{{ end }}" 
+                placeholder="{{ T `search.placeholder` }}"
                 autocomplete="off"
             />
-            <button type="submit" class="ws-search-btn">
-                {{ partial "helper/icon" "search" }}
-            </button>
-        </div>
+        </p>
+        <button type="submit" title="{{ T `search.title` }}" class="ws-search-btn">
+            {{ partial "helper/icon" "search" }}
+        </button>
     </form>
 
-    <div class="ws-search-result" id="search-result">
-        <h3 class="ws-search-result-title"></h3>
-        <div class="ws-search-result-list article-list--compact"></div>
+    <div class="search-result ws-search-result" id="search-result">
+        <h3 class="search-result--title section-title ws-search-result-title"></h3>
+        <div class="search-result--list article-list--compact ws-search-result-list"></div>
     </div>
 </section>
 
 <script>
-    window.searchResultTitleTemplate = "{{ if eq .Site.Language.Lang "zh-cn" }}搜索结果{{ else }}Search Results{{ end }}"
+    window.searchResultTitleTemplate = "{{ T `search.resultTitle` }}"
 </script>
 
 {{- $opts := dict "minify" hugo.IsProduction "JSXFactory" "createElement" -}}
