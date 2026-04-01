@@ -28,18 +28,35 @@
     }
 }
 
-/* ===== 全页樱花飘落动画 ===== */
+/* ===== 全页樱花飘落动画（增强朦胧感） ===== */
 @keyframes globalPetalFall {
     0% {
         top: -8%;
-        opacity: 0.8;
+        opacity: 0.2;
         transform: translateX(0) rotate(0deg);
+        filter: blur(2.2px);
+    }
+
+    15% {
+        opacity: 0.35;
+        filter: blur(1.8px);
+    }
+
+    50% {
+        opacity: 0.32;
+        filter: blur(1.8px);
+    }
+
+    85% {
+        opacity: 0.15;
+        filter: blur(2px);
     }
 
     100% {
         top: 100%;
         opacity: 0;
         transform: translateX(var(--petal-x, 0px)) rotate(360deg);
+        filter: blur(2.2px);
     }
 }
 
@@ -89,78 +106,78 @@ body::before {
     height: 10px;
     border-radius: 100% 0% 100% 70% / 60% 100% 30% 70%;
     background: linear-gradient(135deg, #f8d7e4 0%, #ffd1dc 50%, #f8bbd0 100%);
-    opacity: 0.75;
-    filter: blur(0.5px);
+    opacity: 0.35;
+    filter: blur(1.8px);
     will-change: transform;
 }
 
 .ws-global-petals span:nth-child(1) {
     left: 5%;
     --petal-x: 20px;
-    animation: globalPetalFall 15s linear infinite;
+    animation: globalPetalFall 22s linear infinite;
     animation-delay: 0s;
 }
 
 .ws-global-petals span:nth-child(2) {
     left: 15%;
     --petal-x: -30px;
-    animation: globalPetalFall 18s linear infinite;
+    animation: globalPetalFall 26s linear infinite;
     animation-delay: -4s;
 }
 
 .ws-global-petals span:nth-child(3) {
     left: 30%;
     --petal-x: 25px;
-    animation: globalPetalFall 16s linear infinite;
+    animation: globalPetalFall 24s linear infinite;
     animation-delay: -2s;
 }
 
 .ws-global-petals span:nth-child(4) {
     left: 50%;
     --petal-x: -20px;
-    animation: globalPetalFall 17s linear infinite;
+    animation: globalPetalFall 25s linear infinite;
     animation-delay: -6s;
 }
 
 .ws-global-petals span:nth-child(5) {
     left: 70%;
     --petal-x: 30px;
-    animation: globalPetalFall 14s linear infinite;
+    animation: globalPetalFall 21s linear infinite;
     animation-delay: -3s;
 }
 
 .ws-global-petals span:nth-child(6) {
     left: 85%;
     --petal-x: -25px;
-    animation: globalPetalFall 19s linear infinite;
+    animation: globalPetalFall 27s linear infinite;
     animation-delay: -5s;
 }
 
 .ws-global-petals span:nth-child(7) {
     left: 10%;
     --petal-x: 15px;
-    animation: globalPetalFall 16s linear infinite;
+    animation: globalPetalFall 23s linear infinite;
     animation-delay: -1s;
 }
 
 .ws-global-petals span:nth-child(8) {
     left: 45%;
     --petal-x: -35px;
-    animation: globalPetalFall 17s linear infinite;
+    animation: globalPetalFall 25s linear infinite;
     animation-delay: -7s;
 }
 
 .ws-global-petals span:nth-child(9) {
     left: 75%;
     --petal-x: 22px;
-    animation: globalPetalFall 15s linear infinite;
+    animation: globalPetalFall 22s linear infinite;
     animation-delay: -4.5s;
 }
 
 .ws-global-petals span:nth-child(10) {
     left: 25%;
     --petal-x: -28px;
-    animation: globalPetalFall 18s linear infinite;
+    animation: globalPetalFall 26s linear infinite;
     animation-delay: -2.5s;
 }
 
