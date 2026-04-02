@@ -394,6 +394,8 @@
         uploadingImages: isZhCN ? '⏳ 正在上传图片...' : '⏳ Uploading images...',
         submitSuccess: isZhCN ? '✅ 评论提交成功！等待审核后将显示在页面上。' : '✅ Comment submitted! It will appear after approval.',
         submitFailed: isZhCN ? '提交失败' : 'Submission failed',
+        redirectGithubIssue: isZhCN ? '🔗 正在跳转到 GitHub 提交评论...' : '🔗 Redirecting to GitHub issue form...',
+        submitApiMissing: isZhCN ? '❌ 评论提交服务未配置。' : '❌ Comment submission service is not configured.',
         networkError: isZhCN ? '❌ 网络错误:' : '❌ Network error:',
         approved: isZhCN ? '✓ 已批准' : '✓ Approved',
         reply: isZhCN ? '回复' : 'Reply',
@@ -473,6 +475,50 @@
 
     function useGithubComments() {
         return !!githubRepo;
+    }
+
+    function isLocalDevHost() {
+        const host = window.location.hostname || '';
+        return host === 'localhost' || host === '127.0.0.1';
+    }
+
+    function resolveSubmitApiUrl() {
+        if (apiBase) {
+            return buildApiUrl('/api');
+        }
+        if (isLocalDevHost()) {
+            return 'http://127.0.0.1:8080/api';
+        }
+        return '';
+    }
+
+    function buildGithubIssueUrl(commentData) {
+        if (!githubRepo) return '';
+
+        const params = new URLSearchParams();
+        params.set('title', '[Comment] ' + (commentData.post_title || commentData.post_path || 'Comment'));
+
+        const bodyLines = [
+            'Post: ' + (commentData.post_path || ''),
+            'Author: ' + (commentData.author || ''),
+            'Email: ' + (commentData.email || ''),
+            '',
+            'Content:',
+            commentData.content || ''
+        ];
+
+        if (commentData.parent_id) {
+            bodyLines.splice(3, 0, 'Parent ID: ' + commentData.parent_id);
+        }
+
+        params.set('body', bodyLines.join('\n'));
+
+        const labels = Array.isArray(commentData.github_labels) ? commentData.github_labels.filter(Boolean).join(',') : '';
+        if (labels) {
+            params.set('labels', labels);
+        }
+
+        return 'https://github.com/' + githubRepo + '/issues/new?' + params.toString();
     }
 
     function extractCommentField(body, fieldName) {
@@ -651,9 +697,29 @@
                 github_repo: githubRepo,
                 github_labels: [githubLabelComment, githubLabelPending]
             };
+
+            const submitApiUrl = resolveSubmitApiUrl();
+            if (!submitApiUrl) {
+                if (useGithubComments()) {
+                    const issueUrl = buildGithubIssueUrl(commentData);
+                    if (issueUrl) {
+                        statusEl.textContent = i18n.redirectGithubIssue;
+                        statusEl.style.color = '#4CAF50';
+                        const opened = window.open(issueUrl, '_blank', 'noopener');
+                        if (!opened) {
+                            window.location.href = issueUrl;
+                        }
+                        return;
+                    }
+                }
+
+                statusEl.textContent = i18n.submitApiMissing;
+                statusEl.style.color = '#f44336';
+                return;
+            }
             
             // 提交评论到后端API
-            const response = await fetch(buildApiUrl('/api'), {
+            const response = await fetch(submitApiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
