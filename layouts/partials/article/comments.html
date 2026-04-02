@@ -386,8 +386,8 @@
     const currentPostTitle = document.title || '{{ .Title }}';
     
     const i18n = {
-        noComments: isZhCN ? '暂无评论，快来抢沙发吧！' : 'No comments yet. Be the first!',
-        loadFailed: isZhCN ? '加载评论失败' : 'Failed to load comments',
+        noComments: isZhCN ? '暂无评论，虚位以待' : 'No comments yet. Be the first!',
+        loadFailed: isZhCN ? '拉取评论失败' : 'Failed to load comments',
         loadError: isZhCN ? '加载评论出错:' : 'Error loading comments:',
         fillAll: isZhCN ? '⚠️ 请填写所有字段' : '⚠️ Please fill in all fields',
         submitting: isZhCN ? '⏳ 提交中...' : '⏳ Submitting...',
@@ -505,6 +505,10 @@
         }
     }
 
+    function isAbortError(error) {
+        return !!error && (error.name === 'AbortError' || String(error).indexOf('AbortError') !== -1);
+    }
+
     let commentsLoadStarted = false;
 
     function normalizeComment(raw) {
@@ -602,6 +606,10 @@
             }
         } catch (e) {
             commentsListEl.innerHTML = '<div style="color: red; padding: 20px;">' + i18n.loadFailed + '</div>';
+            if (isAbortError(e)) {
+                // 中断请求（超时或页面切换）属于可预期行为，避免输出误导性错误。
+                return;
+            }
             console.error(i18n.loadError, e);
         } finally {
             // 加载失败后允许手动重试。
